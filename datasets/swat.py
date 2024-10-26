@@ -11,7 +11,7 @@ from datasets.data_processing import InterPolationMethods, preprocess_df
 def load_swat_df_train(
     name: str = SWATPaths.NAME_TRAIN.value,
     path_to_dataset: str = SWATPaths.BASE_PATH.value,
-) -> Tuple[pd.DataFrame, pd.Series]:
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Loads the training dataset from the given path and returns a pandas DataFrame.
     Args:
@@ -22,6 +22,7 @@ def load_swat_df_train(
     file = os.path.join(path_to_dataset, name)
     df_train = pd.read_csv(file)
     df_train_labels = (df_train["Normal/Attack"] == "Attack").astype(int)
+    df_train_labels = df_train_labels.to_frame()
     df_train = df_train.drop(columns=["Normal/Attack"])
 
     return df_train, df_train_labels
@@ -30,7 +31,7 @@ def load_swat_df_train(
 def load_swat_df_val(
     name: str = SWATPaths.NAME_VAL.value,
     path_to_dataset: str = SWATPaths.BASE_PATH.value,
-) -> Tuple[pd.DataFrame, pd.Series]:
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Loads the validation dataset from the given path and returns a pandas DataFrame.
     Args:
@@ -41,13 +42,14 @@ def load_swat_df_val(
     file = os.path.join(path_to_dataset, name)
     df_val = pd.read_csv(file)
     df_val_labels = (df_val["Normal/Attack"] == "Attack").astype(int)
+    df_val_labels = df_val_labels.to_frame()
     df_val = df_val.drop(columns=["Normal/Attack"])
     return df_val, df_val_labels
 
 
 def split_val_df(
-    df_val: pd.DataFrame, df_val_labels: pd.Series, val_size: float = 0.6
-) -> Tuple[pd.DataFrame, pd.Series, pd.DataFrame, pd.Series]:
+    df_val: pd.DataFrame, df_val_labels: pd.DataFrame, val_size: float = 0.6
+) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
     Split the validation dataset into two parts: validation and test.
     Args:
@@ -67,7 +69,9 @@ def split_val_df(
 
 def load_swat_df(
     path_to_dataset: str = SWATPaths.BASE_PATH.value, val_size: float = 0.6
-) -> Tuple[pd.DataFrame, pd.Series, pd.DataFrame, pd.Series, pd.DataFrame, pd.Series]:
+) -> Tuple[
+    pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame
+]:
     """
     Loads the dataset from the given path and returns a pandas DataFrame.
     Args:
@@ -135,7 +139,11 @@ def load_swat_training_data(
         scaler=scaler,
         interpolate_method=interpolate_method,
     )
-    return X_train, X_train_labels, X_val, X_val_labels, X_test, X_test_labels
+
+    if X_train_labels is None or X_test_labels is None or X_val_labels is None:
+        raise ValueError("SWAT labels are not being loaded.")
+
+    return X_train, X_val, X_test, X_train_labels, X_val_labels, X_test_labels
 
 
 def get_swat_column_names_list() -> list[str]:

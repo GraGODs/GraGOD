@@ -1,4 +1,4 @@
-dataset: "telco"
+dataset: "swat"
 
 data_params:
   data_dir: "data/"
