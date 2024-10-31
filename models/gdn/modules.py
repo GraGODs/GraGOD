@@ -28,16 +28,14 @@ class OutLayer(nn.Module):
         super(OutLayer, self).__init__()
 
         modules = []
+        for i in range(layer_num - 1):
+            layer_in_num = in_num if i == 0 else inter_num
+            modules.append(nn.Linear(layer_in_num, inter_num))
+            modules.append(nn.BatchNorm1d(inter_num))
+            modules.append(nn.ReLU())
 
-        for i in range(layer_num):
-            # last layer, output shape:1
-            if i == layer_num - 1:
-                modules.append(nn.Linear(in_num if layer_num == 1 else inter_num, 1))
-            else:
-                layer_in_num = in_num if i == 0 else inter_num
-                modules.append(nn.Linear(layer_in_num, inter_num))
-                modules.append(nn.BatchNorm1d(inter_num))
-                modules.append(nn.ReLU())
+        # last layer, output shape:1
+        modules.append(nn.Linear(in_num if layer_num == 1 else inter_num, 1))
 
         self.mlp = nn.ModuleList(modules)
 

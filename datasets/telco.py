@@ -122,7 +122,3 @@ def load_telco_training_data(
         X_val_labels,
         X_test_labels,
     )
-
-
-def get_telco_column_names_list() -> list[str]:
-    return list(load_telco_df()[0].columns)

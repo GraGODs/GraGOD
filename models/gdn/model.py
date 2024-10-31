@@ -38,7 +38,7 @@ class GDN(nn.Module):
         self,
         edge_index_sets: list[torch.Tensor],
         node_num: int,
-        dim: int = 64,
+        embed_dim: int = 64,
         out_layer_inter_dim: int = 256,
         input_dim: int = 10,
         out_layer_num: int = 1,
@@ -47,20 +47,19 @@ class GDN(nn.Module):
         super(GDN, self).__init__()
 
         self.edge_index_sets = edge_index_sets
-        embed_dim = dim
         self.embedding = nn.Embedding(node_num, embed_dim)
         self.bn_outlayer_in = nn.BatchNorm1d(embed_dim)
 
         edge_set_num = len(edge_index_sets)
         self.gnn_layers = nn.ModuleList(
-            [GNNLayer(input_dim, dim, heads=1) for i in range(edge_set_num)]
+            [GNNLayer(input_dim, embed_dim, heads=1) for i in range(edge_set_num)]
         )
 
         self.topk = topk
         self.learned_graph = None
 
         self.out_layer = OutLayer(
-            dim * edge_set_num, out_layer_num, inter_num=out_layer_inter_dim
+            embed_dim * edge_set_num, out_layer_num, inter_num=out_layer_inter_dim
         )
 
         self.cache_edge_index_sets = [None] * edge_set_num
@@ -117,16 +116,14 @@ class GDN(nn.Module):
             )
             cos_ji_mat = cos_ji_mat / normed_mat
 
-            topk_num = self.topk
-
-            topk_indices_ji = torch.topk(cos_ji_mat, topk_num, dim=-1)[1]
+            topk_indices_ji = torch.topk(cos_ji_mat, self.topk, dim=-1)[1]
 
             self.learned_graph = topk_indices_ji
 
             gated_i = (
                 torch.arange(0, node_num)
                 .unsqueeze(1)
-                .repeat(1, topk_num)
+                .repeat(1, self.topk)
                 .flatten()
                 .to(device)
                 .unsqueeze(0)

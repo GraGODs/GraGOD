@@ -11,8 +11,8 @@ train_params:
 
 model_params:
   window_size: 15
-  dim: 64
-  out_layer_num: 1
+  embed_dim: 64
+  out_layer_num: 5
   out_layer_inter_dim: 256
   topk: 5
   stride: 5
@@ -20,6 +20,6 @@ model_params:
 env_params:
   save_path_pattern: ""
   random_seed: 42
-  report: "val"
+  report: "best"
   load_model_path: ""
   save_path: "msl"
