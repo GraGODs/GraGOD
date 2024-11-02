@@ -98,7 +98,7 @@ def load_telco_training_data(
         data_df=df_val,
         labels_df=df_val_labels,
         normalize=normalize,
-        clean=clean,
+        clean=False,
         scaler=scaler,
         interpolate_method=interpolate_method,
     )
@@ -106,7 +106,7 @@ def load_telco_training_data(
         data_df=df_test,
         labels_df=df_test_labels,
         normalize=normalize,
-        clean=clean,
+        clean=False,
         scaler=scaler,
         interpolate_method=interpolate_method,
     )
