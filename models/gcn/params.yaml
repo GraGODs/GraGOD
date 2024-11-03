@@ -1,0 +1,22 @@
+dataset: "telco"
+
+env_params:
+  random_seed: 42
+
+model_params:
+  window_size: 10
+  n_layers: 3
+  hidden_dim: 64
+  K: 3
+
+train_params:
+  test_size: 0.1
+  val_size: 0.1
+  clean: true
+  interpolate_method: null
+  batch_size: 128
+  n_workers: 0
+  init_lr: 0.001
+  weight_decay: 0.0
+  n_epochs: 30
+  device: "mps"
