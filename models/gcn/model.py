@@ -63,3 +63,23 @@ class GCN(torch.nn.Module):
         out = out.reshape(batch_size, 1, num_nodes)
 
         return out, h
+
+    def detect_anomalies(
+        self, X: torch.Tensor, predictions: torch.Tensor, threshold: float = 0.01
+    ):
+        """Detect anomalies in the data.
+
+        An anomaly is classified as such if the absolute difference between the
+        prediction and the actual value is greater than the threshold.
+
+        Args:
+            X: Input tensor of shape (data_length, num_nodes)
+            predictions: Predictions tensor of shape (data_length, num_nodes)
+            threshold: Threshold for the anomaly score
+
+        Returns:
+            Anomaly scores tensor of shape (data_length, num_nodes)
+        """
+        diff = torch.abs(X - predictions)
+        anomalies = diff > threshold
+        return anomalies
