@@ -1,7 +1,7 @@
-dataset: "swat"
+dataset: "telco"
 
 model_params:
-  window_size: 4
+  window_size: 512
   kernel_size: 7
   use_gatv2: true
   feat_gat_embed_dim: null
@@ -16,23 +16,23 @@ model_params:
   alpha: 0.2
 
 train_params:
-  n_epochs: 30
-  batch_size: 264
+  n_epochs: 100
+  batch_size: 32
   init_lr: 0.001
   device: "mps"
   n_workers: 0
   target_dims: null
   log_dir: "output"
   log_every_n_steps: 1
-  ckpt_path: null
   test_size: 0.1
   val_size: 0.1
   shuffle: true
   clean: true # remove anomalies from training data
   interpolate_method: null
+  horizon: 1
 
 predictor_params:
-  dataset: "custom"
+  dataset: "telco"
   target_dims: null
   scale_scores: false
   level: 0.9999 
@@ -41,4 +41,6 @@ predictor_params:
   use_mov_av: false
   gamma: 0.8
   reg_level: 1
+  ckpt_folder: "output/mtad_gat/version_5"
+
 save_path: "saved_models/mtad_gat"

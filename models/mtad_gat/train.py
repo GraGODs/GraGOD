@@ -34,6 +34,7 @@ def main(
     clean: bool = True,
     interpolate_method: InterPolationMethods | None = None,
     shuffle: bool = True,
+    horizon: int = 1,
     params: dict = {},
 ):
     dataset = cast_dataset(dataset_name)
@@ -52,20 +53,24 @@ def main(
     # Create dataloaders
     window_size = model_params["window_size"]
 
-    train_dataset = SlidingWindowDataset(X_train, window_size)
-    val_dataset = SlidingWindowDataset(X_val, window_size)
+    train_dataset = SlidingWindowDataset(
+        data=X_train, window=window_size, horizon=horizon
+    )
+    val_dataset = SlidingWindowDataset(data=X_val, window=window_size, horizon=horizon)
 
     train_loader = DataLoader(
         train_dataset,
         batch_size=batch_size,
         num_workers=n_workers,
         shuffle=shuffle,
+        persistent_workers=n_workers > 0,
     )
     val_loader = DataLoader(
         val_dataset,
         batch_size=batch_size,
         num_workers=n_workers,
         shuffle=False,
+        persistent_workers=n_workers > 0,
     )
 
     # Create model
@@ -103,7 +108,9 @@ def main(
 
     # Train model
     trainer.fit(train_loader, val_loader, args_summary=args_summary)
-    # TODO: Save model and prediction in the proper folder
+
+    input_example = next(iter(train_loader))[0]
+    trainer.save_compiled_model(input_example)
 
 
 if __name__ == "__main__":

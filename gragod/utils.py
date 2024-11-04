@@ -2,6 +2,10 @@ import logging
 import os
 import sys
 
+import torch
+
+from gragod.types import PathType
+
 
 def get_logger(logger_name: str | None = None):
     if logger_name is None:
@@ -15,3 +19,11 @@ def get_logger(logger_name: str | None = None):
     logger.addHandler(consoleHandler)
 
     return logger
+
+
+def jit_compile_model(input_example: torch.Tensor, model, save_dir: PathType):
+    with torch.jit.optimized_execution(True):
+        traced_model = torch.jit.trace(model, input_example)
+
+    print(f"Saving model in {save_dir}")
+    torch.jit.save(traced_model, save_dir)
