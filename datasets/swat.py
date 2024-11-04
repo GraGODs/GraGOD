@@ -127,7 +127,7 @@ def load_swat_training_data(
         data_df=df_val,
         labels_df=df_val_labels,
         normalize=normalize,
-        clean=False,
+        clean=clean,
         scaler=scaler,
         interpolate_method=interpolate_method,
     )
