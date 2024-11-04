@@ -60,7 +60,7 @@ class GCN(torch.nn.Module):
             h = self.tanh(h)
 
         out = self.regressor(h)
-        out = out.reshape(batch_size, 1, num_nodes)
+        out = out.reshape(batch_size, num_nodes)
 
         return out, h
 

@@ -101,7 +101,7 @@ def main(
 
             out, h = model(window.squeeze(0), edge_index)
 
-            loss = criterion(out, target.squeeze(0))
+            loss = criterion(out, target.squeeze(1))
             total_train_loss += loss
 
             hidden_states.append(h)
