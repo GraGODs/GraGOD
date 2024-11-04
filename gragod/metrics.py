@@ -76,8 +76,8 @@ class MetricsCalculator:
         Initialize calculator with labels and predictions.
 
         Args:
-            labels: Ground truth labels tensor
-            predictions: Predicted labels tensor
+            labels: Ground truth labels tensor (n_samples, n_nodes)
+            predictions: Predicted labels tensor (n_samples, n_nodes)
         """
         self.labels = labels
         self.predictions = predictions
@@ -201,7 +201,6 @@ class MetricsCalculator:
         recall = self.calculate_recall()
         f1 = self.calculate_f1(precision, recall)
 
-        # Now you can easily serialize the results if needed
         return {
             **precision.model_dump("precision"),
             **recall.model_dump("recall"),
@@ -253,7 +252,6 @@ def get_metrics(predictions: torch.Tensor, labels: torch.Tensor) -> dict:
     calculator = MetricsCalculator(labels, predictions)
     metrics = calculator.get_all_metrics()
 
-    # visualize_metrics(metrics)
     return metrics
 
 
