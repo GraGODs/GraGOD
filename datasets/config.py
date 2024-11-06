@@ -1,34 +1,37 @@
-from enum import Enum
-from typing import Dict, Type
+from typing import Dict
 
 from pydantic import BaseModel
 
 from gragod import Datasets
 
 
-class SWATPaths(Enum):
-    BASE_PATH = "datasets_files/swat"
-    NAME_TRAIN = "SWaT_data_train.csv"
-    NAME_VAL = "SWaT_data_val.csv"
+class Paths(BaseModel):
+    base_path: str
 
 
-class TELCOPaths(Enum):
-    BASE_PATH = "datasets_files/telco"
+class SWATPaths(Paths):
+    base_path: str = "datasets_files/swat"
+    name_train: str = "SWaT_data_train.csv"
+    name_val: str = "SWaT_data_val.csv"
+
+
+class TELCOPaths(Paths):
+    base_path: str = "datasets_files/telco"
 
 
 class DatasetConfig(BaseModel):
     normalize: bool
-    paths: Type[Enum]
+    paths: type[Paths]
 
 
 class SWATConfig(DatasetConfig):
     normalize: bool = False
-    paths: Type[Enum] = SWATPaths
+    paths: type[Paths] = SWATPaths
 
 
 class TELCOConfig(DatasetConfig):
     normalize: bool = False
-    paths: Type[Enum] = TELCOPaths
+    paths: type[Paths] = TELCOPaths
 
 
 def get_dataset_config(dataset: Datasets) -> DatasetConfig:
