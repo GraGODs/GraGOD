@@ -33,6 +33,7 @@ def main(
     val_size: float = 0.1,
     clean: bool = True,
     interpolate_method: InterPolationMethods | None = None,
+    shuffle: bool = True,
     params: dict = {},
 ):
     dataset = cast_dataset(dataset_name)
@@ -58,11 +59,13 @@ def main(
         train_dataset,
         batch_size=batch_size,
         num_workers=n_workers,
+        shuffle=shuffle,
     )
     val_loader = DataLoader(
         val_dataset,
         batch_size=batch_size,
         num_workers=n_workers,
+        shuffle=False,
     )
 
     # Create model
