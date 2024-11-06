@@ -32,13 +32,12 @@ def interpolate_data(
     Interpolate the missing values in the given data.
     Args:
         data: The data to interpolate.
-        method: The interpolation method to use. Default is InterPolationMethods.SPLINE.
+        method: The interpolation method to use. Default is InterPolationMethods.LINEAR.
     Returns:
         The interpolated data.
     """
 
-    method_str = (method or InterPolationMethods.SPLINE).value
-
+    method_str = (method or InterPolationMethods.LINEAR).value
     df = pd.DataFrame(data)
 
     df.interpolate(method=method_str, inplace=True, order=3)
