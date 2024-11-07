@@ -42,6 +42,7 @@ def get_dataloader(
     n_workers: int,
     config: dict,
     is_train: bool = False,
+    shuffle: bool = True,
 ):
     """
     Creates and returns a DataLoader for the given dataset.
@@ -59,7 +60,9 @@ def get_dataloader(
         The created DataLoader object.
     """
     dataset = TimeDataset(X, y, edge_index, is_train=is_train, config=config)
-    return DataLoader(dataset, batch_size=batch_size, num_workers=n_workers)
+    return DataLoader(
+        dataset, batch_size=batch_size, num_workers=n_workers, shuffle=shuffle
+    )
 
 
 def main(
@@ -69,6 +72,7 @@ def main(
     val_size: float = 0.1,
     clean: bool = True,
     interpolate_method: InterPolationMethods | None = None,
+    shuffle: bool = True,
     batch_size: int = 264,
     n_workers: int = 0,
     init_lr: float = 0.001,
@@ -127,13 +131,34 @@ def main(
     }
 
     train_loader = get_dataloader(
-        X_train, y_train, fc_edge_index, batch_size, n_workers, cfg, is_train=True
+        X_train,
+        y_train,
+        fc_edge_index,
+        batch_size,
+        n_workers,
+        cfg,
+        is_train=True,
+        shuffle=shuffle,
     )
     val_loader = get_dataloader(
-        X_val, y_val, fc_edge_index, batch_size, n_workers, cfg, is_train=False
+        X_val,
+        y_val,
+        fc_edge_index,
+        batch_size,
+        n_workers,
+        cfg,
+        is_train=False,
+        shuffle=False,
     )
     test_loader = get_dataloader(
-        X_test, y_test, fc_edge_index, batch_size, n_workers, cfg, is_train=False
+        X_test,
+        y_test,
+        fc_edge_index,
+        batch_size,
+        n_workers,
+        cfg,
+        is_train=False,
+        shuffle=False,
     )
 
     model = GDN(

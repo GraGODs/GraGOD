@@ -19,6 +19,7 @@ def main(
     val_size: float = 0.2,
     clean: bool = True,
     interpolate_method: InterPolationMethods | None = None,
+    shuffle: bool = True,
     batch_size: int = 64,
     n_workers: int = 0,
     init_lr: float = 0.001,
@@ -71,7 +72,7 @@ def main(
     data_train = SlidingWindowDataset(X_train, window_size=model_params["window_size"])
     data_val = SlidingWindowDataset(X_val, window_size=model_params["window_size"])
 
-    train_loader = DataLoader(data_train, batch_size=batch_size, shuffle=True)
+    train_loader = DataLoader(data_train, batch_size=batch_size, shuffle=shuffle)
     val_loader = DataLoader(data_val, batch_size=batch_size, shuffle=False)
 
     model = GCN(

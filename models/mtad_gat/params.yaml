@@ -1,12 +1,5 @@
 dataset: "swat"
 
-data_params:
-  data_dir: "data/"
-  group: "1-1"
-  lookback: 5
-  normalize: true
-  spec_res: false
-
 model_params:
   window_size: 4
   kernel_size: 7
@@ -34,6 +27,7 @@ train_params:
   ckpt_path: null
   test_size: 0.1
   val_size: 0.1
+  shuffle: true
   clean: true # remove anomalies from training data
   interpolate_method: null
 

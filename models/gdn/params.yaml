@@ -1,6 +1,7 @@
 dataset: "telco"
 
 train_params:
+  shuffle: true
   batch_size: 128
   n_epochs: 5
   val_size: 0.1
