@@ -5,10 +5,10 @@ from torch.nn import functional as F
 from torch.utils.data import DataLoader
 
 from datasets.config import get_dataset_config
+from datasets.dataset import SlidingWindowDataset
 from gragod import InterPolationMethods, ParamFileTypes
 from gragod.training import load_params, load_training_data, set_seeds
 from gragod.types import cast_dataset
-from models.gdn.dataset import TimeDataset
 from models.gdn.evaluate import print_score
 from models.gdn.model import GDN
 from models.gdn.test import test
@@ -26,37 +26,6 @@ def _get_attack_or_not_attack(labels: torch.Tensor) -> torch.Tensor:
         The attack or not attack tensor.
     """
     return (labels.sum(dim=1) > 0).float()
-
-
-def get_dataloader(
-    X: torch.Tensor,
-    y: torch.Tensor,
-    edge_index: torch.Tensor,
-    batch_size: int,
-    n_workers: int,
-    config: dict,
-    is_train: bool = False,
-    shuffle: bool = True,
-):
-    """
-    Creates and returns a DataLoader for the given dataset.
-
-    Args:
-        X: The input features.
-        y: The target labels.
-        edge_index: The edge indices for the graph structure.
-        batch_size: The batch size for the DataLoader.
-        n_workers: The number of worker processes for data loading.
-        config: Configuration parameters for the TimeDataset.
-        is_train: Whether this is a training dataset.
-
-    Returns:
-        The created DataLoader object.
-    """
-    dataset = TimeDataset(X, y, edge_index, is_train=is_train, config=config)
-    return DataLoader(
-        dataset, batch_size=batch_size, num_workers=n_workers, shuffle=shuffle
-    )
 
 
 def main(
@@ -119,41 +88,32 @@ def main(
         .to(device)
     )
 
-    cfg = {
-        "slide_win": params["model_params"]["window_size"],
-        "slide_stride": params["model_params"]["stride"],
-    }
+    train_dataset = SlidingWindowDataset(
+        data=X_train,
+        labels=y_train,
+        edge_index=edge_index,
+        window_size=model_params["window_size"],
+    )
 
-    train_loader = get_dataloader(
-        X_train,
-        y_train,
-        edge_index,
-        batch_size,
-        n_workers,
-        cfg,
-        is_train=True,
-        shuffle=shuffle,
+    train_loader = DataLoader(
+        train_dataset, batch_size=batch_size, num_workers=n_workers
     )
-    val_loader = get_dataloader(
-        X_val,
-        y_val,
-        edge_index,
-        batch_size,
-        n_workers,
-        cfg,
-        is_train=False,
-        shuffle=False,
+
+    val_dataset = SlidingWindowDataset(
+        data=X_val,
+        labels=y_val,
+        edge_index=edge_index,
+        window_size=model_params["window_size"],
     )
-    test_loader = get_dataloader(
-        X_test,
-        y_test,
-        edge_index,
-        batch_size,
-        n_workers,
-        cfg,
-        is_train=False,
-        shuffle=False,
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, num_workers=n_workers)
+
+    test_dataset = SlidingWindowDataset(
+        data=X_test,
+        labels=y_test,
+        edge_index=edge_index,
+        window_size=model_params["window_size"],
     )
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, num_workers=n_workers)
 
     model = GDN(
         [edge_index],
@@ -188,14 +148,14 @@ def main(
     for i_epoch in range(n_epochs):
         acu_loss = 0
         model.train()
-        for x, labels, _, edge_index in train_loader:
+        for x, y, attack_labels, edge_index in train_loader:
             x, labels, edge_index = [
-                item.float().to(device) for item in [x, labels, edge_index]
+                item.float().to(device) for item in [x, y, edge_index]
             ]
 
             optimizer.zero_grad()
             out = model(x).float().to(device)
-            loss = F.mse_loss(out, labels, reduction="mean")
+            loss = F.mse_loss(out, y, reduction="mean")
 
             loss.backward()
             optimizer.step()

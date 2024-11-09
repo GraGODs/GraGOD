@@ -112,7 +112,7 @@ class MTAD_GAT_PLModule(pl.LightningModule):
         )
 
     def shared_step(self, batch, batch_idx):
-        x, y = batch
+        x, y, _, _ = batch
         preds, recons = self(x)
 
         if self.target_dims is not None:

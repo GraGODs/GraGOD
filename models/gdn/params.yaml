@@ -15,7 +15,6 @@ model_params:
   out_layer_num: 5
   out_layer_inter_dim: 256
   topk: 5
-  stride: 5
 
 env_params:
   save_path_pattern: ""

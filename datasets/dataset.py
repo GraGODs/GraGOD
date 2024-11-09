@@ -6,10 +6,10 @@ class SlidingWindowDataset(Dataset):
     def __init__(
         self,
         data: torch.Tensor,
-        edge_index: torch.Tensor,
         window_size: int,
-        horizon: int = 1,
+        edge_index: torch.Tensor | None = None,
         labels: torch.Tensor | None = None,
+        horizon: int = 1,
     ):
         self.data = data
         self.labels = labels
@@ -54,7 +54,9 @@ class SlidingWindowDataset(Dataset):
         # an index is valid if all the labels between
         # [index, index + window_size + horizon] are 0
         valid_indices_mask = [
-            any(self.labels[i : i + self.window_size + self.horizon])
+            not torch.any(
+                self.labels[i : i + self.window_size + self.horizon],
+            )
             for i in range(len(self.data) - self.window_size - self.horizon)
         ]
 
