@@ -1,5 +1,11 @@
 import argparse
 
+from pytorch_lightning.callbacks import (
+    EarlyStopping,
+    LearningRateMonitor,
+    ModelCheckpoint,
+)
+from pytorch_lightning.loggers import TensorBoardLogger
 from torch import nn
 from torch.utils.data import DataLoader
 
@@ -7,9 +13,9 @@ from datasets.config import get_dataset_config
 from datasets.dataset import SlidingWindowDataset
 from gragod import CleanMethods, InterPolationMethods, ParamFileTypes
 from gragod.training import load_params, load_training_data, set_seeds
+from gragod.training.trainer import TrainerPL
 from gragod.types import cast_dataset
-from models.mtad_gat.model import MTAD_GAT
-from models.mtad_gat.trainer_pl import TrainerPL
+from models.mtad_gat.model import MTAD_GAT, MTAD_GAT_PLModule
 
 RANDOM_SEED = 42
 
@@ -18,24 +24,26 @@ set_seeds(RANDOM_SEED)
 
 
 def main(
+    # Required arguments
     dataset_name: str,
+    model_name: str,
     model_params: dict,
-    n_epochs: int = 30,
-    batch_size: int = 264,
-    init_lr: float = 0.001,
-    device: str = "mps",
-    n_workers: int = 0,
-    target_dims: int | None = None,
-    log_dir: str = "output",
-    log_every_n_steps: int = 1,
+    params: dict,
+    batch_size: int,
+    n_epochs: int,
+    init_lr: float,
+    test_size: float,
+    val_size: float,
+    clean: bool,
+    interpolate_method: InterPolationMethods | None,
+    shuffle: bool,
+    target_dims: int | None,
+    horizon: int,
+    device: str,
+    n_workers: int,
+    log_dir: str,
+    log_every_n_steps: int,
     ckpt_path: str | None = None,
-    test_size: float = 0.1,
-    val_size: float = 0.1,
-    clean: CleanMethods = CleanMethods.NONE,
-    interpolate_method: InterPolationMethods | None = None,
-    shuffle: bool = True,
-    horizon: int = 1,
-    params: dict = {},
 ):
     dataset = cast_dataset(dataset_name)
     dataset_config = get_dataset_config(dataset=dataset)
@@ -90,6 +98,7 @@ def main(
         out_dim=out_dim,
         **model_params,
     )
+
     args_summary = {
         "dataset": dataset,
         "model_params": model_params,
@@ -97,27 +106,49 @@ def main(
         "predictor_params": params["predictor_params"],
     }
 
+    logger = TensorBoardLogger(
+        save_dir=log_dir, name=model_name, default_hp_metric=False
+    )
+
+    # Define callbacks
+    early_stop = EarlyStopping(
+        monitor="Total_loss/val",
+        min_delta=0.0001,
+        patience=2,
+        verbose=True,
+        mode="min",
+    )
+    checkpoint = ModelCheckpoint(
+        monitor="Total_loss/val",
+        dirpath=logger.log_dir,
+        filename=model_name,
+        save_top_k=1,
+        mode="min",
+    )
+    lr_monitor = LearningRateMonitor(logging_interval="step")
+
+    callbacks = [early_stop, checkpoint, lr_monitor]
+
     trainer = TrainerPL(
         model=model,
+        model_pl=MTAD_GAT_PLModule,
         model_params=params["model_params"],
-        target_dims=target_dims,
-        init_lr=init_lr,
-        forecast_criterion=nn.MSELoss(),
-        recon_criterion=nn.MSELoss(),
+        criterion={"forecast": nn.MSELoss(), "recon": nn.MSELoss()},
         batch_size=batch_size,
         n_epochs=n_epochs,
+        init_lr=init_lr,
         device=device,
         log_dir=log_dir,
+        logger=logger,
+        callbacks=callbacks,
+        checkpoint_cb=checkpoint,
+        target_dims=target_dims,
         log_every_n_steps=log_every_n_steps,
     )
     if ckpt_path:
         trainer.load(ckpt_path)
 
-    # Train model
     trainer.fit(train_loader, val_loader, args_summary=args_summary)
-
-    input_example = next(iter(train_loader))[0]
-    trainer.save_compiled_model(input_example)
 
 
 if __name__ == "__main__":
