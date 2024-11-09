@@ -96,7 +96,7 @@ def main(
     )
 
     train_loader = DataLoader(
-        train_dataset, batch_size=batch_size, num_workers=n_workers
+        train_dataset, batch_size=batch_size, num_workers=n_workers, shuffle=shuffle
     )
 
     val_dataset = SlidingWindowDataset(
@@ -105,7 +105,9 @@ def main(
         edge_index=edge_index,
         window_size=model_params["window_size"],
     )
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, num_workers=n_workers)
+    val_loader = DataLoader(
+        val_dataset, batch_size=batch_size, num_workers=n_workers, shuffle=False
+    )
 
     test_dataset = SlidingWindowDataset(
         data=X_test,
@@ -113,7 +115,9 @@ def main(
         edge_index=edge_index,
         window_size=model_params["window_size"],
     )
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, num_workers=n_workers)
+    test_loader = DataLoader(
+        test_dataset, batch_size=batch_size, num_workers=n_workers, shuffle=False
+    )
 
     model = GDN(
         [edge_index],
