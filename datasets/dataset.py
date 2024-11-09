@@ -72,9 +72,12 @@ class SlidingWindowDataset(Dataset):
         Returns:
             torch.Tensor: Array of valid starting indices for sliding windows
         """
+        total_windows = len(self.data) - self.window_size
+
         if self.labels is None:
             # if there are no labels, all indices are valid
-            return torch.arange(len(self.data) - self.window_size)
+            print(f"No labels provided - using all {total_windows} windows")
+            return torch.arange(total_windows)
 
         # an index is valid if all the labels between
         # [index, index + window_size + horizon] are 0
@@ -86,5 +89,9 @@ class SlidingWindowDataset(Dataset):
         ]
 
         valid_indices = torch.where(torch.tensor(valid_indices_mask))[0]
+        print(
+            f"Found {len(valid_indices)} valid windows"
+            f" out of {total_windows} total windows"
+        )
 
         return valid_indices
