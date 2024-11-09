@@ -46,8 +46,7 @@ def test(
         with torch.no_grad():
             predicted = model(x).float().to(device)
             loss = loss_func(predicted, y)
-            labels = labels.squeeze(1)
-            labels = labels.unsqueeze(1).repeat(1, predicted.shape[1])
+            labels = labels.repeat(1, predicted.shape[1])
 
             if len(test_predicted_list) <= 0:
                 test_predicted_list = predicted
