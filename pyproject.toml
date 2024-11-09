@@ -35,6 +35,7 @@ ipython = "^7.25.0"
 ipdb = "^0.13.9"
 mypy = "^0.910"
 tqdm = "^4.66.4"
+seaborn = "^0.13.2"
 
 [tool.pyright]
 typeCheckingMode = "standard"

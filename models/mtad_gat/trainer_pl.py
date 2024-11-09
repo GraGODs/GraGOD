@@ -1,3 +1,5 @@
+import os
+
 import pytorch_lightning as pl
 import torch
 import torch.nn as nn
@@ -11,6 +13,7 @@ from pytorch_lightning.callbacks import (
 from pytorch_lightning.loggers import TensorBoardLogger
 
 from gragod import PathType
+from gragod.utils import jit_compile_model
 
 # TODO:
 # - Check if the PL Trainer can be used for all models
@@ -139,6 +142,11 @@ class MTAD_GAT_PLModule(pl.LightningModule):
         self.call_logger(loss, recon_loss, forecast_loss, "val")
         return loss
 
+    def predict_step(self, batch, batch_idx):
+        x, _ = batch
+        preds, recons = self(x)
+        return preds, recons
+
     def on_train_epoch_start(self):
         if (
             self.checkpoint_cb is not None
@@ -159,7 +167,17 @@ class MTAD_GAT_PLModule(pl.LightningModule):
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.init_lr)  # type: ignore
-        return optimizer
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer,
+            mode="min",
+            factor=0.1,
+            patience=5,
+        )
+        return {
+            "optimizer": optimizer,
+            "lr_scheduler": scheduler,
+            "monitor": "Total_loss/val",
+        }
 
 
 class TrainerPL:
@@ -205,20 +223,25 @@ class TrainerPL:
         self.n_epochs = n_epochs
         self.batch_size = batch_size
         self.device = device
-        self.log_dir = log_dir
         self.log_every_n_steps = log_every_n_steps
+
+        self.logger = TensorBoardLogger(
+            save_dir=log_dir, name="mtad_gat", default_hp_metric=False
+        )
+        self.save_dir = self.logger.log_dir
+
         # Define callbacks
         self.early_stop = EarlyStopping(
             monitor="Total_loss/val",
             min_delta=0.0001,
-            patience=2,
+            patience=10,
             verbose=True,
             mode="min",
         )
         self.checkpoint = ModelCheckpoint(
             monitor="Total_loss/val",
-            dirpath=log_dir,
-            filename="{epoch}-{Total_loss_val:.2f}",
+            dirpath=self.save_dir,
+            filename="mtad_gat",
             save_top_k=1,
             mode="min",
         )
@@ -239,9 +262,12 @@ class TrainerPL:
             callbacks=callbacks,
             checkpoint_cb=self.checkpoint,
         )
-
-        self.logger = TensorBoardLogger(
-            save_dir=log_dir, name="mtad_gat", default_hp_metric=False
+        self.trainer = pl.Trainer(
+            max_epochs=n_epochs,
+            accelerator=device,
+            logger=self.logger,
+            log_every_n_steps=log_every_n_steps,
+            callbacks=callbacks,
         )
 
     def fit(
@@ -250,24 +276,33 @@ class TrainerPL:
         val_loader: torch.utils.data.DataLoader | None = None,
         args_summary: dict = {},
     ):
-        trainer = pl.Trainer(
-            max_epochs=self.n_epochs,
-            accelerator=self.device,
-            logger=self.logger,
-            log_every_n_steps=self.log_every_n_steps,
-            callbacks=self.callbacks,
-        )
+        self.trainer.fit(self.lightning_module, train_loader, val_loader)
 
-        trainer.fit(self.lightning_module, train_loader, val_loader)
-
-        best_metrics = {
+        self.best_metrics = {
             k: v
             for k, v in self.lightning_module.best_metrics.items()  # type: ignore
             if "epoch" in k
         }
-        self.logger.log_hyperparams(params=args_summary, metrics=best_metrics)
+        self.logger.log_hyperparams(params=args_summary, metrics=self.best_metrics)
 
     def load(self, path: PathType):
         self.lightning_module.model.load_state_dict(
             torch.load(path, map_location=self.device)
+        )
+
+    def save_compiled_model(
+        self, input_example: torch.Tensor, filename: str | None = None
+    ):
+        if filename is None:
+            filename = (
+                self.checkpoint._format_checkpoint_name(
+                    metrics=self.best_metrics,
+                    filename=None,
+                )
+                + ".pt"
+            )
+        jit_compile_model(
+            input_example,
+            self.lightning_module.model,
+            os.path.join(self.save_dir, filename),
         )
