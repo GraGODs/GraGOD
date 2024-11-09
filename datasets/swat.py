@@ -9,8 +9,8 @@ from datasets.data_processing import InterPolationMethods, preprocess_df
 
 
 def load_swat_df_train(
-    name: str = SWATPaths.NAME_TRAIN.value,
-    path_to_dataset: str = SWATPaths.BASE_PATH.value,
+    name: str = SWATPaths.name_train,
+    path_to_dataset: str = SWATPaths.base_path,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Loads the training dataset from the given path and returns a pandas DataFrame.
@@ -29,8 +29,8 @@ def load_swat_df_train(
 
 
 def load_swat_df_val(
-    name: str = SWATPaths.NAME_VAL.value,
-    path_to_dataset: str = SWATPaths.BASE_PATH.value,
+    name: str = SWATPaths.name_val,
+    path_to_dataset: str = SWATPaths.base_path,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Loads the validation dataset from the given path and returns a pandas DataFrame.
@@ -68,7 +68,7 @@ def split_val_df(
 
 
 def load_swat_df(
-    path_to_dataset: str = SWATPaths.BASE_PATH.value, val_size: float = 0.6
+    path_to_dataset: str = SWATPaths.base_path, val_size: float = 0.6
 ) -> Tuple[
     pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame
 ]:
@@ -90,7 +90,7 @@ def load_swat_df(
 
 
 def load_swat_training_data(
-    path_to_dataset: str = SWATPaths.BASE_PATH.value,
+    path_to_dataset: str = SWATPaths.base_path,
     normalize: bool = False,
     clean: bool = False,
     scaler=None,

@@ -9,7 +9,7 @@ from datasets.data_processing import InterPolationMethods, preprocess_df
 
 
 def load_telco_df(
-    base_path: str | os.PathLike = TELCOPaths.BASE_PATH.value,
+    base_path: str | os.PathLike = TELCOPaths.base_path,
 ) -> Tuple[pd.DataFrame, ...]:
     """
     Load the TELCO datasets as pandas DataFrames from the given path.
@@ -28,7 +28,7 @@ def load_telco_df(
     return df_train, df_train_labels, df_val, df_val_labels, df_test, df_test_labels
 
 
-def load_telco_tp(base_path: str | os.PathLike = TELCOPaths.BASE_PATH.value):
+def load_telco_tp(base_path: str | os.PathLike = TELCOPaths.base_path):
     """
     Load the TELCO datasets as Temporian EventSets from the given path.
     Args:
@@ -61,7 +61,7 @@ def load_telco_tp(base_path: str | os.PathLike = TELCOPaths.BASE_PATH.value):
 
 
 def load_telco_training_data(
-    base_path: str | os.PathLike = TELCOPaths.BASE_PATH.value,
+    base_path: str | os.PathLike = TELCOPaths.base_path,
     normalize: bool = False,
     clean: bool = False,
     scaler=None,

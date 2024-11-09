@@ -1,37 +1,42 @@
-from typing import Dict
-
-from pydantic import BaseModel
+from dataclasses import dataclass
+from typing import Dict, Type
 
 from gragod import Datasets
 
 
-class Paths(BaseModel):
+@dataclass
+class Paths:
     base_path: str
 
 
+@dataclass
 class SWATPaths(Paths):
     base_path: str = "datasets_files/swat"
     name_train: str = "SWaT_data_train.csv"
     name_val: str = "SWaT_data_val.csv"
 
 
+@dataclass
 class TELCOPaths(Paths):
     base_path: str = "datasets_files/telco"
 
 
-class DatasetConfig(BaseModel):
+@dataclass
+class DatasetConfig:
     normalize: bool
-    paths: type[Paths]
+    paths: Type[Paths]
 
 
+@dataclass
 class SWATConfig(DatasetConfig):
     normalize: bool = False
-    paths: type[Paths] = SWATPaths
+    paths: Type[Paths] = SWATPaths
 
 
+@dataclass
 class TELCOConfig(DatasetConfig):
     normalize: bool = False
-    paths: type[Paths] = TELCOPaths
+    paths: Type[Paths] = TELCOPaths
 
 
 def get_dataset_config(dataset: Datasets) -> DatasetConfig:
