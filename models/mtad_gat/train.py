@@ -54,9 +54,11 @@ def main(
     window_size = model_params["window_size"]
 
     train_dataset = SlidingWindowDataset(
-        data=X_train, window=window_size, horizon=horizon
+        data=X_train, window_size=window_size, horizon=horizon
     )
-    val_dataset = SlidingWindowDataset(data=X_val, window=window_size, horizon=horizon)
+    val_dataset = SlidingWindowDataset(
+        data=X_val, window_size=window_size, horizon=horizon
+    )
 
     train_loader = DataLoader(
         train_dataset,
@@ -84,7 +86,6 @@ def main(
     )
     args_summary = {
         "dataset": dataset,
-        "data_params": params["data_params"],
         "model_params": model_params,
         "train_params": params["train_params"],
         "predictor_params": params["predictor_params"],
