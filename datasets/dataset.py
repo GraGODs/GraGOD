@@ -32,12 +32,14 @@ class SlidingWindowDataset(Dataset):
         edge_index: torch.Tensor | None = None,
         labels: torch.Tensor | None = None,
         horizon: int = 1,
+        drop: bool = False,
     ):
         self.data = data
         self.labels = labels
         self.edge_index = edge_index
         self.window_size = window_size
         self.horizon = horizon
+        self.drop_anomalous_windows = drop
 
         self.valid_indices = self._get_valid_indices()
 
@@ -74,9 +76,10 @@ class SlidingWindowDataset(Dataset):
         """
         total_windows = len(self.data) - self.window_size
 
-        if self.labels is None:
-            # if there are no labels, all indices are valid
-            print(f"No labels provided - using all {total_windows} windows")
+        if self.labels is None or not self.drop_anomalous_windows:
+            # if there are no labels or we don't want to drop anomalous windows,
+            # all indices are valid
+            print(f"Using all {total_windows} windows")
             return torch.arange(total_windows)
 
         # an index is valid if all the labels between
