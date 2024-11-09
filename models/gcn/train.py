@@ -4,12 +4,10 @@ import torch
 from torch.utils.data import DataLoader
 
 from datasets.config import get_dataset_config
+from datasets.dataset import SlidingWindowDataset
 from gragod import InterPolationMethods, ParamFileTypes, cast_dataset
 from gragod.training import load_params, load_training_data, set_seeds
 from models.gcn.model import GCN
-from models.mtad_gat.dataset import (
-    SlidingWindowDataset,  # TODO: change from where its imported
-)
 
 
 def main(
@@ -50,7 +48,7 @@ def main(
     dataset_config = get_dataset_config(dataset=dataset)
 
     # Load data
-    X_train, X_val, *_ = load_training_data(
+    X_train, X_val, _, y_train, y_val, _ = load_training_data(
         dataset=dataset,
         test_size=test_size,
         val_size=val_size,
@@ -69,8 +67,18 @@ def main(
         .to(device)
     )
 
-    data_train = SlidingWindowDataset(X_train, window_size=model_params["window_size"])
-    data_val = SlidingWindowDataset(X_val, window_size=model_params["window_size"])
+    data_train = SlidingWindowDataset(
+        X_train,
+        edge_index=edge_index,
+        window_size=model_params["window_size"],
+        labels=y_train,
+    )
+    data_val = SlidingWindowDataset(
+        X_val,
+        edge_index=edge_index,
+        window_size=model_params["window_size"],
+        labels=y_val,
+    )
 
     train_loader = DataLoader(data_train, batch_size=batch_size, shuffle=shuffle)
     val_loader = DataLoader(data_val, batch_size=batch_size, shuffle=False)
@@ -96,7 +104,7 @@ def main(
         total_train_loss = torch.tensor(0.0, device=device)
         hidden_states = []
         outs = []
-        for window, target in train_loader:
+        for window, target, _, edge_index in train_loader:
             window = window.to(device)
             target = target.to(device)
 
@@ -117,12 +125,12 @@ def main(
         model.eval()
         total_val_loss = torch.tensor(0.0, device=device)
         with torch.no_grad():
-            for window, target in val_loader:
+            for window, target, _, edge_index in val_loader:
                 window = window.to(device)
                 target = target.to(device)
 
                 out, _ = model(window.squeeze(0), edge_index)
-                loss = criterion(out, target.squeeze(0))
+                loss = criterion(out, target.squeeze(1))
                 total_val_loss += loss
 
         total_val_loss = total_val_loss / len(val_loader)

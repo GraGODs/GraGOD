@@ -46,15 +46,15 @@ class GCN(torch.nn.Module):
         h = X.reshape(-1, self.window_size)
 
         for conv in self.conv_layers:
-            # Create batch-wise graph connectivity by repeating edge_index
-            batch_edge_index = edge_index.repeat(1, batch_size)
+            # Create batch-wise edge indices by adding appropriate offsets
+            batch_size, _, num_edges = edge_index.shape
+
             offset = (
-                torch.arange(batch_size, device=edge_index.device).repeat_interleave(
-                    edge_index.size(1)
-                )
+                torch.arange(batch_size, device=edge_index.device).view(-1, 1, 1)
                 * num_nodes
-            )
-            batch_edge_index = batch_edge_index + offset.view(1, -1)
+            ).repeat(1, 2, num_edges)
+
+            batch_edge_index = (edge_index + offset).permute(1, 0, 2).reshape(2, -1)
 
             h = conv(h, batch_edge_index)
             h = self.tanh(h)
