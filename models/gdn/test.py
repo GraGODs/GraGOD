@@ -38,7 +38,6 @@ def test(
         ]
         with torch.no_grad():
             predicted = model(x).float().to(device)
-
             loss = loss_func(predicted, y)
             labels = labels.unsqueeze(1).repeat(1, predicted.shape[1])
 

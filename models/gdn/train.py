@@ -6,17 +6,11 @@ from torch.utils.data import DataLoader
 
 from datasets.config import get_dataset_config
 from gragod import InterPolationMethods, ParamFileTypes
-from gragod.training import (
-    get_column_names_list,
-    load_params,
-    load_training_data,
-    set_seeds,
-)
+from gragod.training import load_params, load_training_data, set_seeds
 from gragod.types import cast_dataset
 from models.gdn.dataset import TimeDataset
 from models.gdn.evaluate import print_score
 from models.gdn.model import GDN
-from models.gdn.preprocess import build_graph_network
 from models.gdn.test import test
 
 
@@ -115,15 +109,15 @@ def main(
     y_val = _get_attack_or_not_attack(y_val)
     y_test = _get_attack_or_not_attack(y_test)
 
-    column_names_list = get_column_names_list(dataset)
-
     # Create a fully connected graph
-    base_graph_structure = {
-        ft: [other_ft for other_ft in column_names_list if other_ft != ft]
-        for ft in column_names_list
-    }
-
-    fc_edge_index = build_graph_network(base_graph_structure, list(column_names_list))
+    edge_index = (
+        torch.tensor(
+            [[i, j] for i in range(X_train.shape[1]) for j in range(X_train.shape[1])],
+            dtype=torch.long,  # edge_index must be long type
+        )
+        .t()
+        .to(device)
+    )
 
     cfg = {
         "slide_win": params["model_params"]["window_size"],
@@ -133,7 +127,7 @@ def main(
     train_loader = get_dataloader(
         X_train,
         y_train,
-        fc_edge_index,
+        edge_index,
         batch_size,
         n_workers,
         cfg,
@@ -143,7 +137,7 @@ def main(
     val_loader = get_dataloader(
         X_val,
         y_val,
-        fc_edge_index,
+        edge_index,
         batch_size,
         n_workers,
         cfg,
@@ -153,7 +147,7 @@ def main(
     test_loader = get_dataloader(
         X_test,
         y_test,
-        fc_edge_index,
+        edge_index,
         batch_size,
         n_workers,
         cfg,
@@ -162,9 +156,9 @@ def main(
     )
 
     model = GDN(
-        [fc_edge_index],
-        len(column_names_list),
-        dim=model_params["dim"],
+        [edge_index],
+        X_train.shape[1],
+        embed_dim=model_params["embed_dim"],
         input_dim=model_params["window_size"],
         out_layer_num=model_params["out_layer_num"],
         out_layer_inter_dim=model_params["out_layer_inter_dim"],
@@ -194,7 +188,7 @@ def main(
     for i_epoch in range(n_epochs):
         acu_loss = 0
         model.train()
-        for x, labels, attack_labels, edge_index in train_loader:
+        for x, labels, _, edge_index in train_loader:
             x, labels, edge_index = [
                 item.float().to(device) for item in [x, labels, edge_index]
             ]

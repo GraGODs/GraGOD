@@ -144,7 +144,3 @@ def load_swat_training_data(
         raise ValueError("SWAT labels are not being loaded.")
 
     return X_train, X_val, X_test, X_train_labels, X_val_labels, X_test_labels
-
-
-def get_swat_column_names_list() -> list[str]:
-    return list(load_swat_df_train()[0].columns)
