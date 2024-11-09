@@ -5,7 +5,7 @@ from torch.utils.data import DataLoader
 
 from datasets.config import get_dataset_config
 from datasets.dataset import SlidingWindowDataset
-from gragod import InterPolationMethods, ParamFileTypes, cast_dataset
+from gragod import CleanMethods, InterPolationMethods, ParamFileTypes, cast_dataset
 from gragod.training import load_params, load_training_data, set_seeds
 from models.gcn.model import GCN
 
@@ -15,7 +15,7 @@ def main(
     model_params: dict,
     test_size: float = 0.2,
     val_size: float = 0.2,
-    clean: bool = True,
+    clean: CleanMethods = CleanMethods.NONE,
     interpolate_method: InterPolationMethods | None = None,
     shuffle: bool = True,
     batch_size: int = 64,
@@ -53,7 +53,7 @@ def main(
         test_size=test_size,
         val_size=val_size,
         normalize=dataset_config.normalize,
-        clean=clean,
+        clean=clean == CleanMethods.INTERPOLATE.value,
         interpolate_method=interpolate_method,
     )
 
@@ -72,12 +72,14 @@ def main(
         edge_index=edge_index,
         window_size=model_params["window_size"],
         labels=y_train,
+        drop=clean == CleanMethods.DROP.value,
     )
     data_val = SlidingWindowDataset(
         X_val,
         edge_index=edge_index,
         window_size=model_params["window_size"],
         labels=y_val,
+        drop=clean == CleanMethods.DROP.value,
     )
 
     train_loader = DataLoader(data_train, batch_size=batch_size, shuffle=shuffle)

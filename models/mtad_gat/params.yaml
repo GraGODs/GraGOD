@@ -27,7 +27,7 @@ train_params:
   test_size: 0.1
   val_size: 0.1
   shuffle: true
-  clean: true # remove anomalies from training data
+  clean: "drop"
   interpolate_method: null
   horizon: 1
 
@@ -35,7 +35,7 @@ predictor_params:
   dataset: "telco"
   target_dims: null
   scale_scores: false
-  level: 0.9999 
+  level: 0.9999
   q: 0.001
   dynamic_pot: false
   use_mov_av: false

@@ -8,6 +8,7 @@ train_params:
   weight_decay: 0.0
   device: "cpu"
   init_lr: 0.001
+  clean: "drop"
 
 model_params:
   window_size: 15

@@ -12,7 +12,7 @@ model_params:
 train_params:
   test_size: 0.1
   val_size: 0.1
-  clean: true
+  clean: "drop"
   interpolate_method: null
   shuffle: true
   batch_size: 128

@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader
 
 from datasets.config import get_dataset_config
 from datasets.dataset import SlidingWindowDataset
-from gragod import InterPolationMethods, ParamFileTypes
+from gragod import CleanMethods, InterPolationMethods, ParamFileTypes
 from gragod.training import load_params, load_training_data, set_seeds
 from gragod.types import cast_dataset
 from models.gdn.evaluate import print_score
@@ -33,7 +33,7 @@ def main(
     model_params: dict,
     test_size: float = 0.1,
     val_size: float = 0.1,
-    clean: bool = True,
+    clean: CleanMethods = CleanMethods.NONE,
     interpolate_method: InterPolationMethods | None = None,
     shuffle: bool = True,
     batch_size: int = 264,
@@ -71,7 +71,7 @@ def main(
         test_size=test_size,
         val_size=val_size,
         normalize=dataset_config.normalize,
-        clean=clean,
+        clean=clean == CleanMethods.INTERPOLATE.value,
         interpolate_method=interpolate_method,
     )
     y_train = _get_attack_or_not_attack(y_train)
@@ -93,6 +93,7 @@ def main(
         labels=y_train,
         edge_index=edge_index,
         window_size=model_params["window_size"],
+        drop=clean == CleanMethods.DROP.value,
     )
 
     train_loader = DataLoader(
@@ -104,6 +105,7 @@ def main(
         labels=y_val,
         edge_index=edge_index,
         window_size=model_params["window_size"],
+        drop=clean == CleanMethods.DROP.value,
     )
     val_loader = DataLoader(
         val_dataset, batch_size=batch_size, num_workers=n_workers, shuffle=False
@@ -114,6 +116,7 @@ def main(
         labels=y_test,
         edge_index=edge_index,
         window_size=model_params["window_size"],
+        drop=clean == CleanMethods.DROP.value,
     )
     test_loader = DataLoader(
         test_dataset, batch_size=batch_size, num_workers=n_workers, shuffle=False
