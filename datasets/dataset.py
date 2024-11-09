@@ -12,7 +12,7 @@ class SlidingWindowDataset(Dataset):
     Args:
         data (torch.Tensor): The input time series data
         window_size (int): The size of each sliding window
-        edge_index (torch.Tensor, optional): Edge indices defining graph connectivity
+        edge_index (torch.Tensor, optional): Edge indices defining graph connectivityg
         labels (torch.Tensor, optional): Labels for each timestep
         horizon (int, optional): Number of future timesteps to predict.
 
@@ -45,9 +45,6 @@ class SlidingWindowDataset(Dataset):
         return len(self.valid_indices)
 
     def __getitem__(self, index):
-        if index >= len(self.valid_indices):
-            raise IndexError("Index out of range")
-
         valid_idx = self.valid_indices[index]
 
         x = self.data[valid_idx : valid_idx + self.window_size]
