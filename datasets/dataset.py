@@ -3,6 +3,28 @@ from torch.utils.data import Dataset
 
 
 class SlidingWindowDataset(Dataset):
+    """
+    A PyTorch Dataset that creates sliding windows over time series data.
+
+    It creates windows of fixed size that slide over the input data,
+    optionally handling labels and graph edge indices.
+
+    Args:
+        data (torch.Tensor): The input time series data
+        window_size (int): The size of each sliding window
+        edge_index (torch.Tensor, optional): Edge indices defining graph connectivity
+        labels (torch.Tensor, optional): Labels for each timestep
+        horizon (int, optional): Number of future timesteps to predict.
+
+    Attributes:
+        data (torch.Tensor): The input time series data
+        labels (torch.Tensor): Labels for each timestep
+        edge_index (torch.Tensor): Edge indices defining graph connectivity
+        window_size (int): The size of each sliding window
+        horizon (int): Number of future timesteps to predict
+        valid_indices (torch.Tensor): Indices of valid windows
+    """
+
     def __init__(
         self,
         data: torch.Tensor,
@@ -47,6 +69,12 @@ class SlidingWindowDataset(Dataset):
         return x, y, out_labels, self.edge_index
 
     def _get_valid_indices(self):
+        """
+        Determines valid starting indices for sliding windows.
+
+        Returns:
+            torch.Tensor: Array of valid starting indices for sliding windows
+        """
         if self.labels is None:
             # if there are no labels, all indices are valid
             return torch.arange(len(self.data) - self.window_size)
