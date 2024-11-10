@@ -12,17 +12,10 @@ class SlidingWindowDataset(Dataset):
     Args:
         data (torch.Tensor): The input time series data
         window_size (int): The size of each sliding window
-        edge_index (torch.Tensor, optional): Edge indices defining graph connectivityg
+        edge_index (torch.Tensor, optional): Edge indices defining graph connectivity
         labels (torch.Tensor, optional): Labels for each timestep
         horizon (int, optional): Number of future timesteps to predict.
-
-    Attributes:
-        data (torch.Tensor): The input time series data
-        labels (torch.Tensor): Labels for each timestep
-        edge_index (torch.Tensor): Edge indices defining graph connectivity
-        window_size (int): The size of each sliding window
-        horizon (int): Number of future timesteps to predict
-        valid_indices (torch.Tensor): Indices of valid windows
+        drop (bool, optional): Whether to drop windows with anomalous labels.
     """
 
     def __init__(
