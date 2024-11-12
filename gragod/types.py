@@ -25,3 +25,9 @@ class ParamFileTypes(Enum):
 class InterPolationMethods(Enum):
     LINEAR = "linear"
     SPLINE = "spline"
+
+
+class CleanMethods(Enum):
+    NONE = "none"
+    INTERPOLATE = "interpolate"
+    DROP = "drop"

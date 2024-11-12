@@ -34,12 +34,19 @@ def test(
     acu_loss = 0
     for x, y, labels, edge_index in dataloader:
         x, y, labels, edge_index = [
-            item.to(device).float() for item in [x, y, labels, edge_index]
+            item.to(device).float()
+            for item in [
+                x.reshape(-1, x.shape[2], x.shape[1]),
+                y.squeeze(1),
+                labels,
+                edge_index,
+            ]
         ]
+
         with torch.no_grad():
             predicted = model(x).float().to(device)
             loss = loss_func(predicted, y)
-            labels = labels.unsqueeze(1).repeat(1, predicted.shape[1])
+            labels = labels.repeat(1, predicted.shape[1])
 
             if len(test_predicted_list) <= 0:
                 test_predicted_list = predicted

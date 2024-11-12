@@ -8,6 +8,7 @@ train_params:
   weight_decay: 0.0
   device: "cpu"
   init_lr: 0.001
+  clean: "drop"
 
 model_params:
   window_size: 15
@@ -15,7 +16,6 @@ model_params:
   out_layer_num: 5
   out_layer_inter_dim: 256
   topk: 5
-  stride: 5
 
 env_params:
   save_path_pattern: ""
