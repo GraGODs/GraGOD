@@ -155,9 +155,14 @@ def main(
     for i_epoch in range(n_epochs):
         acu_loss = 0
         model.train()
-        for x, y, attack_labels, edge_index in train_loader:
-            x, labels, edge_index = [
-                item.float().to(device) for item in [x, y, edge_index]
+        for x, y, _, edge_index in train_loader:
+            x, y, edge_index = [
+                item.float().to(device)
+                for item in [
+                    x.reshape(-1, x.size(2), x.size(1)),
+                    y.squeeze(1),
+                    edge_index,
+                ]
             ]
 
             optimizer.zero_grad()
