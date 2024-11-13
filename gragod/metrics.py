@@ -1,8 +1,10 @@
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import seaborn as sns
 import tabulate
 import torch
+from prts import ts_precision, ts_recall
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -136,6 +138,50 @@ class MetricsCalculator:
             metric_mean=float(mean_recall),
             metric_per_class=per_class_recall,
             metric_system=float(system_recall),
+        )
+
+    def calculate_range_based_recall(self) -> MetricsResult:
+        labels_np = np.array(self.labels)
+        predictions_np = np.array(self.predictions)
+        system_labels_np = np.array(self.system_labels)
+        system_predictions_np = np.array(self.system_predictions)
+
+        per_class_recall = [
+            ts_recall(labels_np[:, i], predictions_np[:, i])
+            for i in range(self.labels.shape[1])
+        ]
+
+        mean_recall = torch.mean(torch.tensor(per_class_recall))
+        global_recall = ts_recall(labels_np.flatten(), predictions_np.flatten())
+        system_recall = ts_recall(system_labels_np, system_predictions_np)
+
+        return MetricsResult(
+            metric_global=float(global_recall),
+            metric_mean=float(mean_recall),
+            metric_per_class=torch.tensor(per_class_recall),
+            metric_system=float(system_recall),
+        )
+
+    def calculate_range_based_precision(self) -> MetricsResult:
+        labels_np = np.array(self.labels)
+        predictions_np = np.array(self.predictions)
+        system_labels_np = np.array(self.system_labels)
+        system_predictions_np = np.array(self.system_predictions)
+
+        per_class_precision = [
+            ts_precision(labels_np[:, i], predictions_np[:, i])
+            for i in range(self.labels.shape[1])
+        ]
+
+        mean_precision = torch.mean(torch.tensor(per_class_precision))
+        global_precision = ts_precision(labels_np.flatten(), predictions_np.flatten())
+        system_precision = ts_precision(system_labels_np, system_predictions_np)
+
+        return MetricsResult(
+            metric_global=float(global_precision),
+            metric_mean=float(mean_precision),
+            metric_per_class=torch.tensor(per_class_precision),
+            metric_system=float(system_precision),
         )
 
     def calculate_f1(
