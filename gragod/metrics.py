@@ -30,7 +30,7 @@ class MetricsResult(BaseModel):
     """
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
-    metric_global: float = Field(
+    metric_global: float | None = Field(
         ...,
         description="Global metric across all classes",
         gt=0,
@@ -54,7 +54,8 @@ class MetricsResult(BaseModel):
     )
 
     def model_post_init(self, _context):
-        self.metric_global = round(self.metric_global, self.round_digits)
+        if self.metric_global is not None:
+            self.metric_global = round(self.metric_global, self.round_digits)
         self.metric_mean = round(self.metric_mean, self.round_digits)
         self.metric_system = round(self.metric_system, self.round_digits)
 
@@ -152,11 +153,14 @@ class MetricsCalculator:
         ]
 
         mean_recall = torch.mean(torch.tensor(per_class_recall))
-        global_recall = ts_recall(labels_np.flatten(), predictions_np.flatten())
+
+        # doesn't make sense the global recall in range based metrics
+        global_recall = None
+
         system_recall = ts_recall(system_labels_np, system_predictions_np)
 
         return MetricsResult(
-            metric_global=float(global_recall),
+            metric_global=global_recall,
             metric_mean=float(mean_recall),
             metric_per_class=torch.tensor(per_class_recall),
             metric_system=float(system_recall),
@@ -174,11 +178,14 @@ class MetricsCalculator:
         ]
 
         mean_precision = torch.mean(torch.tensor(per_class_precision))
-        global_precision = ts_precision(labels_np.flatten(), predictions_np.flatten())
+
+        # doesn't make sense the global precision in range based metrics
+        global_precision = None
+
         system_precision = ts_precision(system_labels_np, system_predictions_np)
 
         return MetricsResult(
-            metric_global=float(global_precision),
+            metric_global=global_precision,
             metric_mean=float(mean_precision),
             metric_per_class=torch.tensor(per_class_precision),
             metric_system=float(system_precision),
@@ -212,13 +219,16 @@ class MetricsCalculator:
         mean_f1 = torch.mean(per_class_f1)
 
         # Handle division by zero for global metrics
-        global_denominator = precision.metric_global + recall.metric_global
-        global_f1 = (
-            0.0
-            if global_denominator == 0
-            else (2 * precision.metric_global * recall.metric_global)
-            / global_denominator
-        )
+        if precision.metric_global is not None and recall.metric_global is not None:
+            global_denominator = precision.metric_global + recall.metric_global
+            global_f1 = float(
+                0.0
+                if global_denominator == 0
+                else (2 * precision.metric_global * recall.metric_global)
+                / global_denominator
+            )
+        else:
+            global_f1 = None
 
         # Handle division by zero for system metrics
         system_denominator = precision.metric_system + recall.metric_system
@@ -230,7 +240,7 @@ class MetricsCalculator:
         )
 
         return MetricsResult(
-            metric_global=float(global_f1),
+            metric_global=global_f1,
             metric_mean=float(mean_f1),
             metric_per_class=per_class_f1,
             metric_system=float(system_f1),
