@@ -141,14 +141,23 @@ class MetricsCalculator:
             metric_system=float(system_recall),
         )
 
-    def calculate_range_based_recall(self) -> MetricsResult:
+    def calculate_range_based_recall(self, alpha: float = 0.0) -> MetricsResult:
+        """
+        Calculate range-based recall metrics.
+
+        Args:
+            alpha: Relative importance of existence reward. 0 ≤ alpha ≤ 1.
+
+        Returns:
+            MetricsResult: Recall metrics.
+        """
         labels_np = np.array(self.labels)
         predictions_np = np.array(self.predictions)
         system_labels_np = np.array(self.system_labels)
         system_predictions_np = np.array(self.system_predictions)
 
         per_class_recall = [
-            ts_recall(labels_np[:, i], predictions_np[:, i])
+            ts_recall(labels_np[:, i], predictions_np[:, i], alpha=alpha)
             for i in range(self.labels.shape[1])
         ]
 
@@ -157,7 +166,7 @@ class MetricsCalculator:
         # doesn't make sense the global recall in range based metrics
         global_recall = None
 
-        system_recall = ts_recall(system_labels_np, system_predictions_np)
+        system_recall = ts_recall(system_labels_np, system_predictions_np, alpha=alpha)
 
         return MetricsResult(
             metric_global=global_recall,
@@ -166,14 +175,23 @@ class MetricsCalculator:
             metric_system=float(system_recall),
         )
 
-    def calculate_range_based_precision(self) -> MetricsResult:
+    def calculate_range_based_precision(self, alpha: float = 0.0) -> MetricsResult:
+        """
+        Calculate range-based precision metrics.
+
+        Args:
+            alpha: Relative importance of existence reward. 0 ≤ alpha ≤ 1.
+
+        Returns:
+            MetricsResult: Precision metrics.
+        """
         labels_np = np.array(self.labels)
         predictions_np = np.array(self.predictions)
         system_labels_np = np.array(self.system_labels)
         system_predictions_np = np.array(self.system_predictions)
 
         per_class_precision = [
-            ts_precision(labels_np[:, i], predictions_np[:, i])
+            ts_precision(labels_np[:, i], predictions_np[:, i], alpha=alpha)
             for i in range(self.labels.shape[1])
         ]
 
@@ -182,7 +200,9 @@ class MetricsCalculator:
         # doesn't make sense the global precision in range based metrics
         global_precision = None
 
-        system_precision = ts_precision(system_labels_np, system_predictions_np)
+        system_precision = ts_precision(
+            system_labels_np, system_predictions_np, alpha=alpha
+        )
 
         return MetricsResult(
             metric_global=global_precision,
