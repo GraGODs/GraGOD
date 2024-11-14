@@ -266,20 +266,27 @@ class MetricsCalculator:
             metric_system=float(system_f1),
         )
 
-    def get_all_metrics(self) -> dict[str, torch.Tensor]:
+    def get_all_metrics(self, alpha: float = 0.0) -> dict[str, torch.Tensor]:
         """
         Calculate all metrics and return as dictionary.
+
+        Args:
+            alpha: Relative importance of existence reward. 0 ≤ alpha ≤ 1.
 
         Returns:
             Dict[str, torch.Tensor]: Dictionary of metrics.
         """
         precision = self.calculate_precision()
         recall = self.calculate_recall()
+        range_based_recall = self.calculate_range_based_recall(alpha=alpha)
+        range_based_precision = self.calculate_range_based_precision(alpha=alpha)
         f1 = self.calculate_f1(precision, recall)
 
         return {
             **precision.model_dump("precision"),
             **recall.model_dump("recall"),
+            **range_based_recall.model_dump("range_based_recall"),
+            **range_based_precision.model_dump("range_based_precision"),
             **f1.model_dump("f1"),
         }
 
