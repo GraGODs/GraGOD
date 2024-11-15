@@ -29,7 +29,7 @@ class SlidingWindowDataset(Dataset):
     ):
         self.data = data
         self.labels = labels
-        self.edge_index = edge_index
+        self.edge_index = edge_index if edge_index is not None else torch.empty(0)
         self.window_size = window_size
         self.horizon = horizon
         self.drop_anomalous_windows = drop
@@ -47,16 +47,15 @@ class SlidingWindowDataset(Dataset):
             valid_idx + self.window_size : valid_idx + self.window_size + self.horizon
         ]
 
-        out_labels = (
-            self.labels[
+        if self.labels is not None:
+            out_labels = self.labels[
                 valid_idx
                 + self.window_size : valid_idx
                 + self.window_size
                 + self.horizon
             ]
-            if self.labels is not None
-            else None
-        )
+        else:
+            out_labels = torch.empty(0)
 
         return x, y, out_labels, self.edge_index
 

@@ -1,7 +1,7 @@
 dataset: "telco"
 
 model_params:
-  window_size: 512
+  window_size: 16
   kernel_size: 7
   use_gatv2: true
   feat_gat_embed_dim: null
