@@ -1,17 +1,22 @@
 import argparse
 
 import torch
-from torch.nn import functional as F
+import torch.nn as nn
+from pytorch_lightning.callbacks import (
+    EarlyStopping,
+    LearningRateMonitor,
+    ModelCheckpoint,
+)
+from pytorch_lightning.loggers import TensorBoardLogger
 from torch.utils.data import DataLoader
 
 from datasets.config import get_dataset_config
 from datasets.dataset import SlidingWindowDataset
 from gragod import CleanMethods, InterPolationMethods, ParamFileTypes
 from gragod.training import load_params, load_training_data, set_seeds
+from gragod.training.trainer import TrainerPL
 from gragod.types import cast_dataset
-from models.gdn.evaluate import print_score
-from models.gdn.model import GDN
-from models.gdn.test import test
+from models.gdn.model import GDN, GDN_PLModule
 
 
 def _get_attack_or_not_attack(labels: torch.Tensor) -> torch.Tensor:
@@ -30,19 +35,22 @@ def _get_attack_or_not_attack(labels: torch.Tensor) -> torch.Tensor:
 
 def main(
     dataset_name: str,
+    model_name: str,
     model_params: dict,
-    test_size: float = 0.1,
-    val_size: float = 0.1,
-    clean: CleanMethods = CleanMethods.NONE,
-    interpolate_method: InterPolationMethods | None = None,
-    shuffle: bool = True,
-    batch_size: int = 264,
-    n_workers: int = 0,
-    init_lr: float = 0.001,
-    weight_decay: float = 0.0,
-    n_epochs: int = 30,
-    device: str = "mps",
-    params: dict = {},
+    params: dict,
+    batch_size: int,
+    n_epochs: int,
+    init_lr: float,
+    test_size: float,
+    val_size: float,
+    clean: CleanMethods,
+    interpolate_method: InterPolationMethods | None,
+    shuffle: bool,
+    device: str,
+    n_workers: int,
+    log_dir: str,
+    log_every_n_steps: int,
+    ckpt_path: str | None,
 ):
     """
     Main function to train and evaluate the GDN model.
@@ -111,17 +119,6 @@ def main(
         val_dataset, batch_size=batch_size, num_workers=n_workers, shuffle=False
     )
 
-    test_dataset = SlidingWindowDataset(
-        data=X_test,
-        labels=y_test,
-        edge_index=edge_index,
-        window_size=model_params["window_size"],
-        drop=clean == CleanMethods.DROP.value,
-    )
-    test_loader = DataLoader(
-        test_dataset, batch_size=batch_size, num_workers=n_workers, shuffle=False
-    )
-
     model = GDN(
         [edge_index],
         X_train.shape[1],
@@ -132,74 +129,58 @@ def main(
         topk=model_params["topk"],
     ).to(device)
 
-    optimizer = torch.optim.Adam(  # type: ignore
-        model.parameters(),
-        lr=init_lr,
-        weight_decay=weight_decay,
+    args_summary = {
+        "dataset": dataset,
+        "model_params": model_params,
+        "train_params": params["train_params"],
+    }
+
+    logger = TensorBoardLogger(
+        save_dir=log_dir, name=model_name, default_hp_metric=False
     )
 
-    train_loss_list = []
+    # Define callbacks
+    early_stop = EarlyStopping(
+        monitor="Loss/val",
+        min_delta=0.0001,
+        patience=2,
+        verbose=True,
+        mode="min",
+    )
+    checkpoint = ModelCheckpoint(
+        monitor="Loss/val",
+        dirpath=logger.log_dir,
+        filename=model_name,
+        save_top_k=1,
+        mode="min",
+    )
+    lr_monitor = LearningRateMonitor(logging_interval="step")
 
-    acu_loss = 0
-    min_loss = 1e8
+    callbacks = [early_stop, checkpoint, lr_monitor]
 
-    i = 0
-    early_stop_win = 15
+    trainer = TrainerPL(
+        model=model,
+        model_pl=GDN_PLModule,
+        model_params=model_params,
+        criterion=nn.MSELoss(),
+        batch_size=batch_size,
+        n_epochs=n_epochs,
+        init_lr=init_lr,
+        device=device,
+        log_dir=log_dir,
+        callbacks=callbacks,
+        checkpoint_cb=checkpoint,
+        logger=logger,
+        log_every_n_steps=log_every_n_steps,
+    )
+    if ckpt_path:
+        trainer.load(ckpt_path)
 
-    model.train()
+    trainer.fit(train_loader, val_loader, args_summary=args_summary)
 
-    stop_improve_count = 0
-
-    val_result = ([], [], [])
-
-    for i_epoch in range(n_epochs):
-        acu_loss = 0
-        model.train()
-        for x, y, _, edge_index in train_loader:
-            x, y, edge_index = [
-                item.float().to(device)
-                for item in [
-                    x.reshape(-1, x.size(2), x.size(1)),
-                    y.squeeze(1),
-                    edge_index,
-                ]
-            ]
-
-            optimizer.zero_grad()
-            out = model(x).float().to(device)
-            loss = F.mse_loss(out, y, reduction="mean")
-
-            loss.backward()
-            optimizer.step()
-
-            train_loss_list.append(loss.item())
-            acu_loss += loss.item()
-
-            i += 1
-
-        # each epoch
-        print(
-            "epoch ({} / {}) (Loss:{:.8f}, ACU_loss:{:.8f})".format(
-                i_epoch, n_epochs, acu_loss / len(train_loader), acu_loss
-            ),
-            flush=True,
-        )
-
-        # use val dataset to judge
-        val_loss, val_result = test(model, val_loader, torch.device(device))
-
-        if val_loss < min_loss:
-            min_loss = val_loss
-            stop_improve_count = 0
-        else:
-            stop_improve_count += 1
-
-        if stop_improve_count >= early_stop_win:
-            break
-
-    _, test_result = test(model, test_loader, torch.device(device))
-
-    print_score(test_result, val_result, params["env_params"]["report"])
+    # TODO: Run prediction with the best model, not the last one
+    # _, test_result = test(model, test_loader, torch.device(device))
+    # print_score(test_result, val_result, params["env_params"]["report"])
 
 
 if __name__ == "__main__":
