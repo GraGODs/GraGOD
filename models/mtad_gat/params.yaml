@@ -1,7 +1,7 @@
 dataset: "telco"
 
 model_params:
-  window_size: 512
+  window_size: 16
   kernel_size: 7
   use_gatv2: true
   feat_gat_embed_dim: null
@@ -16,12 +16,13 @@ model_params:
   alpha: 0.2
 
 train_params:
-  n_epochs: 100
-  batch_size: 32
+  model_name: "mtad_gat"
+  n_epochs: 30
+  batch_size: 264
   init_lr: 0.001
+  target_dims: null
   device: "mps"
   n_workers: 0
-  target_dims: null
   log_dir: "output"
   log_every_n_steps: 1
   test_size: 0.1
