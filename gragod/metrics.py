@@ -305,6 +305,8 @@ def visualize_metrics(
         {
             "Precision": metrics_dict["precision_per_class"],
             "Recall": metrics_dict["recall_per_class"],
+            "Range-based Recall": metrics_dict["range_based_recall_per_class"],
+            "Range-based Precision": metrics_dict["range_based_precision_per_class"],
             "F1 Score": metrics_dict["f1_per_class"],
         }
     )
@@ -355,6 +357,18 @@ def generate_metrics_table(metrics: dict) -> str:
             f"{metrics['recall_system']}",
         ],
         [
+            "Range-based Recall",
+            f"{metrics['range_based_recall_global']}",
+            f"{metrics['range_based_recall_mean']}",
+            f"{metrics['range_based_recall_system']}",
+        ],
+        [
+            "Range-based Precision",
+            f"{metrics['range_based_precision_global']}",
+            f"{metrics['range_based_precision_mean']}",
+            f"{metrics['range_based_precision_system']}",
+        ],
+        [
             "F1",
             f"{metrics['f1_global']}",
             f"{metrics['f1_mean']}",
@@ -368,13 +382,30 @@ def generate_metrics_per_class_table(metrics: dict) -> str:
     """Generate a table of per-class metrics as a string."""
     precision = metrics["precision_per_class"]
     recall = metrics["recall_per_class"]
+    range_based_recall = metrics["range_based_recall_per_class"]
+    range_based_precision = metrics["range_based_precision_per_class"]
     f1 = metrics["f1_per_class"]
     metrics_per_class_table = [
-        [i, precision[i], recall[i], f1[i]] for i in range(len(precision))
+        [
+            i,
+            precision[i],
+            recall[i],
+            range_based_recall[i],
+            range_based_precision[i],
+            f1[i],
+        ]
+        for i in range(len(precision))
     ]
 
     return tabulate.tabulate(
         metrics_per_class_table,
-        headers=["Class", "Precision", "Recall", "F1"],
+        headers=[
+            "Class",
+            "Precision",
+            "Recall",
+            "Range-based Recall",
+            "Range-based Precision",
+            "F1",
+        ],
         tablefmt="grid",
     )
