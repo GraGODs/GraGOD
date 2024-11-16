@@ -303,9 +303,9 @@ def visualize_metrics(
     """
     metrics_df = pd.DataFrame(
         {
-            "Precision": metrics_dict["per_class_precision"].cpu().numpy(),
-            "Recall": metrics_dict["per_class_recall"].cpu().numpy(),
-            "F1 Score": metrics_dict["per_class_f1"].cpu().numpy(),
+            "Precision": metrics_dict["precision_per_class"],
+            "Recall": metrics_dict["recall_per_class"],
+            "F1 Score": metrics_dict["f1_per_class"],
         }
     )
 
