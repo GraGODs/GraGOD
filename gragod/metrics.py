@@ -1,8 +1,10 @@
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import seaborn as sns
 import tabulate
 import torch
+from prts import ts_precision, ts_recall
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -28,7 +30,7 @@ class MetricsResult(BaseModel):
     """
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
-    metric_global: float = Field(
+    metric_global: float | None = Field(
         ...,
         description="Global metric across all classes",
         gt=0,
@@ -52,7 +54,8 @@ class MetricsResult(BaseModel):
     )
 
     def model_post_init(self, _context):
-        self.metric_global = round(self.metric_global, self.round_digits)
+        if self.metric_global is not None:
+            self.metric_global = round(self.metric_global, self.round_digits)
         self.metric_mean = round(self.metric_mean, self.round_digits)
         self.metric_system = round(self.metric_system, self.round_digits)
 
@@ -138,6 +141,76 @@ class MetricsCalculator:
             metric_system=float(system_recall),
         )
 
+    def calculate_range_based_recall(self, alpha: float = 0.0) -> MetricsResult:
+        """
+        Calculate range-based recall metrics.
+
+        Args:
+            alpha: Relative importance of existence reward. 0 ≤ alpha ≤ 1.
+
+        Returns:
+            MetricsResult: Recall metrics.
+        """
+        labels_np = np.array(self.labels)
+        predictions_np = np.array(self.predictions)
+        system_labels_np = np.array(self.system_labels)
+        system_predictions_np = np.array(self.system_predictions)
+
+        per_class_recall = [
+            ts_recall(labels_np[:, i], predictions_np[:, i], alpha=alpha)
+            for i in range(self.labels.shape[1])
+        ]
+
+        mean_recall = torch.mean(torch.tensor(per_class_recall))
+
+        # doesn't make sense the global recall in range based metrics
+        global_recall = None
+
+        system_recall = ts_recall(system_labels_np, system_predictions_np, alpha=alpha)
+
+        return MetricsResult(
+            metric_global=global_recall,
+            metric_mean=float(mean_recall),
+            metric_per_class=torch.tensor(per_class_recall),
+            metric_system=float(system_recall),
+        )
+
+    def calculate_range_based_precision(self, alpha: float = 0.0) -> MetricsResult:
+        """
+        Calculate range-based precision metrics.
+
+        Args:
+            alpha: Relative importance of existence reward. 0 ≤ alpha ≤ 1.
+
+        Returns:
+            MetricsResult: Precision metrics.
+        """
+        labels_np = np.array(self.labels)
+        predictions_np = np.array(self.predictions)
+        system_labels_np = np.array(self.system_labels)
+        system_predictions_np = np.array(self.system_predictions)
+
+        per_class_precision = [
+            ts_precision(labels_np[:, i], predictions_np[:, i], alpha=alpha)
+            for i in range(self.labels.shape[1])
+        ]
+
+        mean_precision = torch.mean(torch.tensor(per_class_precision))
+
+        # doesn't make sense the global precision in range based metrics
+        global_precision = None
+
+        system_precision = ts_precision(
+            system_labels_np, system_predictions_np, alpha=alpha
+        )
+
+        return MetricsResult(
+            metric_global=global_precision,
+            metric_mean=float(mean_precision),
+            metric_per_class=torch.tensor(per_class_precision),
+            metric_system=float(system_precision),
+        )
+
     def calculate_f1(
         self, precision: MetricsResult, recall: MetricsResult
     ) -> MetricsResult:
@@ -166,13 +239,16 @@ class MetricsCalculator:
         mean_f1 = torch.mean(per_class_f1)
 
         # Handle division by zero for global metrics
-        global_denominator = precision.metric_global + recall.metric_global
-        global_f1 = (
-            0.0
-            if global_denominator == 0
-            else (2 * precision.metric_global * recall.metric_global)
-            / global_denominator
-        )
+        if precision.metric_global is not None and recall.metric_global is not None:
+            global_denominator = precision.metric_global + recall.metric_global
+            global_f1 = float(
+                0.0
+                if global_denominator == 0
+                else (2 * precision.metric_global * recall.metric_global)
+                / global_denominator
+            )
+        else:
+            global_f1 = None
 
         # Handle division by zero for system metrics
         system_denominator = precision.metric_system + recall.metric_system
@@ -184,26 +260,33 @@ class MetricsCalculator:
         )
 
         return MetricsResult(
-            metric_global=float(global_f1),
+            metric_global=global_f1,
             metric_mean=float(mean_f1),
             metric_per_class=per_class_f1,
             metric_system=float(system_f1),
         )
 
-    def get_all_metrics(self) -> dict[str, torch.Tensor]:
+    def get_all_metrics(self, alpha: float = 0.0) -> dict[str, torch.Tensor]:
         """
         Calculate all metrics and return as dictionary.
+
+        Args:
+            alpha: Relative importance of existence reward. 0 ≤ alpha ≤ 1.
 
         Returns:
             Dict[str, torch.Tensor]: Dictionary of metrics.
         """
         precision = self.calculate_precision()
         recall = self.calculate_recall()
+        range_based_recall = self.calculate_range_based_recall(alpha=alpha)
+        range_based_precision = self.calculate_range_based_precision(alpha=alpha)
         f1 = self.calculate_f1(precision, recall)
 
         return {
             **precision.model_dump("precision"),
             **recall.model_dump("recall"),
+            **range_based_recall.model_dump("range_based_recall"),
+            **range_based_precision.model_dump("range_based_precision"),
             **f1.model_dump("f1"),
         }
 
@@ -220,9 +303,11 @@ def visualize_metrics(
     """
     metrics_df = pd.DataFrame(
         {
-            "Precision": metrics_dict["per_class_precision"].cpu().numpy(),
-            "Recall": metrics_dict["per_class_recall"].cpu().numpy(),
-            "F1 Score": metrics_dict["per_class_f1"].cpu().numpy(),
+            "Precision": metrics_dict["precision_per_class"],
+            "Recall": metrics_dict["recall_per_class"],
+            "Range-based Recall": metrics_dict["range_based_recall_per_class"],
+            "Range-based Precision": metrics_dict["range_based_precision_per_class"],
+            "F1 Score": metrics_dict["f1_per_class"],
         }
     )
 
@@ -272,6 +357,18 @@ def generate_metrics_table(metrics: dict) -> str:
             f"{metrics['recall_system']}",
         ],
         [
+            "Range-based Recall",
+            f"{metrics['range_based_recall_global']}",
+            f"{metrics['range_based_recall_mean']}",
+            f"{metrics['range_based_recall_system']}",
+        ],
+        [
+            "Range-based Precision",
+            f"{metrics['range_based_precision_global']}",
+            f"{metrics['range_based_precision_mean']}",
+            f"{metrics['range_based_precision_system']}",
+        ],
+        [
             "F1",
             f"{metrics['f1_global']}",
             f"{metrics['f1_mean']}",
@@ -285,13 +382,30 @@ def generate_metrics_per_class_table(metrics: dict) -> str:
     """Generate a table of per-class metrics as a string."""
     precision = metrics["precision_per_class"]
     recall = metrics["recall_per_class"]
+    range_based_recall = metrics["range_based_recall_per_class"]
+    range_based_precision = metrics["range_based_precision_per_class"]
     f1 = metrics["f1_per_class"]
     metrics_per_class_table = [
-        [i, precision[i], recall[i], f1[i]] for i in range(len(precision))
+        [
+            i,
+            precision[i],
+            recall[i],
+            range_based_recall[i],
+            range_based_precision[i],
+            f1[i],
+        ]
+        for i in range(len(precision))
     ]
 
     return tabulate.tabulate(
         metrics_per_class_table,
-        headers=["Class", "Precision", "Recall", "F1"],
+        headers=[
+            "Class",
+            "Precision",
+            "Recall",
+            "Range-based Recall",
+            "Range-based Precision",
+            "F1",
+        ],
         tablefmt="grid",
     )
