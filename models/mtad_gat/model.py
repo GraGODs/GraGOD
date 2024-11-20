@@ -245,3 +245,18 @@ class MTAD_GAT_PLModule(pl.LightningModule):
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.init_lr)  # type: ignore
         return optimizer
+
+    def predict_step(self, batch, batch_idx):
+        """
+        Prediction step for the model.
+
+        Args:
+            batch: The input batch from the dataloader
+            batch_idx: The index of the current batch
+
+        Returns:
+            tuple: (predictions, reconstructions)
+        """
+        x = batch[0] if isinstance(batch, (list, tuple)) else batch
+        predictions, reconstructions = self(x)
+        return predictions, reconstructions
