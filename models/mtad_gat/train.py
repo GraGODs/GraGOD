@@ -34,7 +34,7 @@ def main(
     init_lr: float,
     test_size: float,
     val_size: float,
-    clean: bool,
+    clean: str,
     interpolate_method: InterPolationMethods | None,
     shuffle: bool,
     target_dims: int | None,
@@ -64,12 +64,14 @@ def main(
     train_dataset = SlidingWindowDataset(
         X_train,
         window_size=window_size,
+        horizon=horizon,
         labels=y_train,
         drop=clean == CleanMethods.DROP.value,
     )
     val_dataset = SlidingWindowDataset(
         X_val,
         window_size=window_size,
+        horizon=horizon,
         labels=y_val,
         drop=clean == CleanMethods.DROP.value,
     )
