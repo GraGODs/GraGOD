@@ -99,7 +99,11 @@ class MetricsCalculator:
         true_positives = torch.sum((self.labels == 1) & (self.predictions == 1), dim=0)
         predicted_positives = torch.sum(self.predictions == 1, dim=0)
 
-        per_class_precision = true_positives / predicted_positives
+        per_class_precision = torch.where(
+            predicted_positives > 0,
+            true_positives / predicted_positives,
+            torch.zeros_like(predicted_positives, dtype=torch.float),
+        )
         global_precision = true_positives.sum() / predicted_positives.sum()
         mean_precision = torch.mean(per_class_precision)
 
@@ -126,7 +130,12 @@ class MetricsCalculator:
         true_positives = torch.sum((self.labels == 1) & (self.predictions == 1), dim=0)
         actual_positives = torch.sum(self.labels == 1, dim=0)
 
-        per_class_recall = true_positives / actual_positives
+        per_class_recall = torch.where(
+            actual_positives > 0,
+            true_positives / actual_positives,
+            torch.zeros_like(actual_positives, dtype=torch.float),
+        )
+
         mean_recall = torch.mean(per_class_recall)
         global_recall = true_positives.sum() / actual_positives.sum()
 
@@ -157,7 +166,12 @@ class MetricsCalculator:
         system_predictions_np = np.array(self.system_predictions)
 
         per_class_recall = [
-            ts_recall(labels_np[:, i], predictions_np[:, i], alpha=alpha)
+            (
+                ts_recall(labels_np[:, i], predictions_np[:, i], alpha=alpha)
+                # if there are no anomalies detected, recall is 0
+                if not np.allclose(np.unique(predictions_np[:, i]), np.array([0]))
+                else 0
+            )
             for i in range(self.labels.shape[1])
         ]
 
@@ -191,7 +205,12 @@ class MetricsCalculator:
         system_predictions_np = np.array(self.system_predictions)
 
         per_class_precision = [
-            ts_precision(labels_np[:, i], predictions_np[:, i], alpha=alpha)
+            (
+                ts_precision(labels_np[:, i], predictions_np[:, i], alpha=alpha)
+                # if there are no anomalies detected, precision is 0
+                if not np.allclose(np.unique(predictions_np[:, i]), np.array([0]))
+                else 0
+            )
             for i in range(self.labels.shape[1])
         ]
 
