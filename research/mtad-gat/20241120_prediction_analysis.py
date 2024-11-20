@@ -29,6 +29,8 @@ forecasts = result["forecasts"]
 window_size = len(X_test) - len(forecasts)
 X_test_ = X_test[window_size:]
 # %%
+X_test_true.sum(axis=0)
+# %%
 # Scores and predictions
 column = 0
 start_time = 8000
@@ -36,11 +38,10 @@ end_time = 12000
 plt.figure(figsize=(15, 5))
 plt.plot(X_test_true[start_time:end_time, column])
 plt.plot(X_test_scores[start_time:end_time, column])
-# plt.axhline(y=thresholds_test[column], color="r", linestyle="--", label="Threshold")
-# plt.plot(X_test_pred[:, column])
 plt.title(f"Time Series Plot for Column {column}")
 plt.xlabel("Time")
 plt.ylabel("Value")
+plt.legend(["True", "Scores"])
 plt.grid(True)
 plt.show()
 
@@ -51,6 +52,7 @@ plt.plot(X_test_true[start_time:end_time, column])
 plt.title(f"Original Time Series for Column {column}")
 plt.xlabel("Time")
 plt.ylabel("Value")
+plt.legend(["True", "Pred"])
 plt.grid(True)
 plt.show()
 
@@ -62,6 +64,7 @@ plt.plot(X_test_true[start_time:end_time, column])
 plt.title(f"Forecasts for Column {column}")
 plt.xlabel("Time")
 plt.ylabel("Value")
+plt.legend(["Forecasts", "True", "Pred"])
 plt.grid(True)
 plt.show()
 
@@ -73,6 +76,7 @@ plt.plot(X_test_true[start_time:end_time, column])
 plt.title(f"Reconstructions for Column {column}")
 plt.xlabel("Time")
 plt.ylabel("Value")
+plt.legend(["Reconstructions", "True", "Pred"])
 plt.grid(True)
 plt.show()
 

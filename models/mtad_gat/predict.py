@@ -15,7 +15,7 @@ from gragod.metrics import (
     get_metrics,
 )
 from gragod.training import load_params, load_training_data, set_seeds
-from gragod.types import cast_dataset
+from gragod.types import CleanMethods, cast_dataset
 from models.mtad_gat.model import MTAD_GAT, MTAD_GAT_PLModule
 from models.mtad_gat.spot import SPOT
 
@@ -90,7 +90,7 @@ def main(
     save_dir: str = "output",
     test_size: float = 0.1,
     val_size: float = 0.1,
-    clean: bool = True,
+    clean: str = "interpolate",
     interpolate_method: InterPolationMethods | None = None,
     params: dict = {},
     **kwargs,
@@ -118,7 +118,7 @@ def main(
         test_size=test_size,
         val_size=val_size,
         normalize=dataset_config.normalize,
-        clean=False,
+        clean=clean == CleanMethods.INTERPOLATE,
         interpolate_method=interpolate_method,
     )
 
