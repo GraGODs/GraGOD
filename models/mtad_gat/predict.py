@@ -7,6 +7,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from datasets.config import get_dataset_config
+from datasets.dataset import SlidingWindowDataset
 from gragod import InterPolationMethods, ParamFileTypes
 from gragod.metrics import (
     generate_metrics_per_class_table,
@@ -15,10 +16,8 @@ from gragod.metrics import (
 )
 from gragod.training import load_params, load_training_data, set_seeds
 from gragod.types import cast_dataset
-from models.mtad_gat.dataset import SlidingWindowDataset
-from models.mtad_gat.model import MTAD_GAT
+from models.mtad_gat.model import MTAD_GAT, MTAD_GAT_PLModule
 from models.mtad_gat.spot import SPOT
-from models.mtad_gat.trainer_pl import MTAD_GAT_PLModule
 
 RANDOM_SEED = 42
 EPSILON = 0.8
