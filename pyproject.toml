@@ -13,7 +13,7 @@ packages = [{ include = "gragod" }]
 gragod = 'gragod.cli:app'
 
 [tool.poetry.dependencies]
-python = ">=3.9,<=3.11"
+python = ">=3.10,<=3.11"
 matplotlib = "^3.8.2"
 numpy = "^1.26.3"
 python-dotenv = "^1.0.1"

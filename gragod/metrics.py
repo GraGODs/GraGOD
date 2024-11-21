@@ -306,6 +306,15 @@ class MetricsCalculator:
         Calculate VUS-ROC metrics.
         Based on https://www.paparrizos.org/papers/PaparrizosVLDB22b.pdf.
 
+        Args:
+            max_buffer_size: Maximum size of the buffer region around an anomaly.
+                We iterate over all buffer sizes from 0 to ``max_buffer_size`` to
+                create the surface.
+            max_th_samples: Calculating precision and recall for many thresholds is
+                quite slow. We, therefore, uniformly sample thresholds from the
+                available score space. This parameter controls the maximum number of
+                thresholds; too low numbers degrade the metrics' quality.
+
         Returns:
             MetricsResult: VUS-ROC metrics.
         """
