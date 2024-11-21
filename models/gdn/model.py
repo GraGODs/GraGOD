@@ -307,3 +307,18 @@ class GDN_PLModule(pl.LightningModule):
                 "interval": "epoch",
             },
         }
+
+    def predict_step(self, batch, batch_idx):
+        """
+        Prediction step for the model.
+
+        Args:
+            batch: The input batch from the dataloader
+            batch_idx: The index of the current batch
+
+        Returns:
+            predictions: Predictions for the input batch
+        """
+        x = batch[0] if isinstance(batch, (list, tuple)) else batch
+        predictions = self(x.reshape(-1, x.size(2), x.size(1)))
+        return predictions

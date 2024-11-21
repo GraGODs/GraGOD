@@ -10,12 +10,11 @@ train_params:
   init_lr: 0.001
   clean: "drop"
   log_dir: "output"
-  ckpt_path: null
   n_workers: 0
   test_size: 0.1
   log_every_n_steps: 1
   interpolate_method: null
-  
+
 model_params:
   window_size: 15
   embed_dim: 64
@@ -29,3 +28,15 @@ env_params:
   report: "best"
   load_model_path: ""
   save_path: "msl"
+
+predictor_params:
+  dataset: "telco"
+  target_dims: null
+  scale_scores: false
+  level: 0.9999
+  q: 0.001
+  dynamic_pot: false
+  use_mov_av: false
+  gamma: 0.8
+  reg_level: 1
+  ckpt_folder: "output/gdn/version_1"

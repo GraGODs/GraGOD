@@ -86,6 +86,7 @@ def main(
     y_val = _get_attack_or_not_attack(y_val)
     y_test = _get_attack_or_not_attack(y_test)
 
+    # TODO: load this from each dataset
     # Create a fully connected graph
     edge_index = (
         torch.tensor(
