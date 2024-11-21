@@ -1,30 +1,40 @@
 import argparse
 
 import torch
+from pytorch_lightning.callbacks import (
+    EarlyStopping,
+    LearningRateMonitor,
+    ModelCheckpoint,
+)
+from pytorch_lightning.loggers import TensorBoardLogger
 from torch.utils.data import DataLoader
 
 from datasets.config import get_dataset_config
 from datasets.dataset import SlidingWindowDataset
 from gragod import CleanMethods, InterPolationMethods, ParamFileTypes, cast_dataset
 from gragod.training import load_params, load_training_data, set_seeds
-from models.gcn.model import GCN
+from gragod.training.trainer import TrainerPL
+from models.gcn.model import GCN, GCN_PLModule
 
 
 def main(
     dataset_name: str,
+    model_name: str,
     model_params: dict,
-    test_size: float = 0.2,
-    val_size: float = 0.2,
-    clean: CleanMethods = CleanMethods.NONE,
-    interpolate_method: InterPolationMethods | None = None,
-    shuffle: bool = True,
-    batch_size: int = 64,
-    n_workers: int = 0,
-    init_lr: float = 0.001,
-    weight_decay: float = 0.0,
-    n_epochs: int = 30,
-    device: str = "mps",
-    params: dict = {},
+    params: dict,
+    batch_size: int,
+    n_epochs: int,
+    init_lr: float,
+    test_size: float,
+    val_size: float,
+    clean: CleanMethods,
+    interpolate_method: InterPolationMethods | None,
+    shuffle: bool,
+    device: str,
+    n_workers: int,
+    log_dir: str,
+    log_every_n_steps: int,
+    ckpt_path: str | None,
 ):
     """
     Main function to train and evaluate the GCN model.
@@ -92,57 +102,54 @@ def main(
         K=model_params["K"],
     ).to(device)
 
-    optimizer = torch.optim.Adam(
-        model.parameters(), lr=init_lr, weight_decay=weight_decay
+    args_summary = {
+        "dataset": dataset,
+        "model_params": model_params,
+        "train_params": params["train_params"],
+    }
+
+    logger = TensorBoardLogger(
+        save_dir=log_dir, name=model_name, default_hp_metric=False
     )
 
-    criterion = torch.nn.MSELoss()
+    # Define callbacks
+    early_stop = EarlyStopping(
+        monitor="Loss/val",
+        min_delta=0.0001,
+        patience=2,
+        verbose=True,
+        mode="min",
+    )
+    checkpoint = ModelCheckpoint(
+        monitor="Loss/val",
+        dirpath=logger.log_dir,
+        filename=model_name,
+        save_top_k=1,
+        mode="min",
+    )
+    lr_monitor = LearningRateMonitor(logging_interval="step")
 
-    train_loss_list = []
+    callbacks = [early_stop, checkpoint, lr_monitor]
 
-    for i_epoch in range(n_epochs):
-        optimizer.zero_grad()
-        model.train()
-        total_train_loss = torch.tensor(0.0, device=device)
-        hidden_states = []
-        outs = []
-        for window, target, _, edge_index in train_loader:
-            window = window.to(device)
-            target = target.to(device)
+    trainer = TrainerPL(
+        model=model,
+        model_pl=GCN_PLModule,
+        model_params=model_params,
+        criterion=torch.nn.MSELoss(),
+        batch_size=batch_size,
+        n_epochs=n_epochs,
+        init_lr=init_lr,
+        device=device,
+        log_dir=log_dir,
+        callbacks=callbacks,
+        checkpoint_cb=checkpoint,
+        logger=logger,
+        log_every_n_steps=log_every_n_steps,
+    )
+    if ckpt_path:
+        trainer.load(ckpt_path)
 
-            out, h = model(window.squeeze(0), edge_index)
-
-            loss = criterion(out, target.squeeze(1))
-            total_train_loss += loss
-
-            hidden_states.append(h)
-            outs.append(out)
-            train_loss_list.append(loss.item())
-
-        total_train_loss = total_train_loss / len(train_loader)
-        total_train_loss.backward()
-        optimizer.step()
-
-        # Validation
-        model.eval()
-        total_val_loss = torch.tensor(0.0, device=device)
-        with torch.no_grad():
-            for window, target, _, edge_index in val_loader:
-                window = window.to(device)
-                target = target.to(device)
-
-                out, _ = model(window.squeeze(0), edge_index)
-                loss = criterion(out, target.squeeze(1))
-                total_val_loss += loss
-
-        total_val_loss = total_val_loss / len(val_loader)
-        print(
-            f"Epoch {i_epoch},",
-            f"Train Loss: {total_train_loss.item()},",
-            f"Val Loss: {total_val_loss.item()}",
-        )
-
-    # TODO: add evaluation
+    trainer.fit(train_loader, val_loader, args_summary=args_summary)
 
 
 if __name__ == "__main__":
