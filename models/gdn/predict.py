@@ -8,9 +8,58 @@ from torch.utils.data import DataLoader
 from datasets.config import get_dataset_config
 from datasets.dataset import SlidingWindowDataset
 from gragod import CleanMethods, InterPolationMethods, ParamFileTypes
+from gragod.metrics import (
+    MetricsCalculator,
+    generate_metrics_per_class_table,
+    generate_metrics_table,
+    get_metrics,
+)
 from gragod.training import load_params, load_training_data
 from gragod.types import cast_dataset
 from models.gdn.model import GDN, GDN_PLModule
+
+
+def get_threshold(scores: torch.Tensor, labels: torch.Tensor, n_thresholds: int):
+    """
+    Get the threshold for the scores.
+    The best threshold is the one that maximizes the F1 score or
+    as a default the maximum score in the training set.
+
+    Args:
+        scores: Tensor of shape (n_samples - window_size,).
+        labels: Tensor of shape (n_samples - window_size,).
+        n_thresholds: Number of thresholds to test.
+
+    Returns:
+        The best thresholds for each dimension.
+    """
+    # Initial best thresholds with highest scores
+    max_scores = best_thresholds = torch.max(scores, dim=0)[0]
+    preds = (scores > best_thresholds.unsqueeze(0)).float()
+    metrics = MetricsCalculator(preds, labels)
+    precision = metrics.calculate_precision()
+    recall = metrics.calculate_recall()
+    best_f1s = metrics.calculate_f1(precision, recall).metric_per_class
+
+    thresholds = torch.stack(
+        [torch.linspace(0, max_score, n_thresholds) for max_score in max_scores],
+        dim=1,
+    )
+
+    for threshold in thresholds:
+        preds = (scores > threshold.unsqueeze(0)).float()
+
+        metrics = MetricsCalculator(preds, labels)
+        precision = metrics.calculate_precision()
+        recall = metrics.calculate_recall()
+        f1 = metrics.calculate_f1(precision, recall)
+
+        # Update best thresholds where F1 improved
+        improved = f1.metric_per_class > best_f1s
+        best_f1s[improved] = f1.metric_per_class[improved]
+        best_thresholds[improved] = threshold[improved]
+
+    return best_thresholds
 
 
 def run_model(
@@ -161,9 +210,37 @@ def main(
         device=device,
     )
 
-    print(f"Train forecasts: {forecasts_train.shape}")
-    print(f"Val forecasts: {forecasts_val.shape}")
-    print(f"Test forecasts: {forecasts_test.shape}")
+    train_scores = torch.abs((forecasts_train - X_train[window_size:]))
+    val_scores = torch.abs((forecasts_val - X_val[window_size:]))
+    test_scores = torch.abs((forecasts_test - X_test[window_size:]))
+
+    threshold = get_threshold(
+        train_scores, X_train_labels, params["predictor_params"]["n_thresholds"]
+    )
+    train_pred = (train_scores > threshold).float()
+    val_pred = (val_scores > threshold).float()
+    test_pred = (test_scores > threshold).float()
+
+    metrics = get_metrics(train_pred, X_train_labels)
+    metrics_table = generate_metrics_table(metrics)
+    metrics_per_class_table = generate_metrics_per_class_table(metrics)
+    print("------- Train -------")
+    print(metrics_table)
+    print(metrics_per_class_table)
+
+    metrics = get_metrics(val_pred, X_val_labels)
+    metrics_table = generate_metrics_table(metrics)
+    metrics_per_class_table = generate_metrics_per_class_table(metrics)
+    print("------- Validation -------")
+    print(metrics_table)
+    print(metrics_per_class_table)
+
+    metrics = get_metrics(test_pred, X_test_labels)
+    metrics_table = generate_metrics_table(metrics)
+    metrics_per_class_table = generate_metrics_per_class_table(metrics)
+    print("------- Test -------")
+    print(metrics_table)
+    print(metrics_per_class_table)
 
 
 if __name__ == "__main__":

@@ -179,10 +179,6 @@ def main(
 
     trainer.fit(train_loader, val_loader, args_summary=args_summary)
 
-    # TODO: Run prediction with the best model, not the last one
-    # _, test_result = test(model, test_loader, torch.device(device))
-    # print_score(test_result, val_result, params["env_params"]["report"])
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

@@ -31,12 +31,5 @@ env_params:
 
 predictor_params:
   dataset: "telco"
-  target_dims: null
-  scale_scores: false
-  level: 0.9999
-  q: 0.001
-  dynamic_pot: false
-  use_mov_av: false
-  gamma: 0.8
-  reg_level: 1
   ckpt_folder: "output/gdn/version_1"
+  n_thresholds: 100
