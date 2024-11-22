@@ -1,4 +1,11 @@
+from typing import Any
+
+import pytorch_lightning as pl
 import torch
+import torch.utils.data
+import torch.utils.data.dataloader
+from pytorch_lightning.callbacks import ModelCheckpoint
+from torch import nn
 from torch.nn import Linear
 from torch_geometric.nn import TAGConv
 
@@ -54,7 +61,9 @@ class GCN(torch.nn.Module):
                 * num_nodes
             ).repeat(1, 2, num_edges)
 
-            batch_edge_index = (edge_index + offset).permute(1, 0, 2).reshape(2, -1)
+            batch_edge_index = (
+                (edge_index.long() + offset.long()).permute(1, 0, 2).reshape(2, -1)
+            )
 
             h = conv(h, batch_edge_index)
             h = self.tanh(h)
@@ -83,3 +92,137 @@ class GCN(torch.nn.Module):
         diff = torch.abs(X - predictions)
         anomalies = diff > threshold
         return anomalies
+
+
+class GCN_PLModule(pl.LightningModule):
+    """
+    PyTorch Lightning module for the GCN model.
+
+    Args:
+        model: The GCN model instance
+        model_params: Dictionary containing model parameters
+        init_lr: Initial learning rate for the optimizer
+        criterion: Loss function for training
+        checkpoint_cb: ModelCheckpoint callback for saving best models
+    """
+
+    def __init__(
+        self,
+        model: nn.Module,
+        model_params: dict,
+        init_lr: float = 0.001,
+        criterion: torch.nn.Module = nn.MSELoss(),
+        checkpoint_cb: ModelCheckpoint | None = None,
+        *args,
+        **kwargs,
+    ):
+        super().__init__()
+        self.model = model
+        self.model_params = model_params
+        self.init_lr = init_lr
+        self.criterion = criterion
+        self.checkpoint_cb = checkpoint_cb
+        self.best_model_score = None
+        self.best_metrics = None
+
+        self.save_hyperparameters(ignore=["model"])
+
+    def _register_best_metrics(self):
+        """Register the best metrics during training."""
+        if self.global_step != 0:
+            self.best_metrics = {
+                "epoch": self.trainer.current_epoch,
+                "train_loss": self.trainer.callback_metrics["Loss/train"],
+                "val_loss": self.trainer.callback_metrics["Loss/val"],
+            }
+
+    def forward(self, x, edge_index):
+        """Forward pass of the model."""
+        return self.model(x, edge_index)
+
+    def call_logger(self, loss: torch.Tensor, step_type: str):
+        """Log metrics during training/validation."""
+        self.log(
+            f"Loss/{step_type}",
+            loss,
+            prog_bar=True,
+            on_epoch=True,
+            on_step=True,
+            logger=True,
+        )
+
+    def shared_step(self, batch, batch_idx):
+        """Shared step for both training and validation."""
+        x, y, _, edge_index = batch
+        x, y, edge_index = [
+            item.float().to(self.device)
+            for item in [
+                x,
+                y.squeeze(1),
+                edge_index,
+            ]
+        ]
+        out, _ = self(x, edge_index)
+        loss = self.criterion(out, y)
+        return loss
+
+    def training_step(self, batch, batch_idx):
+        """Training step."""
+        loss = self.shared_step(batch, batch_idx)
+        self.call_logger(loss, "train")
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        """Validation step."""
+        loss = self.shared_step(batch, batch_idx)
+        self.call_logger(loss, "val")
+        return loss
+
+    def on_train_epoch_start(self):
+        """Called at the start of each training epoch."""
+        if (
+            self.checkpoint_cb is not None
+            and self.checkpoint_cb.best_model_score is not None
+        ):
+            if self.best_model_score is None:
+                self.best_model_score = float(self.checkpoint_cb.best_model_score)
+                self._register_best_metrics()
+            elif (
+                self.checkpoint_cb.mode == "min"
+                and float(self.checkpoint_cb.best_model_score) < self.best_model_score
+            ) or (
+                self.checkpoint_cb.mode == "max"
+                and float(self.checkpoint_cb.best_model_score) > self.best_model_score
+            ):
+                self.best_model_score = float(self.checkpoint_cb.best_model_score)
+                self._register_best_metrics()
+
+    def configure_optimizers(self) -> Any:
+        """Configure optimizers for training."""
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.init_lr)  # type: ignore
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer, mode="min", factor=0.1, patience=5, verbose=True  # type: ignore
+        )
+        return {
+            "optimizer": optimizer,
+            "lr_scheduler": {
+                "scheduler": scheduler,
+                "monitor": "Loss/val",
+                "interval": "epoch",
+            },
+        }
+
+    def predict_step(self, batch, batch_idx):
+        """
+        Prediction step for the model.
+
+        Args:
+            batch: The input batch from the dataloader
+            batch_idx: The index of the current batch
+
+        Returns:
+            tuple: (predictions, reconstructions)
+        """
+        x = batch[0] if isinstance(batch, (list, tuple)) else batch
+        predictions, _ = self(x)
+        return predictions
