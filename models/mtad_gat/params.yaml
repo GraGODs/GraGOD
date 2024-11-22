@@ -43,5 +43,6 @@ predictor_params:
   gamma: 0.8
   reg_level: 1
   ckpt_folder: "output/mtad_gat/version_5"
+  n_thresholds: 100
 
 save_path: "saved_models/mtad_gat"
