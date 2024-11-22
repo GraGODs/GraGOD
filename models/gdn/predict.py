@@ -8,12 +8,7 @@ from torch.utils.data import DataLoader
 from datasets.config import get_dataset_config
 from datasets.dataset import SlidingWindowDataset
 from gragod import CleanMethods, InterPolationMethods, ParamFileTypes
-from gragod.metrics import (
-    MetricsCalculator,
-    generate_metrics_per_class_table,
-    generate_metrics_table,
-    get_metrics,
-)
+from gragod.metrics import MetricsCalculator, get_metrics, print_all_metrics
 from gragod.training import load_params, load_training_data
 from gragod.types import cast_dataset
 from models.gdn.model import GDN, GDN_PLModule
@@ -221,26 +216,12 @@ def main(
     val_pred = (val_scores > threshold).float()
     test_pred = (test_scores > threshold).float()
 
-    metrics = get_metrics(train_pred, X_train_labels, train_scores)
-    metrics_table = generate_metrics_table(metrics)
-    metrics_per_class_table = generate_metrics_per_class_table(metrics)
-    print("------- Train -------")
-    print(metrics_table)
-    print(metrics_per_class_table)
-
-    metrics = get_metrics(val_pred, X_val_labels, val_scores)
-    metrics_table = generate_metrics_table(metrics)
-    metrics_per_class_table = generate_metrics_per_class_table(metrics)
-    print("------- Validation -------")
-    print(metrics_table)
-    print(metrics_per_class_table)
-
-    metrics = get_metrics(test_pred, X_test_labels, test_scores)
-    metrics_table = generate_metrics_table(metrics)
-    metrics_per_class_table = generate_metrics_per_class_table(metrics)
-    print("------- Test -------")
-    print(metrics_table)
-    print(metrics_per_class_table)
+    train_metrics = get_metrics(train_pred, X_train_labels, train_scores)
+    val_metrics = get_metrics(val_pred, X_val_labels, val_scores)
+    test_metrics = get_metrics(test_pred, X_test_labels, test_scores)
+    print_all_metrics(train_metrics, "------- Train -------")
+    print_all_metrics(val_metrics, "------- Validation -------")
+    print_all_metrics(test_metrics, "------- Test -------")
 
 
 if __name__ == "__main__":

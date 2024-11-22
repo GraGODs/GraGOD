@@ -9,11 +9,7 @@ from torch.utils.data import DataLoader
 from datasets.config import get_dataset_config
 from datasets.dataset import SlidingWindowDataset
 from gragod import InterPolationMethods, ParamFileTypes
-from gragod.metrics import (
-    generate_metrics_per_class_table,
-    generate_metrics_table,
-    get_metrics,
-)
+from gragod.metrics import get_metrics, print_all_metrics
 from gragod.training import load_params, load_training_data, set_seeds
 from gragod.types import CleanMethods, cast_dataset
 from models.mtad_gat.model import MTAD_GAT, MTAD_GAT_PLModule
@@ -198,10 +194,7 @@ def main(
     X_test_pred, thresholds_test = get_predictions(train_scores, test_scores)
 
     metrics = get_metrics(X_test_pred, X_test_labels, test_scores)
-    metrics_table = generate_metrics_table(metrics)
-    metrics_per_class_table = generate_metrics_per_class_table(metrics)
-    print(metrics_table)
-    print(metrics_per_class_table)
+    print_all_metrics(metrics, "------- Test -------")
 
     # save
     json.dump(

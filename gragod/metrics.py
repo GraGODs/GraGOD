@@ -548,3 +548,11 @@ def generate_metrics_per_class_table(metrics: dict) -> str:
         ],
         tablefmt="grid",
     )
+
+
+def print_all_metrics(metrics: dict, message: str):
+    metrics_table = generate_metrics_table(metrics)
+    metrics_per_class_table = generate_metrics_per_class_table(metrics)
+    print(message)
+    print(metrics_table)
+    print(metrics_per_class_table)
