@@ -35,8 +35,8 @@ def get_threshold(scores: torch.Tensor, labels: torch.Tensor, n_thresholds: int)
     """
     # Initial best thresholds with highest scores
     max_scores = best_thresholds = torch.max(scores, dim=0)[0]
-    preds = (scores > best_thresholds.unsqueeze(0)).float()
-    metrics = MetricsCalculator(preds, labels)
+    preds = scores > best_thresholds.unsqueeze(0)
+    metrics = MetricsCalculator(preds, labels, scores)
     precision = metrics.calculate_precision()
     recall = metrics.calculate_recall()
     best_f1s = metrics.calculate_f1(precision, recall).metric_per_class
@@ -49,7 +49,7 @@ def get_threshold(scores: torch.Tensor, labels: torch.Tensor, n_thresholds: int)
     for threshold in thresholds:
         preds = (scores > threshold.unsqueeze(0)).float()
 
-        metrics = MetricsCalculator(preds, labels)
+        metrics = MetricsCalculator(preds, labels, scores)
         precision = metrics.calculate_precision()
         recall = metrics.calculate_recall()
         f1 = metrics.calculate_f1(precision, recall)
@@ -210,9 +210,9 @@ def main(
         device=device,
     )
 
-    train_scores = torch.abs((forecasts_train - X_train[window_size:]))
-    val_scores = torch.abs((forecasts_val - X_val[window_size:]))
-    test_scores = torch.abs((forecasts_test - X_test[window_size:]))
+    train_scores = torch.abs(forecasts_train - X_train[window_size:])
+    val_scores = torch.abs(forecasts_val - X_val[window_size:])
+    test_scores = torch.abs(forecasts_test - X_test[window_size:])
 
     threshold = get_threshold(
         train_scores, X_train_labels, params["predictor_params"]["n_thresholds"]
@@ -221,21 +221,21 @@ def main(
     val_pred = (val_scores > threshold).float()
     test_pred = (test_scores > threshold).float()
 
-    metrics = get_metrics(train_pred, X_train_labels)
+    metrics = get_metrics(train_pred, X_train_labels, train_scores)
     metrics_table = generate_metrics_table(metrics)
     metrics_per_class_table = generate_metrics_per_class_table(metrics)
     print("------- Train -------")
     print(metrics_table)
     print(metrics_per_class_table)
 
-    metrics = get_metrics(val_pred, X_val_labels)
+    metrics = get_metrics(val_pred, X_val_labels, val_scores)
     metrics_table = generate_metrics_table(metrics)
     metrics_per_class_table = generate_metrics_per_class_table(metrics)
     print("------- Validation -------")
     print(metrics_table)
     print(metrics_per_class_table)
 
-    metrics = get_metrics(test_pred, X_test_labels)
+    metrics = get_metrics(test_pred, X_test_labels, test_scores)
     metrics_table = generate_metrics_table(metrics)
     metrics_per_class_table = generate_metrics_per_class_table(metrics)
     print("------- Test -------")

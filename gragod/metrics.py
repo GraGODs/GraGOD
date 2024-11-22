@@ -6,7 +6,7 @@ import tabulate
 import torch
 from prts import ts_precision, ts_recall
 from pydantic import BaseModel, ConfigDict, Field
-from timeeval.metrics import RangeRocVUS
+from timeeval.metrics.vus_metrics import RangeRocVUS
 
 N_TH_SAMPLES_DEFAULT = 1000
 N_MAX_BUFFER_SIZE_DEFAULT = 100
@@ -361,15 +361,26 @@ class MetricsCalculator:
             compatibility_mode=True,
             max_samples=max_th_samples,
         )
+
         per_class_vus_roc = [
-            vus_roc(y_true=self.labels[:, i].numpy(), y_score=self.scores[:, i].numpy())
+            (
+                vus_roc(
+                    y_true=self.labels[:, i].numpy().astype(float),
+                    y_score=self.scores[:, i].numpy().astype(float),
+                )
+                if not (
+                    np.allclose(np.unique(self.labels[:, i].numpy()), np.array([0]))
+                    or np.allclose(np.unique(self.scores[:, i].numpy()), np.array([0]))
+                )
+                else 0
+            )
             for i in range(self.labels.shape[1])
         ]
         mean_vus_roc = torch.mean(torch.tensor(per_class_vus_roc))
 
         global_vus_roc = None
 
-        system_vus_roc = vus_roc(
+        system_vus_roc = vus_roc.score(
             y_true=self.system_labels.numpy(), y_score=self.system_scores.numpy()
         )
 
