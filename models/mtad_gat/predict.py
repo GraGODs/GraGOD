@@ -15,7 +15,7 @@ from gragod.metrics import (
     get_metrics,
 )
 from gragod.training import load_params, load_training_data, set_seeds
-from gragod.types import cast_dataset
+from gragod.types import CleanMethods, cast_dataset
 from models.mtad_gat.model import MTAD_GAT, MTAD_GAT_PLModule
 from models.mtad_gat.spot import SPOT
 
@@ -61,7 +61,7 @@ def generate_scores(
 
 def get_predictions(
     train_score: torch.Tensor, test_score: torch.Tensor
-) -> torch.Tensor:
+) -> tuple[torch.Tensor, torch.Tensor]:
     """
     Get threshold for anomaly detection.
     """
@@ -76,7 +76,7 @@ def get_predictions(
     thresholds = torch.stack(thresholds)
     predictions = test_score > thresholds
     predictions = predictions.int()
-    return predictions
+    return predictions, thresholds
 
 
 def main(
@@ -90,14 +90,17 @@ def main(
     save_dir: str = "output",
     test_size: float = 0.1,
     val_size: float = 0.1,
-    clean: bool = True,
+    clean: str = "interpolate",
     interpolate_method: InterPolationMethods | None = None,
     params: dict = {},
     **kwargs,
-):
+) -> dict:
     """
     Main function to load data, model and generate predictions.
-    Returns a dictionary containing evaluation metrics.
+
+    Returns:
+        dict: A dictionary containing predictions, labels, scores, data, thresholds,
+        forecasts, reconstructions, and metrics.
     """
     dataset = cast_dataset(dataset_name)
     dataset_config = get_dataset_config(dataset=dataset)
@@ -115,7 +118,7 @@ def main(
         test_size=test_size,
         val_size=val_size,
         normalize=dataset_config.normalize,
-        clean=False,
+        clean=clean == CleanMethods.INTERPOLATE,
         interpolate_method=interpolate_method,
     )
 
@@ -192,9 +195,9 @@ def main(
         window_size=window_size,
         EPSILON=EPSILON,
     )
-    X_test_pred = get_predictions(train_scores, test_scores)
+    X_test_pred, thresholds_test = get_predictions(train_scores, test_scores)
 
-    metrics = get_metrics(X_test_pred, X_test_labels)
+    metrics = get_metrics(X_test_pred, X_test_labels, test_scores)
     metrics_table = generate_metrics_table(metrics)
     metrics_per_class_table = generate_metrics_per_class_table(metrics)
     print(metrics_table)
@@ -207,6 +210,17 @@ def main(
             os.path.join(params["predictor_params"]["ckpt_folder"], "metrics.json"), "w"
         ),
     )
+
+    return {
+        "predictions": X_test_pred,
+        "labels": X_test_labels,
+        "scores": test_scores,
+        "data": X_test,
+        "thresholds": thresholds_test,
+        "forecasts": forecasts_test,
+        "reconstructions": reconstructions_test,
+        "metrics": metrics,
+    }
 
 
 if __name__ == "__main__":

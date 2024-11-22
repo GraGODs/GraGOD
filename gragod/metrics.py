@@ -6,6 +6,10 @@ import tabulate
 import torch
 from prts import ts_precision, ts_recall
 from pydantic import BaseModel, ConfigDict, Field
+from timeeval.metrics import RangeRocVUS
+
+N_TH_SAMPLES_DEFAULT = 1000
+N_MAX_BUFFER_SIZE_DEFAULT = 100
 
 
 class MetricsResult(BaseModel):
@@ -74,7 +78,11 @@ class MetricsResult(BaseModel):
 class MetricsCalculator:
     """Calculator for precision, recall, and F1 metrics."""
 
-    def __init__(self, labels: torch.Tensor, predictions: torch.Tensor):
+    # TODO: Save scores, labels, predictions, system_scores, system_labels,
+    #       system_predictions to calculate metrics later
+    def __init__(
+        self, labels: torch.Tensor, predictions: torch.Tensor, scores: torch.Tensor
+    ):
         """
         Initialize calculator with labels and predictions.
 
@@ -82,8 +90,10 @@ class MetricsCalculator:
             labels: Ground truth labels tensor (n_samples, n_nodes)
             predictions: Predicted labels tensor (n_samples, n_nodes)
         """
+        self.scores = scores
         self.labels = labels
         self.predictions = predictions
+        self.system_scores = torch.sum(scores, dim=1)
         self.system_labels = (torch.sum(labels, dim=1) > 0).int()
         self.system_predictions = (torch.sum(predictions, dim=1) > 0).int()
 
@@ -150,86 +160,6 @@ class MetricsCalculator:
             metric_system=float(system_recall),
         )
 
-    def calculate_range_based_recall(self, alpha: float = 0.0) -> MetricsResult:
-        """
-        Calculate range-based recall metrics.
-
-        Args:
-            alpha: Relative importance of existence reward. 0 ≤ alpha ≤ 1.
-
-        Returns:
-            MetricsResult: Recall metrics.
-        """
-        labels_np = np.array(self.labels)
-        predictions_np = np.array(self.predictions)
-        system_labels_np = np.array(self.system_labels)
-        system_predictions_np = np.array(self.system_predictions)
-
-        per_class_recall = [
-            (
-                ts_recall(labels_np[:, i], predictions_np[:, i], alpha=alpha)
-                # if there are no anomalies detected, recall is 0
-                if not np.allclose(np.unique(predictions_np[:, i]), np.array([0]))
-                else 0
-            )
-            for i in range(self.labels.shape[1])
-        ]
-
-        mean_recall = torch.mean(torch.tensor(per_class_recall))
-
-        # doesn't make sense the global recall in range based metrics
-        global_recall = None
-
-        system_recall = ts_recall(system_labels_np, system_predictions_np, alpha=alpha)
-
-        return MetricsResult(
-            metric_global=global_recall,
-            metric_mean=float(mean_recall),
-            metric_per_class=torch.tensor(per_class_recall),
-            metric_system=float(system_recall),
-        )
-
-    def calculate_range_based_precision(self, alpha: float = 0.0) -> MetricsResult:
-        """
-        Calculate range-based precision metrics.
-
-        Args:
-            alpha: Relative importance of existence reward. 0 ≤ alpha ≤ 1.
-
-        Returns:
-            MetricsResult: Precision metrics.
-        """
-        labels_np = np.array(self.labels)
-        predictions_np = np.array(self.predictions)
-        system_labels_np = np.array(self.system_labels)
-        system_predictions_np = np.array(self.system_predictions)
-
-        per_class_precision = [
-            (
-                ts_precision(labels_np[:, i], predictions_np[:, i], alpha=alpha)
-                # if there are no anomalies detected, precision is 0
-                if not np.allclose(np.unique(predictions_np[:, i]), np.array([0]))
-                else 0
-            )
-            for i in range(self.labels.shape[1])
-        ]
-
-        mean_precision = torch.mean(torch.tensor(per_class_precision))
-
-        # doesn't make sense the global precision in range based metrics
-        global_precision = None
-
-        system_precision = ts_precision(
-            system_labels_np, system_predictions_np, alpha=alpha
-        )
-
-        return MetricsResult(
-            metric_global=global_precision,
-            metric_mean=float(mean_precision),
-            metric_per_class=torch.tensor(per_class_precision),
-            metric_system=float(system_precision),
-        )
-
     def calculate_f1(
         self, precision: MetricsResult, recall: MetricsResult
     ) -> MetricsResult:
@@ -285,6 +215,134 @@ class MetricsCalculator:
             metric_system=float(system_f1),
         )
 
+    def calculate_range_based_recall(self, alpha: float = 0.0) -> MetricsResult:
+        """
+        Calculate range-based recall metrics.
+        Based on https://arxiv.org/pdf/1803.03639.
+
+        Args:
+            alpha: Relative importance of existence reward. 0 ≤ alpha ≤ 1.
+
+        Returns:
+            MetricsResult: Recall metrics.
+        """
+        labels_np = np.array(self.labels)
+        predictions_np = np.array(self.predictions)
+        system_labels_np = np.array(self.system_labels)
+        system_predictions_np = np.array(self.system_predictions)
+
+        per_class_recall = [
+            (
+                ts_recall(labels_np[:, i], predictions_np[:, i], alpha=alpha)
+                # if there are no anomalies detected, recall is 0
+                if not np.allclose(np.unique(predictions_np[:, i]), np.array([0]))
+                else 0
+            )
+            for i in range(self.labels.shape[1])
+        ]
+
+        mean_recall = torch.mean(torch.tensor(per_class_recall))
+
+        # doesn't make sense the global recall in range based metrics
+        global_recall = None
+
+        system_recall = ts_recall(system_labels_np, system_predictions_np, alpha=alpha)
+
+        return MetricsResult(
+            metric_global=global_recall,
+            metric_mean=float(mean_recall),
+            metric_per_class=torch.tensor(per_class_recall),
+            metric_system=float(system_recall),
+        )
+
+    def calculate_range_based_precision(self, alpha: float = 0.0) -> MetricsResult:
+        """
+        Calculate range-based precision metrics.
+        Based on https://arxiv.org/pdf/1803.03639.
+
+        Args:
+            alpha: Relative importance of existence reward. 0 ≤ alpha ≤ 1.
+
+        Returns:
+            MetricsResult: Precision metrics.
+        """
+        labels_np = np.array(self.labels)
+        predictions_np = np.array(self.predictions)
+        system_labels_np = np.array(self.system_labels)
+        system_predictions_np = np.array(self.system_predictions)
+
+        per_class_precision = [
+            (
+                ts_precision(labels_np[:, i], predictions_np[:, i], alpha=alpha)
+                # if there are no anomalies detected, precision is 0
+                if not np.allclose(np.unique(predictions_np[:, i]), np.array([0]))
+                else 0
+            )
+            for i in range(self.labels.shape[1])
+        ]
+
+        mean_precision = torch.mean(torch.tensor(per_class_precision))
+
+        # doesn't make sense the global precision in range based metrics
+        global_precision = None
+
+        system_precision = ts_precision(
+            system_labels_np, system_predictions_np, alpha=alpha
+        )
+
+        return MetricsResult(
+            metric_global=global_precision,
+            metric_mean=float(mean_precision),
+            metric_per_class=torch.tensor(per_class_precision),
+            metric_system=float(system_precision),
+        )
+
+    def calculate_vus_roc(
+        self,
+        max_buffer_size: int = N_MAX_BUFFER_SIZE_DEFAULT,
+        max_th_samples: int = N_TH_SAMPLES_DEFAULT,
+    ):
+        """
+        Calculate VUS-ROC metrics.
+        Based on https://www.paparrizos.org/papers/PaparrizosVLDB22b.pdf.
+
+        Args:
+            max_buffer_size: Maximum size of the buffer region around an anomaly.
+                We iterate over all buffer sizes from 0 to ``max_buffer_size`` to
+                create the surface.
+            max_th_samples: Calculating precision and recall for many thresholds is
+                quite slow. We, therefore, uniformly sample thresholds from the
+                available score space. This parameter controls the maximum number of
+                thresholds; too low numbers degrade the metrics' quality.
+
+        Returns:
+            MetricsResult: VUS-ROC metrics.
+        """
+
+        vus_roc = RangeRocVUS(
+            max_buffer_size=max_buffer_size,
+            compatibility_mode=True,
+            max_samples=max_th_samples,
+        )
+        per_class_vus_roc = [
+            vus_roc(y_true=self.labels[:, i].numpy(), y_score=self.scores[:, i].numpy())
+            for i in range(self.labels.shape[1])
+        ]
+        mean_vus_roc = torch.mean(torch.tensor(per_class_vus_roc))
+
+        global_vus_roc = None
+
+        system_vus_roc = vus_roc(
+            y_true=self.system_labels.numpy(), y_score=self.system_scores.numpy()
+        )
+
+        return MetricsResult(
+            metric_global=global_vus_roc,
+            metric_mean=float(mean_vus_roc),
+            metric_per_class=torch.tensor(per_class_vus_roc),
+            metric_system=float(system_vus_roc),
+        )
+
     def get_all_metrics(self, alpha: float = 0.0) -> dict[str, torch.Tensor]:
         """
         Calculate all metrics and return as dictionary.
@@ -297,16 +355,18 @@ class MetricsCalculator:
         """
         precision = self.calculate_precision()
         recall = self.calculate_recall()
-        range_based_recall = self.calculate_range_based_recall(alpha=alpha)
-        range_based_precision = self.calculate_range_based_precision(alpha=alpha)
         f1 = self.calculate_f1(precision, recall)
+        range_based_precision = self.calculate_range_based_precision(alpha=alpha)
+        range_based_recall = self.calculate_range_based_recall(alpha=alpha)
+        vus_roc = self.calculate_vus_roc()
 
         return {
             **precision.model_dump("precision"),
             **recall.model_dump("recall"),
-            **range_based_recall.model_dump("range_based_recall"),
-            **range_based_precision.model_dump("range_based_precision"),
             **f1.model_dump("f1"),
+            **range_based_precision.model_dump("range_based_precision"),
+            **range_based_recall.model_dump("range_based_recall"),
+            **vus_roc.model_dump("vus_roc"),
         }
 
 
@@ -324,9 +384,10 @@ def visualize_metrics(
         {
             "Precision": metrics_dict["precision_per_class"],
             "Recall": metrics_dict["recall_per_class"],
-            "Range-based Recall": metrics_dict["range_based_recall_per_class"],
-            "Range-based Precision": metrics_dict["range_based_precision_per_class"],
             "F1 Score": metrics_dict["f1_per_class"],
+            "Range-based Precision": metrics_dict["range_based_precision_per_class"],
+            "Range-based Recall": metrics_dict["range_based_recall_per_class"],
+            "VUS-ROC": metrics_dict["vus_roc_per_class"],
         }
     )
 
@@ -342,7 +403,9 @@ def visualize_metrics(
     print(metrics_df.round(3).to_string())
 
 
-def get_metrics(predictions: torch.Tensor, labels: torch.Tensor) -> dict:
+def get_metrics(
+    predictions: torch.Tensor, labels: torch.Tensor, scores: torch.Tensor
+) -> dict:
     """
     Calculate and visualize all metrics for given predictions and labels.
 
@@ -353,7 +416,7 @@ def get_metrics(predictions: torch.Tensor, labels: torch.Tensor) -> dict:
     Returns:
         Dictionary containing all calculated metrics
     """
-    calculator = MetricsCalculator(labels, predictions)
+    calculator = MetricsCalculator(labels, predictions, scores)
     metrics = calculator.get_all_metrics()
 
     return metrics
@@ -376,10 +439,10 @@ def generate_metrics_table(metrics: dict) -> str:
             f"{metrics['recall_system']}",
         ],
         [
-            "Range-based Recall",
-            f"{metrics['range_based_recall_global']}",
-            f"{metrics['range_based_recall_mean']}",
-            f"{metrics['range_based_recall_system']}",
+            "F1",
+            f"{metrics['f1_global']}",
+            f"{metrics['f1_mean']}",
+            f"{metrics['f1_system']}",
         ],
         [
             "Range-based Precision",
@@ -388,10 +451,16 @@ def generate_metrics_table(metrics: dict) -> str:
             f"{metrics['range_based_precision_system']}",
         ],
         [
-            "F1",
-            f"{metrics['f1_global']}",
-            f"{metrics['f1_mean']}",
-            f"{metrics['f1_system']}",
+            "Range-based Recall",
+            f"{metrics['range_based_recall_global']}",
+            f"{metrics['range_based_recall_mean']}",
+            f"{metrics['range_based_recall_system']}",
+        ],
+        [
+            "VUS-ROC",
+            f"{metrics['vus_roc_global']}",
+            f"{metrics['vus_roc_mean']}",
+            f"{metrics['vus_roc_system']}",
         ],
     ]
     return tabulate.tabulate(metrics_table, headers="firstrow", tablefmt="grid")
@@ -401,17 +470,19 @@ def generate_metrics_per_class_table(metrics: dict) -> str:
     """Generate a table of per-class metrics as a string."""
     precision = metrics["precision_per_class"]
     recall = metrics["recall_per_class"]
-    range_based_recall = metrics["range_based_recall_per_class"]
-    range_based_precision = metrics["range_based_precision_per_class"]
     f1 = metrics["f1_per_class"]
+    range_based_precision = metrics["range_based_precision_per_class"]
+    range_based_recall = metrics["range_based_recall_per_class"]
+    vus_roc = metrics["vus_roc_per_class"]
     metrics_per_class_table = [
         [
             i,
             precision[i],
             recall[i],
-            range_based_recall[i],
-            range_based_precision[i],
             f1[i],
+            range_based_precision[i],
+            range_based_recall[i],
+            vus_roc[i],
         ]
         for i in range(len(precision))
     ]
@@ -422,9 +493,10 @@ def generate_metrics_per_class_table(metrics: dict) -> str:
             "Class",
             "Precision",
             "Recall",
-            "Range-based Recall",
-            "Range-based Precision",
             "F1",
+            "Range-based Precision",
+            "Range-based Recall",
+            "VUS-ROC",
         ],
         tablefmt="grid",
     )
