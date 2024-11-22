@@ -50,7 +50,7 @@ def main(
     n_workers: int,
     log_dir: str,
     log_every_n_steps: int,
-    ckpt_path: str | None,
+    ckpt_path: str | None = None,
 ):
     """
     Main function to train and evaluate the GDN model.

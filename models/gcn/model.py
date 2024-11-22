@@ -221,8 +221,8 @@ class GCN_PLModule(pl.LightningModule):
             batch_idx: The index of the current batch
 
         Returns:
-            tuple: (predictions, reconstructions)
+            tuple: predictions
         """
-        x = batch[0] if isinstance(batch, (list, tuple)) else batch
-        predictions, _ = self(x)
+        x, _, _, edge_index = batch
+        predictions, _ = self(x, edge_index)
         return predictions
