@@ -1,3 +1,5 @@
+from typing import Any
+
 import pytorch_lightning as pl
 import torch
 import torch.utils.data
@@ -195,9 +197,20 @@ class GCN_PLModule(pl.LightningModule):
                 self.best_model_score = float(self.checkpoint_cb.best_model_score)
                 self._register_best_metrics()
 
-    def configure_optimizers(self):
+    def configure_optimizers(self) -> Any:
+        """Configure optimizers for training."""
         optimizer = torch.optim.Adam(self.parameters(), lr=self.init_lr)  # type: ignore
-        return optimizer
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer, mode="min", factor=0.1, patience=5, verbose=True  # type: ignore
+        )
+        return {
+            "optimizer": optimizer,
+            "lr_scheduler": {
+                "scheduler": scheduler,
+                "monitor": "Loss/val",
+                "interval": "epoch",
+            },
+        }
 
     def predict_step(self, batch, batch_idx):
         """

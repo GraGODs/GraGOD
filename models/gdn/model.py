@@ -1,4 +1,5 @@
 import math
+from typing import Any
 
 import pytorch_lightning as pl
 import torch
@@ -293,7 +294,7 @@ class GDN_PLModule(pl.LightningModule):
                 self.best_model_score = float(self.checkpoint_cb.best_model_score)
                 self._register_best_metrics()
 
-    def configure_optimizers(self):
+    def configure_optimizers(self) -> Any:
         """Configure optimizers for training."""
         optimizer = torch.optim.Adam(self.parameters(), lr=self.init_lr)  # type: ignore
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
