@@ -362,26 +362,32 @@ class MetricsCalculator:
             max_samples=max_th_samples,
         )
 
+        scores_float64 = np.array(self.scores, dtype=np.float64)
+        labels_float64 = np.array(self.labels, dtype=np.float64)
+        system_labels_float64 = np.array(self.system_labels, dtype=np.float64)
+        system_scores_float64 = np.array(self.system_scores, dtype=np.float64)
+
         per_class_vus_roc = [
             (
                 vus_roc(
-                    y_true=self.labels[:, i].numpy().astype(float),
-                    y_score=self.scores[:, i].numpy().astype(float),
+                    y_true=labels_float64[:, i],
+                    y_score=scores_float64[:, i],
                 )
                 if not (
-                    np.allclose(np.unique(self.labels[:, i].numpy()), np.array([0]))
-                    or np.allclose(np.unique(self.scores[:, i].numpy()), np.array([0]))
+                    np.allclose(np.unique(labels_float64[:, i]), np.array([0]))
+                    or np.allclose(np.unique(scores_float64[:, i]), np.array([0]))
                 )
                 else 0
             )
-            for i in range(self.labels.shape[1])
+            for i in range(labels_float64.shape[1])
         ]
         mean_vus_roc = torch.mean(torch.tensor(per_class_vus_roc))
 
         global_vus_roc = None
 
-        system_vus_roc = vus_roc.score(
-            y_true=self.system_labels.numpy(), y_score=self.system_scores.numpy()
+        system_vus_roc = vus_roc(
+            y_true=system_labels_float64,
+            y_score=system_scores_float64,
         )
 
         return MetricsResult(
