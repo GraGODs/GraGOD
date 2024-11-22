@@ -46,7 +46,10 @@ def main(
     n_workers: int,
     log_dir: str,
     log_every_n_steps: int,
-    ckpt_path: str | None = None,
+    ckpt_path: str | None,
+    weight_decay: float,
+    eps: float,
+    betas: tuple[float, float],
 ):
     """
     Main function to train and evaluate the GDN model.
@@ -158,6 +161,9 @@ def main(
         checkpoint_cb=callback_dict["checkpoint"],
         logger=logger,
         log_every_n_steps=log_every_n_steps,
+        weight_decay=weight_decay,
+        eps=eps,
+        betas=betas,
     )
     if ckpt_path:
         trainer.load(ckpt_path)

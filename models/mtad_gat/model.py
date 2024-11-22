@@ -1,10 +1,9 @@
-import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 import torch.utils.data
 import torch.utils.data.dataloader
-from pytorch_lightning.callbacks import ModelCheckpoint
 
+from gragod.training.trainer import PLBaseModule
 from models.mtad_gat.modules import (
     ConvLayer,
     FeatureAttentionLayer,
@@ -102,7 +101,7 @@ class MTAD_GAT(nn.Module):
         return predictions, recons
 
 
-class MTAD_GAT_PLModule(pl.LightningModule):
+class MTAD_GAT_PLModule(PLBaseModule):
     """
     PyTorch Lightning module for the MTAD-GAT model.
 
@@ -119,41 +118,16 @@ class MTAD_GAT_PLModule(pl.LightningModule):
         checkpoint_cb: ModelCheckpoint callback for saving best models.
     """
 
-    def __init__(
-        self,
-        model: nn.Module,
-        model_params: dict,
-        criterion: dict[str, torch.nn.Module],
-        init_lr: float,
-        checkpoint_cb: ModelCheckpoint | None = None,
-        target_dims: int | None = None,
-        *args,
-        **kwargs,
-    ):
-        super().__init__()
-        self.model = model
-
-        self.model_params = model_params
-        self.init_lr = init_lr
-        self.forecast_criterion = criterion["forecast"]
-        self.recon_criterion = criterion["recon"]
-        self.target_dims = target_dims
-        self.best_model_score = None
-        self.checkpoint_cb = checkpoint_cb
-        self.best_metrics = None
-
-        self.save_hyperparameters(ignore=["model"])
-
     def _register_best_metrics(self):
         if self.global_step != 0:
             self.best_metrics = {
                 "epoch": self.trainer.current_epoch,
-                "train_loss": self.trainer.callback_metrics["Total_loss/train"],
+                "train_loss": self.trainer.callback_metrics["Loss/train"],
                 "train_recon_loss": self.trainer.callback_metrics["Recon_loss/train"],
                 "train_forecast_loss": self.trainer.callback_metrics[
                     "Forecast_loss/train"
                 ],
-                "val_loss": self.trainer.callback_metrics["Total_loss/val"],
+                "val_loss": self.trainer.callback_metrics["Loss/val"],
                 "val_recon_loss": self.trainer.callback_metrics["Recon_loss/val"],
                 "val_forecast_loss": self.trainer.callback_metrics["Forecast_loss/val"],
             }
@@ -185,7 +159,7 @@ class MTAD_GAT_PLModule(pl.LightningModule):
             logger=True,
         )
         self.log(
-            f"Total_loss/{step_type}",
+            f"Loss/{step_type}",
             loss,
             prog_bar=True,
             on_epoch=True,
@@ -223,28 +197,6 @@ class MTAD_GAT_PLModule(pl.LightningModule):
         loss, recon_loss, forecast_loss = self.shared_step(batch, batch_idx)
         self.call_logger(loss, recon_loss, forecast_loss, "val")
         return loss
-
-    def on_train_epoch_start(self):
-        if (
-            self.checkpoint_cb is not None
-            and self.checkpoint_cb.best_model_score is not None
-        ):
-            if self.best_model_score is None:
-                self.best_model_score = float(self.checkpoint_cb.best_model_score)
-                self._register_best_metrics()
-            elif (
-                self.checkpoint_cb.mode == "min"
-                and float(self.checkpoint_cb.best_model_score) < self.best_model_score
-            ) or (
-                self.checkpoint_cb.mode == "max"
-                and float(self.checkpoint_cb.best_model_score) > self.best_model_score
-            ):
-                self.best_model_score = float(self.checkpoint_cb.best_model_score)
-                self._register_best_metrics()
-
-    def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.init_lr)  # type: ignore
-        return optimizer
 
     def predict_step(self, batch, batch_idx):
         """
