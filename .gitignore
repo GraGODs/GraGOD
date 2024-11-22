@@ -150,3 +150,4 @@ saved_models/
 saved_model/
 results/
 output/
+lightning_logs/

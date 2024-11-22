@@ -86,6 +86,7 @@ def main(
     y_val = _get_attack_or_not_attack(y_val)
     y_test = _get_attack_or_not_attack(y_test)
 
+    # TODO: load this from each dataset
     # Create a fully connected graph
     edge_index = (
         torch.tensor(
@@ -177,10 +178,6 @@ def main(
         trainer.load(ckpt_path)
 
     trainer.fit(train_loader, val_loader, args_summary=args_summary)
-
-    # TODO: Run prediction with the best model, not the last one
-    # _, test_result = test(model, test_loader, torch.device(device))
-    # print_score(test_result, val_result, params["env_params"]["report"])
 
 
 if __name__ == "__main__":

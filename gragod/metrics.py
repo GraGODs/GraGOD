@@ -6,7 +6,7 @@ import tabulate
 import torch
 from prts import ts_precision, ts_recall
 from pydantic import BaseModel, ConfigDict, Field
-from timeeval.metrics import RangeRocVUS
+from timeeval.metrics.vus_metrics import RangeRocVUS
 
 N_TH_SAMPLES_DEFAULT = 1000
 N_MAX_BUFFER_SIZE_DEFAULT = 100
@@ -37,20 +37,20 @@ class MetricsResult(BaseModel):
     metric_global: float | None = Field(
         ...,
         description="Global metric across all classes",
-        gt=0,
+        ge=0,
         le=1,
     )
     metric_mean: float = Field(
         ...,
         description="Mean metric across classes",
-        gt=0,
+        ge=0,
         le=1,
     )
     metric_per_class: torch.Tensor = Field(..., description="Per-class metrics")
     metric_system: float = Field(
         ...,
         description="System-level metric",
-        gt=0,
+        ge=0,
         le=1,
     )
     round_digits: int = Field(
@@ -114,12 +114,21 @@ class MetricsCalculator:
             true_positives / predicted_positives,
             torch.zeros_like(predicted_positives, dtype=torch.float),
         )
-        global_precision = true_positives.sum() / predicted_positives.sum()
+        global_precision = (
+            true_positives.sum() / predicted_positives.sum()
+            if predicted_positives.sum() > 0
+            else 0
+        )
         mean_precision = torch.mean(per_class_precision)
 
         system_true_positives = torch.sum(self.system_labels & self.system_predictions)
         system_predicted_positives = torch.sum(self.system_predictions)
-        system_precision = system_true_positives / system_predicted_positives
+
+        system_precision = (
+            system_true_positives / system_predicted_positives
+            if system_predicted_positives > 0
+            else 0
+        )
 
         return MetricsResult(
             metric_global=float(global_precision),
@@ -147,11 +156,19 @@ class MetricsCalculator:
         )
 
         mean_recall = torch.mean(per_class_recall)
-        global_recall = true_positives.sum() / actual_positives.sum()
+        global_recall = (
+            true_positives.sum() / actual_positives.sum()
+            if actual_positives.sum() > 0
+            else 0
+        )
 
         system_true_positives = torch.sum(self.system_labels & self.system_predictions)
         system_actual_positives = torch.sum(self.system_labels)
-        system_recall = system_true_positives / system_actual_positives
+        system_recall = (
+            system_true_positives / system_actual_positives
+            if system_actual_positives > 0
+            else 0
+        )
 
         return MetricsResult(
             metric_global=float(global_recall),
@@ -235,18 +252,28 @@ class MetricsCalculator:
             (
                 ts_recall(labels_np[:, i], predictions_np[:, i], alpha=alpha)
                 # if there are no anomalies detected, recall is 0
-                if not np.allclose(np.unique(predictions_np[:, i]), np.array([0]))
+                if not (
+                    np.allclose(np.unique(predictions_np[:, i]), np.array([0]))
+                    or np.allclose(np.unique(labels_np[:, i]), np.array([0]))
+                )
                 else 0
             )
             for i in range(self.labels.shape[1])
         ]
 
-        mean_recall = torch.mean(torch.tensor(per_class_recall))
+        mean_recall = torch.mean(torch.tensor(per_class_recall, dtype=torch.float))
 
         # doesn't make sense the global recall in range based metrics
         global_recall = None
 
-        system_recall = ts_recall(system_labels_np, system_predictions_np, alpha=alpha)
+        system_recall = (
+            ts_recall(system_labels_np, system_predictions_np, alpha=alpha)
+            if not (
+                np.allclose(np.unique(system_predictions_np), np.array([0]))
+                or np.allclose(np.unique(system_labels_np), np.array([0]))
+            )
+            else 0
+        )
 
         return MetricsResult(
             metric_global=global_recall,
@@ -275,19 +302,29 @@ class MetricsCalculator:
             (
                 ts_precision(labels_np[:, i], predictions_np[:, i], alpha=alpha)
                 # if there are no anomalies detected, precision is 0
-                if not np.allclose(np.unique(predictions_np[:, i]), np.array([0]))
+                if not (
+                    np.allclose(np.unique(predictions_np[:, i]), np.array([0]))
+                    or np.allclose(np.unique(labels_np[:, i]), np.array([0]))
+                )
                 else 0
             )
             for i in range(self.labels.shape[1])
         ]
 
-        mean_precision = torch.mean(torch.tensor(per_class_precision))
+        mean_precision = torch.mean(
+            torch.tensor(per_class_precision, dtype=torch.float)
+        )
 
         # doesn't make sense the global precision in range based metrics
         global_precision = None
 
-        system_precision = ts_precision(
-            system_labels_np, system_predictions_np, alpha=alpha
+        system_precision = (
+            ts_precision(system_labels_np, system_predictions_np, alpha=alpha)
+            if not (
+                np.allclose(np.unique(system_predictions_np), np.array([0]))
+                or np.allclose(np.unique(system_labels_np), np.array([0]))
+            )
+            else 0
         )
 
         return MetricsResult(
@@ -324,15 +361,26 @@ class MetricsCalculator:
             compatibility_mode=True,
             max_samples=max_th_samples,
         )
+
         per_class_vus_roc = [
-            vus_roc(y_true=self.labels[:, i].numpy(), y_score=self.scores[:, i].numpy())
+            (
+                vus_roc(
+                    y_true=self.labels[:, i].numpy().astype(float),
+                    y_score=self.scores[:, i].numpy().astype(float),
+                )
+                if not (
+                    np.allclose(np.unique(self.labels[:, i].numpy()), np.array([0]))
+                    or np.allclose(np.unique(self.scores[:, i].numpy()), np.array([0]))
+                )
+                else 0
+            )
             for i in range(self.labels.shape[1])
         ]
         mean_vus_roc = torch.mean(torch.tensor(per_class_vus_roc))
 
         global_vus_roc = None
 
-        system_vus_roc = vus_roc(
+        system_vus_roc = vus_roc.score(
             y_true=self.system_labels.numpy(), y_score=self.system_scores.numpy()
         )
 
@@ -500,3 +548,11 @@ def generate_metrics_per_class_table(metrics: dict) -> str:
         ],
         tablefmt="grid",
     )
+
+
+def print_all_metrics(metrics: dict, message: str):
+    metrics_table = generate_metrics_table(metrics)
+    metrics_per_class_table = generate_metrics_per_class_table(metrics)
+    print(message)
+    print(metrics_table)
+    print(metrics_per_class_table)
