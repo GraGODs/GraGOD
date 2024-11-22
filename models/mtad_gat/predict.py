@@ -10,10 +10,10 @@ from datasets.config import get_dataset_config
 from datasets.dataset import SlidingWindowDataset
 from gragod import InterPolationMethods, ParamFileTypes
 from gragod.metrics import get_metrics, print_all_metrics
+from gragod.predictions.prediction import get_threshold
 from gragod.training import load_params, load_training_data, set_seeds
 from gragod.types import CleanMethods, cast_dataset
 from models.mtad_gat.model import MTAD_GAT, MTAD_GAT_PLModule
-from models.mtad_gat.spot import SPOT
 
 RANDOM_SEED = 42
 EPSILON = 0.8
@@ -53,26 +53,6 @@ def generate_scores(
     )
     score = score / (1 + EPSILON)
     return score
-
-
-def get_predictions(
-    train_score: torch.Tensor, test_score: torch.Tensor
-) -> tuple[torch.Tensor, torch.Tensor]:
-    """
-    Get threshold for anomaly detection.
-    """
-    thresholds = []
-    for i in range(train_score.shape[1]):
-        s = SPOT(q=1e-3)
-        s.fit(train_score[:, i].numpy(), test_score[:, i].numpy())
-        s.initialize(level=0.95)
-        ret = s.run(dynamic=False, with_alarm=False)
-        threshold = torch.Tensor(ret["thresholds"]).mean()
-        thresholds.append(threshold)
-    thresholds = torch.stack(thresholds)
-    predictions = test_score > thresholds
-    predictions = predictions.int()
-    return predictions, thresholds
 
 
 def main(
@@ -191,7 +171,11 @@ def main(
         window_size=window_size,
         EPSILON=EPSILON,
     )
-    X_test_pred, thresholds_test = get_predictions(train_scores, test_scores)
+    thresholds = get_threshold(
+        train_scores, X_train_labels, params["predictor_params"]["n_thresholds"]
+    )
+
+    X_test_pred = (test_scores > thresholds).float()
 
     metrics = get_metrics(X_test_pred, X_test_labels, test_scores)
     print_all_metrics(metrics, "------- Test -------")
@@ -209,7 +193,7 @@ def main(
         "labels": X_test_labels,
         "scores": test_scores,
         "data": X_test,
-        "thresholds": thresholds_test,
+        "thresholds": thresholds,
         "forecasts": forecasts_test,
         "reconstructions": reconstructions_test,
         "metrics": metrics,
