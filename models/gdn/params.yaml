@@ -35,5 +35,5 @@ env_params:
 
 predictor_params:
   dataset: "telco"
-  ckpt_folder: "output/gdn/version_1"
+  ckpt_folder: "output/gdn/version_0"
   n_thresholds: 100
