@@ -28,6 +28,7 @@ tabulate = "^0.9.0"
 timeeval = "^1.4.2"
 tqdm = "^4.66.4"
 seaborn = "^0.13.2"
+colorama = "^0.4.6"
 
 [tool.poetry.group.dev.dependencies]
 temporian = "^0.9.0"

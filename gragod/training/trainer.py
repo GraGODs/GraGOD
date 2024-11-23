@@ -1,11 +1,95 @@
+from typing import Any
+
 import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 import torch.utils.data
 import torch.utils.data.dataloader
+from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
 
 from gragod import PathType
+
+
+class PLBaseModule(pl.LightningModule):
+    """
+    Base class for PyTorch Lightning modules.
+
+    Every model that inherits from this class will have the same configuration
+    for the optimizer.
+    """
+
+    def __init__(
+        self,
+        model: nn.Module,
+        model_params: dict,
+        checkpoint_cb: ModelCheckpoint,
+        init_lr: float = 0.001,
+        criterion: torch.nn.Module | dict[str, torch.nn.Module] = nn.MSELoss(),
+        target_dims: int | None = None,
+        weight_decay: float = 1e-5,
+        eps: float = 1e-8,
+        betas: tuple[float, float] = (0.9, 0.999),
+        *args,
+        **kwargs,
+    ):
+        super().__init__()
+        self.model = model
+        self.model_params = model_params
+        self.init_lr = init_lr
+        self.checkpoint_cb = checkpoint_cb
+        self.target_dims = target_dims
+        self.best_model_score = None
+        self.best_metrics = None
+        self.weight_decay = weight_decay
+        self.eps = eps
+        self.betas = betas
+
+        if isinstance(criterion, nn.Module):
+            self.criterion = criterion
+        else:
+            for key, value in criterion.items():
+                setattr(self, key, value)
+
+        self.save_hyperparameters(ignore=["model", "criterion"])
+
+    def on_train_epoch_start(self):
+        if (
+            self.checkpoint_cb is not None
+            and self.checkpoint_cb.best_model_score is not None
+        ):
+            if self.best_model_score is None:
+                self.best_model_score = float(self.checkpoint_cb.best_model_score)
+                self._register_best_metrics()
+            elif (
+                self.checkpoint_cb.mode == "min"
+                and float(self.checkpoint_cb.best_model_score) < self.best_model_score
+            ) or (
+                self.checkpoint_cb.mode == "max"
+                and float(self.checkpoint_cb.best_model_score) > self.best_model_score
+            ):
+                self.best_model_score = float(self.checkpoint_cb.best_model_score)
+                self._register_best_metrics()
+
+    def configure_optimizers(self) -> Any:
+        optimizer = torch.optim.Adam(  # type: ignore
+            self.parameters(),
+            lr=self.init_lr,
+            weight_decay=self.weight_decay,
+            eps=self.eps,
+            betas=self.betas,
+        )
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer, mode="min", factor=0.1, patience=5, verbose=True  # type: ignore
+        )
+        return {
+            "optimizer": optimizer,
+            "lr_scheduler": {
+                "scheduler": scheduler,
+                "monitor": "Loss/val",
+                "interval": "epoch",
+            },
+        }
 
 
 class TrainerPL:
@@ -34,7 +118,7 @@ class TrainerPL:
         self,
         # Model related
         model: nn.Module,
-        model_pl: type[pl.LightningModule],
+        model_pl: type[PLBaseModule],
         model_params: dict,
         criterion: torch.nn.Module | dict[str, torch.nn.Module],
         batch_size: int,
@@ -44,9 +128,12 @@ class TrainerPL:
         log_dir: str,
         logger: TensorBoardLogger,
         callbacks: list[pl.Callback],
-        checkpoint_cb: pl.Callback | None,
+        checkpoint_cb: ModelCheckpoint,
         target_dims: int | None = None,
         log_every_n_steps: int = 1,
+        weight_decay: float = 1e-5,
+        eps: float = 1e-8,
+        betas: tuple[float, float] = (0.9, 0.999),
     ):
         self.n_epochs = n_epochs
         self.batch_size = batch_size
@@ -63,6 +150,9 @@ class TrainerPL:
             checkpoint_cb=checkpoint_cb,
             criterion=criterion,
             target_dims=target_dims,
+            weight_decay=weight_decay,
+            eps=eps,
+            betas=betas,
         )
 
         self.logger = logger

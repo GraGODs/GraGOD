@@ -40,6 +40,9 @@ def main(
     log_dir: str,
     log_every_n_steps: int,
     ckpt_path: str | None = None,
+    weight_decay: float = 1e-5,
+    eps: float = 1e-8,
+    betas: tuple[float, float] = (0.9, 0.999),
 ):
     dataset = cast_dataset(dataset_name)
     dataset_config = get_dataset_config(dataset=dataset)
@@ -112,7 +115,7 @@ def main(
     callback_dict = get_training_callbacks(
         log_dir=logger.log_dir,
         model_name=model_name,
-        monitor="Total_loss/val",
+        monitor="Loss/val",
     )
     callbacks = list(callback_dict.values())
 
@@ -120,7 +123,7 @@ def main(
         model=model,
         model_pl=MTAD_GAT_PLModule,
         model_params=params["model_params"],
-        criterion={"forecast": nn.MSELoss(), "recon": nn.MSELoss()},
+        criterion={"forecast_criterion": nn.MSELoss(), "recon_criterion": nn.MSELoss()},
         batch_size=batch_size,
         n_epochs=n_epochs,
         init_lr=init_lr,
@@ -131,6 +134,9 @@ def main(
         checkpoint_cb=callback_dict["checkpoint"],
         target_dims=target_dims,
         log_every_n_steps=log_every_n_steps,
+        weight_decay=weight_decay,
+        eps=eps,
+        betas=betas,
     )
     if ckpt_path:
         trainer.load(ckpt_path)

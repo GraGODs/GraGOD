@@ -1,14 +1,12 @@
 import math
-from typing import Any
 
-import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.utils.data
 import torch.utils.data.dataloader
-from pytorch_lightning.callbacks import ModelCheckpoint
 
+from gragod.training.trainer import PLBaseModule
 from models.gdn.modules import GNNLayer, OutLayer
 
 
@@ -188,7 +186,7 @@ class GDN(nn.Module):
         return batch_edge_index.long()
 
 
-class GDN_PLModule(pl.LightningModule):
+class GDN_PLModule(PLBaseModule):
     """
     PyTorch Lightning module for the GDN model.
 
@@ -202,27 +200,6 @@ class GDN_PLModule(pl.LightningModule):
         criterion: Loss function for training
         checkpoint_cb: ModelCheckpoint callback for saving best models
     """
-
-    def __init__(
-        self,
-        model: nn.Module,
-        model_params: dict,
-        init_lr: float = 0.001,
-        criterion: torch.nn.Module = nn.MSELoss(),
-        checkpoint_cb: ModelCheckpoint | None = None,
-        *args,
-        **kwargs,
-    ):
-        super().__init__()
-        self.model = model
-        self.model_params = model_params
-        self.init_lr = init_lr
-        self.criterion = criterion
-        self.checkpoint_cb = checkpoint_cb
-        self.best_model_score = None
-        self.best_metrics = None
-
-        self.save_hyperparameters(ignore=["model"])
 
     def _register_best_metrics(self):
         """Register the best metrics during training."""
@@ -274,40 +251,6 @@ class GDN_PLModule(pl.LightningModule):
         loss = self.shared_step(batch, batch_idx)
         self.call_logger(loss, "val")
         return loss
-
-    def on_train_epoch_start(self):
-        """Called at the start of each training epoch."""
-        if (
-            self.checkpoint_cb is not None
-            and self.checkpoint_cb.best_model_score is not None
-        ):
-            if self.best_model_score is None:
-                self.best_model_score = float(self.checkpoint_cb.best_model_score)
-                self._register_best_metrics()
-            elif (
-                self.checkpoint_cb.mode == "min"
-                and float(self.checkpoint_cb.best_model_score) < self.best_model_score
-            ) or (
-                self.checkpoint_cb.mode == "max"
-                and float(self.checkpoint_cb.best_model_score) > self.best_model_score
-            ):
-                self.best_model_score = float(self.checkpoint_cb.best_model_score)
-                self._register_best_metrics()
-
-    def configure_optimizers(self) -> Any:
-        """Configure optimizers for training."""
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.init_lr)  # type: ignore
-        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, mode="min", factor=0.1, patience=5, verbose=True  # type: ignore
-        )
-        return {
-            "optimizer": optimizer,
-            "lr_scheduler": {
-                "scheduler": scheduler,
-                "monitor": "Loss/val",
-                "interval": "epoch",
-            },
-        }
 
     def predict_step(self, batch, batch_idx):
         """
