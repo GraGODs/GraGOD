@@ -1,4 +1,5 @@
 import argparse
+import json
 import os
 
 import pytorch_lightning as pl
@@ -180,6 +181,34 @@ def main(
     print_all_metrics(train_metrics, "------- Train -------")
     print_all_metrics(val_metrics, "------- Validation -------")
     print_all_metrics(test_metrics, "------- Test -------")
+
+    json.dump(
+        train_metrics,
+        open(
+            os.path.join(
+                params["predictor_params"]["ckpt_folder"], "train_metrics.json"
+            ),
+            "w",
+        ),
+    )
+
+    json.dump(
+        val_metrics,
+        open(
+            os.path.join(params["predictor_params"]["ckpt_folder"], "val_metrics.json"),
+            "w",
+        ),
+    )
+
+    json.dump(
+        test_metrics,
+        open(
+            os.path.join(
+                params["predictor_params"]["ckpt_folder"], "test_metrics.json"
+            ),
+            "w",
+        ),
+    )
 
 
 if __name__ == "__main__":
