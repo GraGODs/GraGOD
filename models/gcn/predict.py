@@ -212,6 +212,16 @@ def main(
         ),
     )
 
+    return {
+        "predictions": test_pred,
+        "labels": X_test_labels,
+        "scores": test_scores,
+        "data": X_test,
+        "thresholds": threshold,
+        "forecasts": forecasts_test,
+        "metrics": test_metrics,
+    }
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
