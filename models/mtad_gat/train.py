@@ -115,7 +115,7 @@ def main(
     callback_dict = get_training_callbacks(
         log_dir=logger.log_dir,
         model_name=model_name,
-        monitor="Total_loss/val",
+        monitor="Loss/val",
     )
     callbacks = list(callback_dict.values())
 
