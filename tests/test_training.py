@@ -1,3 +1,4 @@
+import pytest
 from colorama import Fore, Style
 
 from gragod.training import load_params, set_seeds
@@ -7,6 +8,7 @@ from models.gdn.train import main as train_gdn
 from models.mtad_gat.train import main as train_mtad_gat
 
 
+@pytest.mark.parallel
 def test_gcn_training():
     """
     Run 1 epoch of training for the GCN model for the given dataset.
@@ -31,6 +33,7 @@ def test_gcn_training():
     print(f"{Fore.GREEN}GCN training completed!{Style.RESET_ALL}")
 
 
+@pytest.mark.parallel
 def test_gdn_training():
     """
     Run 1 epoch of training for the GDN model for the given dataset.
@@ -55,6 +58,7 @@ def test_gdn_training():
     print(f"{Fore.GREEN}GDN training completed!{Style.RESET_ALL}")
 
 
+@pytest.mark.parallel
 def test_mtad_gat_training():
     """
     Run 1 epoch of training for the MTAD-GAT model for the given dataset.

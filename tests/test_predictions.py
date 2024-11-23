@@ -1,9 +1,12 @@
+import pytest
+
 from gragod.training import load_params, set_seeds
 from gragod.types import Datasets, ParamFileTypes
 from models.gdn.predict import main as predict_gdn
 from models.mtad_gat.predict import main as predict_mtad_gat
 
 
+@pytest.mark.parallel
 def test_gcn_predictions():
     """
     Test predictions for the GCN model.
@@ -12,6 +15,7 @@ def test_gcn_predictions():
     pass
 
 
+@pytest.mark.parallel
 def test_gdn_predictions():
     """
     Test predictions for the GDN model.
@@ -36,6 +40,7 @@ def test_gdn_predictions():
     # assert result is not None, "GDN prediction result should not be None"
 
 
+@pytest.mark.parallel
 def test_mtad_gat_predictions():
     """
     Test predictions for the MTAD-GAT model.
