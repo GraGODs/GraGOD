@@ -32,8 +32,8 @@ def test_gdn_predictions():
         **gdn_params["train_params"],
     )
 
-    # TODO: Add assertions to verify the prediction result
-    # assert result is not None, "GDN prediction result should not be None"
+    # Add assertions to verify the prediction result
+    assert result is not None, "GDN prediction result should not be None"
 
 
 def test_mtad_gat_predictions():
