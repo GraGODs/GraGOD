@@ -66,6 +66,6 @@ Each script will output the predictions in the `output/{model_name}/version_{ver
 
 To run the tests for the project, use the following command:
 
-`poetry run pytest`
+`poetry run pytest -n auto`
 
 This will execute all the test cases defined in your project. Ensure that you have `pytest` installed in your virtual environment.
