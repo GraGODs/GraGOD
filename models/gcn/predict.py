@@ -13,20 +13,21 @@ from gragod.metrics import get_metrics, print_all_metrics
 from gragod.predictions.prediction import get_threshold
 from gragod.training import load_params, load_training_data
 from gragod.types import cast_dataset
-from models.gdn.model import GDN, GDN_PLModule
+from models.gcn.model import GCN, GCN_PLModule
 
 
 def run_model(
-    model: GDN_PLModule,
+    model: GCN_PLModule,
     loader: DataLoader,
     device: str,
+    edge_index: torch.Tensor,
 ) -> torch.Tensor:
     """
     Generate predictions and calculate anomaly scores.
     Returns the anomaly predictions and evaluation metrics.
     """
     trainer = pl.Trainer(accelerator=device)
-    output = trainer.predict(model, loader)
+    output = trainer.predict(model, loader, return_predictions=True)
     if output is None:
         raise ValueError("Model predictions returned None")
 
@@ -82,28 +83,6 @@ def main(
     X_val_labels = X_val_labels[window_size:]
     X_test_labels = X_test_labels[window_size:]
 
-    # Create test dataloader
-    train_dataset = SlidingWindowDataset(X_train, window_size)
-    train_loader = DataLoader(
-        train_dataset,
-        batch_size=batch_size,
-        num_workers=n_workers,
-    )
-
-    val_dataset = SlidingWindowDataset(X_val, window_size)
-    val_loader = DataLoader(
-        val_dataset,
-        batch_size=batch_size,
-        num_workers=n_workers,
-    )
-
-    test_dataset = SlidingWindowDataset(X_test, window_size)
-    test_loader = DataLoader(
-        test_dataset,
-        batch_size=batch_size,
-        num_workers=n_workers,
-    )
-
     # TODO: load this from each dataset
     # Create a fully connected graph
     edge_index = (
@@ -114,20 +93,40 @@ def main(
         .t()
         .to(device)
     )
-    # Create and load model
 
-    model = GDN(
-        [edge_index],
-        X_train.shape[1],
-        embed_dim=model_params["embed_dim"],
-        input_dim=model_params["window_size"],
-        out_layer_num=model_params["out_layer_num"],
-        out_layer_inter_dim=model_params["out_layer_inter_dim"],
-        topk=model_params["topk"],
+    # Create test dataloader
+    train_dataset = SlidingWindowDataset(X_train, window_size, edge_index=edge_index)
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=batch_size,
+        num_workers=n_workers,
     )
 
+    val_dataset = SlidingWindowDataset(X_val, window_size, edge_index=edge_index)
+    val_loader = DataLoader(
+        val_dataset,
+        batch_size=batch_size,
+        num_workers=n_workers,
+    )
+
+    test_dataset = SlidingWindowDataset(X_test, window_size, edge_index=edge_index)
+    test_loader = DataLoader(
+        test_dataset,
+        batch_size=batch_size,
+        num_workers=n_workers,
+    )
+
+    # Create and load model
+
+    model = GCN(
+        window_size=model_params["window_size"],
+        n_layers=model_params["n_layers"],
+        hidden_dim=model_params["hidden_dim"],
+        K=model_params["K"],
+    ).to(device)
+
     checkpoint_path = (
-        os.path.join(params["predictor_params"]["ckpt_folder"], "gdn.ckpt")
+        os.path.join(params["predictor_params"]["ckpt_folder"], "gcn.ckpt")
         if ckpt_path is None
         else ckpt_path
     )
@@ -136,7 +135,7 @@ def main(
         raise ValueError(f"Checkpoint not found at {checkpoint_path}")
 
     print(f"Loading model from checkpoint: {checkpoint_path}")
-    lightning_module = GDN_PLModule.load_from_checkpoint(
+    lightning_module = GCN_PLModule.load_from_checkpoint(
         checkpoint_path,
         model=model,
         model_params=model_params,
@@ -152,16 +151,19 @@ def main(
         model=lightning_module,
         loader=train_loader,
         device=device,
+        edge_index=edge_index,
     )
     forecasts_val = run_model(
         model=lightning_module,
         loader=val_loader,
         device=device,
+        edge_index=edge_index,
     )
     forecasts_test = run_model(
         model=lightning_module,
         loader=test_loader,
         device=device,
+        edge_index=edge_index,
     )
 
     train_scores = torch.abs(forecasts_train - X_train[window_size:])
@@ -213,7 +215,7 @@ def main(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--params_file", type=str, default="models/gdn/params.yaml")
+    parser.add_argument("--params_file", type=str, default="models/gcn/params.yaml")
     parser.add_argument("--ckpt_path", type=str, default=None)
     args = parser.parse_args()
     params = load_params(args.params_file, file_type=ParamFileTypes.YAML)
