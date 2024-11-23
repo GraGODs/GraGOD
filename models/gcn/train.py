@@ -1,11 +1,6 @@
 import argparse
 
 import torch
-from pytorch_lightning.callbacks import (
-    EarlyStopping,
-    LearningRateMonitor,
-    ModelCheckpoint,
-)
 from pytorch_lightning.loggers import TensorBoardLogger
 from torch.utils.data import DataLoader
 
@@ -13,6 +8,7 @@ from datasets.config import get_dataset_config
 from datasets.dataset import SlidingWindowDataset
 from gragod import CleanMethods, InterPolationMethods, ParamFileTypes, cast_dataset
 from gragod.training import load_params, load_training_data, set_seeds
+from gragod.training.callbacks import get_training_callbacks
 from gragod.training.trainer import TrainerPL
 from models.gcn.model import GCN, GCN_PLModule
 
@@ -113,24 +109,12 @@ def main(
     )
 
     # Define callbacks
-    early_stop = EarlyStopping(
+    callback_dict = get_training_callbacks(
+        log_dir=logger.log_dir,
+        model_name=model_name,
         monitor="Loss/val",
-        min_delta=0.0001,
-        patience=2,
-        verbose=True,
-        mode="min",
     )
-    checkpoint = ModelCheckpoint(
-        monitor="Loss/val",
-        dirpath=logger.log_dir,
-        filename=model_name,
-        save_top_k=1,
-        mode="min",
-    )
-    lr_monitor = LearningRateMonitor(logging_interval="step")
-
-    callbacks = [early_stop, checkpoint, lr_monitor]
-
+    callbacks = list(callback_dict.values())
     trainer = TrainerPL(
         model=model,
         model_pl=GCN_PLModule,
@@ -142,7 +126,7 @@ def main(
         device=device,
         log_dir=log_dir,
         callbacks=callbacks,
-        checkpoint_cb=checkpoint,
+        checkpoint_cb=callback_dict["checkpoint"],
         logger=logger,
         log_every_n_steps=log_every_n_steps,
     )
