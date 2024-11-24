@@ -14,13 +14,12 @@ from models.gdn.train import main as train_main
 def objective(
     trial: optuna.Trial, base_params: Dict[str, Any], study_name: str
 ) -> float:
-    # Suggest hyperparameters
     model_params = {
-        "window_size": trial.suggest_int("window_size", 10, 30),
+        "window_size": trial.suggest_int("window_size", 5, 100),
         "embed_dim": trial.suggest_int("embed_dim", 32, 128),
         "out_layer_num": trial.suggest_int("out_layer_num", 1, 7),
         "out_layer_inter_dim": trial.suggest_int("out_layer_inter_dim", 128, 512),
-        "topk": trial.suggest_int("topk", 3, 10),
+        "topk": trial.suggest_int("topk", 3, 12),
         "dropout": trial.suggest_float("dropout", 0.1, 0.5),
     }
 

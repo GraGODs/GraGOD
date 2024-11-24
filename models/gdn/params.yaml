@@ -3,8 +3,8 @@ dataset: "telco"
 train_params:
   shuffle: true
   model_name: "gdn"
-  batch_size: 128
-  n_epochs: 5
+  batch_size: 256
+  n_epochs: 100
   val_size: 0.1
   device: "cpu"
   init_lr: 0.001

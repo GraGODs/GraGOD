@@ -31,11 +31,12 @@ class GDN(nn.Module):
     Args:
         edge_index_sets: List of edge indices for different graph structures.
         node_num: Number of nodes in the graph.
-        dim: Dimension of node embeddings.
+        embed_dim: Dimension of node embeddings.
         out_layer_inter_dim: Intermediate dimension in output layer.
         input_dim: Input feature dimension.
         out_layer_num: Number of layers in output MLP.
         topk: Number of top similarities to consider for each node.
+        dropout: Dropout rate.
     """
 
     def __init__(
