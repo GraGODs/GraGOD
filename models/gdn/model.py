@@ -46,6 +46,7 @@ class GDN(nn.Module):
         input_dim: int = 10,
         out_layer_num: int = 1,
         topk: int = 20,
+        dropout: float = 0.2,
     ):
         super(GDN, self).__init__()
 
@@ -67,7 +68,7 @@ class GDN(nn.Module):
 
         self.cache_edge_index_sets = [None] * edge_set_num
 
-        self.dp = nn.Dropout(0.2)
+        self.dp = nn.Dropout(dropout)
         self.init_params()
 
     def init_params(self):

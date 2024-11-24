@@ -127,6 +127,7 @@ def main(
         out_layer_num=model_params["out_layer_num"],
         out_layer_inter_dim=model_params["out_layer_inter_dim"],
         topk=model_params["topk"],
+        dropout=model_params["dropout"],
     ).to(device)
 
     args_summary = {
