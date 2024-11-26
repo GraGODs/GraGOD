@@ -17,11 +17,11 @@ model_params:
 
 train_params:
   model_name: "mtad_gat"
-  n_epochs: 30
+  n_epochs: 2
   batch_size: 264
   init_lr: 0.001
   target_dims: null
-  device: "cuda"
+  device: "gpu"
   n_workers: 0
   log_dir: "output"
   log_every_n_steps: 1

@@ -172,7 +172,7 @@ class TrainerPL:
         val_loader: torch.utils.data.DataLoader | None = None,
         args_summary: dict = {},
     ):
-        trainer = pl.Trainer(
+        self.trainer = pl.Trainer(
             max_epochs=self.n_epochs,
             accelerator=self.device,
             logger=self.logger,
@@ -181,7 +181,7 @@ class TrainerPL:
             gradient_clip_val=1.0,
         )
 
-        trainer.fit(self.lightning_module, train_loader, val_loader)
+        self.trainer.fit(self.lightning_module, train_loader, val_loader)
 
         best_metrics = {
             k: v
@@ -190,7 +190,5 @@ class TrainerPL:
         }
         self.logger.log_hyperparams(params=args_summary, metrics=best_metrics)
 
-    def load(self, path: PathType):
-        self.lightning_module.model.load_state_dict(
-            torch.load(path, map_location=self.device)
-        )
+    def predict(self, loader: torch.utils.data.DataLoader):
+        return self.trainer.predict(self.lightning_module, loader)
