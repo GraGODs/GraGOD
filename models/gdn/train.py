@@ -1,4 +1,5 @@
 import argparse
+from typing import Literal
 
 import torch
 import torch.nn as nn
@@ -36,6 +37,11 @@ def main(
     weight_decay: float,
     eps: float,
     betas: tuple[float, float],
+    monitor: str,
+    monitor_mode: Literal["min", "max"],
+    early_stop_patience: int,
+    early_stop_delta: float,
+    save_top_k: int,
 ):
     """
     Main function to train and evaluate the GDN model.
@@ -125,7 +131,11 @@ def main(
     callback_dict = get_training_callbacks(
         log_dir=logger.log_dir,
         model_name=model_name,
-        monitor="Loss/val",
+        monitor=monitor,
+        monitor_mode=monitor_mode,
+        early_stop_patience=early_stop_patience,
+        early_stop_delta=early_stop_delta,
+        save_top_k=save_top_k,
     )
     callbacks = list(callback_dict.values())
 
