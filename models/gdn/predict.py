@@ -211,13 +211,13 @@ def main(
     )
 
     return {
-        "predictions": test_pred,
-        "labels": X_test_labels,
-        "scores": test_scores,
-        "data": X_test,
+        "predictions": val_pred,
+        "labels": X_val_labels,
+        "scores": val_scores,
+        "data": X_val,
         "thresholds": threshold,
-        "forecasts": forecasts_test,
-        "metrics": test_metrics,
+        "forecasts": forecasts_val,
+        "metrics": val_metrics,
     }
 
 
