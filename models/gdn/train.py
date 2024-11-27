@@ -15,20 +15,6 @@ from gragod.types import cast_dataset
 from models.gdn.model import GDN, GDN_PLModule
 
 
-def _get_attack_or_not_attack(labels: torch.Tensor) -> torch.Tensor:
-    """Gets the attack or not attack tensor.
-
-    It's a tensor with 1 if the attack is present in any of the columns and 0 otherwise.
-
-    Args:
-        labels: The labels tensor.
-
-    Returns:
-        The attack or not attack tensor.
-    """
-    return (labels.sum(dim=1) > 0).float()
-
-
 def main(
     dataset_name: str,
     model_name: str,
@@ -73,7 +59,7 @@ def main(
     dataset_config = get_dataset_config(dataset=dataset)
 
     # Load data
-    X_train, X_val, X_test, y_train, y_val, y_test = load_training_data(
+    X_train, X_val, *_ = load_training_data(
         dataset=dataset,
         test_size=test_size,
         val_size=val_size,
@@ -81,9 +67,6 @@ def main(
         clean=clean == CleanMethods.INTERPOLATE.value,
         interpolate_method=interpolate_method,
     )
-    y_train = _get_attack_or_not_attack(y_train)
-    y_val = _get_attack_or_not_attack(y_val)
-    y_test = _get_attack_or_not_attack(y_test)
 
     # TODO: load this from each dataset
     # Create a fully connected graph
@@ -98,7 +81,6 @@ def main(
 
     train_dataset = SlidingWindowDataset(
         data=X_train,
-        labels=y_train,
         edge_index=edge_index,
         window_size=model_params["window_size"],
         drop=clean == CleanMethods.DROP.value,
@@ -110,7 +92,6 @@ def main(
 
     val_dataset = SlidingWindowDataset(
         data=X_val,
-        labels=y_val,
         edge_index=edge_index,
         window_size=model_params["window_size"],
         drop=clean == CleanMethods.DROP.value,
