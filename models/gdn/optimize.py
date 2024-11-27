@@ -23,6 +23,8 @@ def objective(
         "dropout": trial.suggest_float("dropout", 0.1, 0.5),
     }
 
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0"  # Force using first GPU
+
     train_params = base_params["train_params"].copy()
     train_params.update(
         {
