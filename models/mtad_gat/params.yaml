@@ -1,28 +1,28 @@
 dataset: "telco"
 
 model_params:
-  window_size: 16
-  kernel_size: 7
+  window_size: 200
+  kernel_size: 11
   use_gatv2: true
   feat_gat_embed_dim: null
   time_gat_embed_dim: null
-  gru_n_layers: 1
-  gru_hid_dim: 300
-  forecast_n_layers: 3
-  forecast_hid_dim: 300
-  recon_n_layers: 1
-  recon_hid_dim: 300
+  gru_n_layers: 5
+  gru_hid_dim: 400
+  forecast_n_layers: 5
+  forecast_hid_dim: 400
+  recon_n_layers: 5
+  recon_hid_dim: 400
   dropout: 0.3
   alpha: 0.2
 
 train_params:
   model_name: "mtad_gat"
-  n_epochs: 2
-  batch_size: 264
+  n_epochs: 100
+  batch_size: 512
   init_lr: 0.001
   target_dims: null
   device: "gpu"
-  n_workers: 0
+  n_workers: 10
   log_dir: "output"
   log_every_n_steps: 1
   test_size: 0.1
