@@ -124,6 +124,8 @@ def main(
         out_layer_num=model_params["out_layer_num"],
         out_layer_inter_dim=model_params["out_layer_inter_dim"],
         topk=model_params["topk"],
+        heads=model_params["heads"],
+        dropout=model_params["dropout"],
     )
 
     checkpoint_path = (

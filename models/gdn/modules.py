@@ -78,14 +78,26 @@ class GNNLayer(nn.Module):
         in_channel: Number of input channels.
         out_channel: Number of output channels.
         heads: Number of attention heads.
+        dropout: Dropout rate.
     """
 
-    def __init__(self, in_channel, out_channel, heads=1):
+    def __init__(
+        self,
+        in_channel: int,
+        out_channel: int,
+        heads: int = 1,
+        dropout: float = 0,
+    ):
         super(GNNLayer, self).__init__()
 
-        self.gnn = GraphLayer(in_channel, out_channel, heads=heads, concat_heads=False)
+        self.gnn = GraphLayer(
+            in_channel,
+            out_channel,
+            heads=heads,
+            dropout=dropout,
+        )
 
-        self.bn = nn.BatchNorm1d(out_channel)
+        self.bn = nn.BatchNorm1d(heads * out_channel)
         self.relu = nn.ReLU()
 
     def forward(self, x, edge_index, embedding=None, node_num=0):
@@ -115,7 +127,6 @@ class GraphLayer(MessagePassing):
         in_channels: Number of input channels for the layer
         out_channels: Number of output channels for the layer
         heads: Number of heads for multi-head attention
-        concat_heads: Whether to concatenate across heads
         negative_slope: Slope for LeakyReLU
         dropout: Dropout rate
         lin: Linear layer for transforming input
@@ -129,31 +140,31 @@ class GraphLayer(MessagePassing):
         in_channels: Number of input channels.
         out_channels: Number of output channels.
         heads: Number of attention heads.
-        concat_heads: Whether to concatenate attention heads.
         negative_slope: Negative slope for LeakyReLU.
         dropout: Dropout rate.
     """
 
     def __init__(
         self,
-        in_channels,
-        out_channels,
-        heads=1,
-        concat_heads=True,
-        negative_slope=0.2,
-        dropout=0,
+        in_channels: int,
+        out_channels: int,
+        heads: int = 1,
+        negative_slope: float = 0.2,
+        dropout: float = 0,
     ):
         super(GraphLayer, self).__init__(aggr="add", node_dim=0)
 
         self.in_channels = in_channels
         self.out_channels = out_channels
         self.heads = heads
-        self.concat_heads = concat_heads
         self.negative_slope = negative_slope
         self.dropout = dropout
 
+        # output channels are heads * out_channels
+        self._out_channels = heads * out_channels
+
         # parameters related to weight matrix W
-        self.lin = Linear(in_channels, heads * out_channels, bias=False)
+        self.lin = Linear(in_channels, self._out_channels, bias=False)
 
         # attention parameters related to x_i, x_j
         self.att_i = Parameter(torch.Tensor(1, heads, out_channels))
@@ -163,8 +174,6 @@ class GraphLayer(MessagePassing):
         self.att_em_i = Parameter(torch.Tensor(1, heads, out_channels))
         self.att_em_j = Parameter(torch.Tensor(1, heads, out_channels))
 
-        # if concatenating the across heads, consider the change of out_channels
-        self._out_channels = heads * out_channels if concat_heads else out_channels
         self.bias = Parameter(torch.Tensor(self._out_channels))
 
         self.reset_parameters()
@@ -224,32 +233,33 @@ class GraphLayer(MessagePassing):
         eq (6)-(8) in [1].
 
         Args:
-            x_i: Source node features of shape [(topk x N x batch_size), out_channels]
-            x_j: Target node features of shape [(topk x N x batch_size), out_channels]
+            x_i: Source node features of shape
+                [(topk x N x batch_size), heads, out_channels]
+            x_j: Target node features of shape
+                [(topk x N x batch_size), heads, out_channels]
             edge_index_i: Source node indices of shape [(topk x N x batch_size)]
             size_i: Number of source nodes (N x batch_size)
-            embedding: Node embeddings of shape [(N x batch_size), out_channels]
+            embedding: Node embeddings of shape [(N x batch_size), heads, out_channels]
             edges: Edge indices of shape [2, (topk x N x batch_size)]
 
         Returns:
             Attention-weighted node features.
         """
-        # transform to [(topk x N x batch_size), 1, out_channels]
+        # transform to [(topk x N x batch_size), heads, out_channels]
         x_i = x_i.view(-1, self.heads, self.out_channels)
         x_j = x_j.view(-1, self.heads, self.out_channels)
 
-        if embedding is not None:
-            # [(topk x N x batch_size), 1, out_channels]
-            embedding_i = embedding[edge_index_i].unsqueeze(1).repeat(1, self.heads, 1)
-            embedding_j = embedding[edges[0]].unsqueeze(1).repeat(1, self.heads, 1)
+        # [(topk x N x batch_size), self.heads, out_channels]
+        embedding_i = embedding[edge_index_i].unsqueeze(1).repeat(1, self.heads, 1)
+        embedding_j = embedding[edges[0]].unsqueeze(1).repeat(1, self.heads, 1)
 
-            # [(topk x N x batch_size), 1, 2 x out_channels]
-            key_i = torch.cat((x_i, embedding_i), dim=-1)
-            key_j = torch.cat(
-                (x_j, embedding_j), dim=-1
-            )  # concatenates along the last dim, i.e. columns in this case
+        # [(topk x N x batch_size), self.heads, 2 x out_channels]
+        key_i = torch.cat((x_i, embedding_i), dim=-1)
+        key_j = torch.cat(
+            (x_j, embedding_j), dim=-1
+        )  # concatenates along the last dim, i.e. columns in this case
 
-        # concatenate learnable parameters to become [1, 1, 2 x out_channels]
+        # concatenate learnable parameters to become [1, 1, out_channels(1 + heads)]
         cat_att_i = torch.cat((self.att_i, self.att_em_i), dim=-1)
         cat_att_j = torch.cat((self.att_j, self.att_em_j), dim=-1)
 
@@ -258,7 +268,10 @@ class GraphLayer(MessagePassing):
             -1
         )  # the matrix multiplication between a^T and g's in eqn (7)
 
-        alpha = alpha.view(-1, self.heads, 1)  # [(topk x N x batch_size), 1, 1]
+        alpha = alpha.view(
+            -1, self.heads, 1
+        )  # [(topk x N x batch_size), self.heads, 1]
+
         alpha = F.leaky_relu(alpha, self.negative_slope)
         alpha = softmax(alpha, edge_index_i, None, size_i)  # eqn (8)
         alpha = F.dropout(alpha, p=self.dropout, training=self.training)
