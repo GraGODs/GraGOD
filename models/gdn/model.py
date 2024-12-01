@@ -51,6 +51,7 @@ class GDN(nn.Module):
         topk: int = 20,
         heads: int = 1,
         dropout: float = 0,
+        negative_slope: float = 0.2,
     ):
         super(GDN, self).__init__()
 
@@ -67,6 +68,7 @@ class GDN(nn.Module):
                     embed_dim,
                     heads=heads,
                     dropout=dropout,
+                    negative_slope=negative_slope,
                 )
                 for _ in range(edge_set_num)
             ]

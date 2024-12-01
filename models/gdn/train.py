@@ -116,6 +116,7 @@ def main(
         topk=model_params["topk"],
         heads=model_params["heads"],
         dropout=model_params["dropout"],
+        negative_slope=model_params["negative_slope"],
     ).to(device)
 
     args_summary = {

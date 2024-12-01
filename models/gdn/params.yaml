@@ -32,6 +32,7 @@ model_params:
   topk: 5
   heads: 3
   dropout: 0.1
+  negative_slope: 0.2
 
 env_params:
   save_path_pattern: ""

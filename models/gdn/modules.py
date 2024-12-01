@@ -87,6 +87,7 @@ class GNNLayer(nn.Module):
         out_channel: int,
         heads: int = 1,
         dropout: float = 0,
+        negative_slope: float = 0.2,
     ):
         super(GNNLayer, self).__init__()
 
@@ -95,6 +96,7 @@ class GNNLayer(nn.Module):
             out_channel,
             heads=heads,
             dropout=dropout,
+            negative_slope=negative_slope,
         )
 
         self.bn = nn.BatchNorm1d(heads * out_channel)
