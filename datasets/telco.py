@@ -86,7 +86,7 @@ def load_telco_training_data(
         df_test_labels,
     ) = load_telco_df(base_path=base_path)
 
-    X_train, X_train_labels = preprocess_df(
+    X_train, X_train_labels, scaler = preprocess_df(
         data_df=df_train,
         labels_df=df_train_labels,
         normalize=normalize,
@@ -94,7 +94,7 @@ def load_telco_training_data(
         scaler=scaler,
         interpolate_method=interpolate_method,
     )
-    X_val, X_val_labels = preprocess_df(
+    X_val, X_val_labels, _ = preprocess_df(
         data_df=df_val,
         labels_df=df_val_labels,
         normalize=normalize,
@@ -102,7 +102,7 @@ def load_telco_training_data(
         scaler=scaler,
         interpolate_method=interpolate_method,
     )
-    X_test, X_test_labels = preprocess_df(
+    X_test, X_test_labels, _ = preprocess_df(
         data_df=df_test,
         labels_df=df_test_labels,
         normalize=normalize,

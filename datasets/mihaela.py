@@ -6,6 +6,7 @@ from typing import List, Tuple
 import networkx as nx
 import pandas as pd
 import torch
+from sklearn.base import BaseEstimator
 
 from datasets.data_processing import InterPolationMethods, preprocess_df
 
@@ -79,7 +80,7 @@ def load_mihaela_service_training_data(
     clean: bool = False,
     scaler=None,
     interpolate_method: InterPolationMethods | None = None,
-) -> Tuple[torch.Tensor, torch.Tensor | None]:
+) -> Tuple[torch.Tensor, torch.Tensor | None, BaseEstimator | None]:
     """
     Load the training data for the given service from Mihaela dataset.
     Args:

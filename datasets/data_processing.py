@@ -3,6 +3,7 @@ from typing import Tuple
 import numpy as np
 import pandas as pd
 import torch
+from sklearn.base import BaseEstimator
 from sklearn.preprocessing import MinMaxScaler
 
 from gragod import InterPolationMethods
@@ -46,7 +47,7 @@ def interpolate_data(
     return interpolated_data
 
 
-def normalize_data(data, scaler=None) -> Tuple[np.ndarray, MinMaxScaler]:
+def normalize_data(data, scaler=None) -> Tuple[np.ndarray, BaseEstimator]:
     """
     Normalize the given data.
     Args:
@@ -75,7 +76,7 @@ def preprocess_df(
     clean: bool = False,
     scaler=None,
     interpolate_method: InterPolationMethods | None = None,
-) -> Tuple[torch.Tensor, torch.Tensor | None]:
+) -> Tuple[torch.Tensor, torch.Tensor | None, BaseEstimator | None]:
     """
     Preprocess the given data DataFrame.
     Args:
@@ -106,4 +107,4 @@ def preprocess_df(
     data = torch.tensor(data).to(torch.float32)
     labels = torch.tensor(labels).to(torch.float32) if labels is not None else None
 
-    return data, labels
+    return data, labels, scaler
