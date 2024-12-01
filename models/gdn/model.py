@@ -84,9 +84,7 @@ class GDN(nn.Module):
             inter_num=out_layer_inter_dim,
         )
 
-        self.cache_edge_index_sets = torch.jit.annotate(
-            List[Optional[torch.Tensor]], [None] * edge_set_num
-        )
+        self.cache_edge_index_sets = [torch.tensor([]) for _ in range(edge_set_num)]
 
         self.dp = nn.Dropout(dropout)
         self.init_params()
@@ -118,9 +116,8 @@ class GDN(nn.Module):
         for i, edge_index in enumerate(edge_index_sets):
             edge_num = edge_index.shape[1]
             cache_edge_index = self.cache_edge_index_sets[i]
-
             if (
-                cache_edge_index is None
+                cache_edge_index.nelement() == 0
                 or cache_edge_index.shape[1] != edge_num * batch_num
             ):
                 self.cache_edge_index_sets[i] = self._get_batch_edge_index(

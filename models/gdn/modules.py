@@ -230,7 +230,7 @@ class GraphLayer(MessagePassing):
 
         return out
 
-    def message(self, x_i, x_j, edge_index_i, size_i, embedding, edges):
+    def message(self, x_i, x_j, edge_index_i, size_i, embedding, edges):  # type: ignore
         """Calculate the attention weights using the embedding vector,
         eq (6)-(8) in [1].
 
