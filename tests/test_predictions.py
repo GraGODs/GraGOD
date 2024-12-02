@@ -1,5 +1,6 @@
 from gragod.training import load_params, set_seeds
 from gragod.types import Datasets, ParamFileTypes
+from models.gcn.predict import main as predict_gcn
 from models.gdn.predict import main as predict_gdn
 from models.mtad_gat.predict import main as predict_mtad_gat
 
@@ -8,8 +9,24 @@ def test_gcn_predictions():
     """
     Test predictions for the GCN model.
     """
-    # TODO: Implement test for GCN predictions
-    pass
+    dataset = Datasets.TELCO
+
+    # Load parameters for GCN model
+    gcn_params = load_params("models/gcn/params.yaml", file_type=ParamFileTypes.YAML)
+
+    # Set random seed for reproducibility
+    set_seeds(42)
+
+    # Run predictions for GCN model
+    result = predict_gcn(  # noqa: F841
+        dataset_name=dataset.value,
+        model_params=gcn_params["model_params"],
+        params=gcn_params,
+        **gcn_params["train_params"],
+    )
+
+    # Add assertions to verify the prediction result
+    assert result is not None, "GCN prediction result should not be None"
 
 
 def test_gdn_predictions():
@@ -32,8 +49,8 @@ def test_gdn_predictions():
         **gdn_params["train_params"],
     )
 
-    # TODO: Add assertions to verify the prediction result
-    # assert result is not None, "GDN prediction result should not be None"
+    # Add assertions to verify the prediction result
+    assert result is not None, "GDN prediction result should not be None"
 
 
 def test_mtad_gat_predictions():
