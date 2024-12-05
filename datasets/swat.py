@@ -115,7 +115,7 @@ def load_swat_training_data(
         df_test,
         df_test_labels,
     ) = load_swat_df(path_to_dataset=path_to_dataset)
-    X_train, X_train_labels = preprocess_df(
+    X_train, X_train_labels, scaler = preprocess_df(
         data_df=df_train,
         labels_df=df_train_labels,
         normalize=normalize,
@@ -123,7 +123,7 @@ def load_swat_training_data(
         scaler=scaler,
         interpolate_method=interpolate_method,
     )
-    X_val, X_val_labels = preprocess_df(
+    X_val, X_val_labels, _ = preprocess_df(
         data_df=df_val,
         labels_df=df_val_labels,
         normalize=normalize,
@@ -131,7 +131,7 @@ def load_swat_training_data(
         scaler=scaler,
         interpolate_method=interpolate_method,
     )
-    X_test, X_test_labels = preprocess_df(
+    X_test, X_test_labels, _ = preprocess_df(
         data_df=df_test,
         labels_df=df_test_labels,
         normalize=normalize,
