@@ -20,7 +20,10 @@ def convert_df_to_tensor(df: pd.DataFrame) -> np.ndarray:
     Returns:
         The converted numpy array.
     """
-    X = np.array(df.values[:, 1:])
+    if df.shape[1] == 1:
+        X = np.array(df.values[:, 0])
+    else:
+        X = np.array(df.values[:, 1:])
     X = np.vstack(X).astype(float)  # type:ignore
 
     return X
