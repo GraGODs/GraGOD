@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import torch.utils.data
 import torch.utils.data.dataloader
-
 from gragod.training.trainer import PLBaseModule
 from models.mtad_gat.modules import (
     ConvLayer,
@@ -122,14 +121,20 @@ class MTAD_GAT_PLModule(PLBaseModule):
         if self.global_step != 0:
             self.best_metrics = {
                 "epoch": self.trainer.current_epoch,
-                "train_loss": self.trainer.callback_metrics["Loss/train"],
-                "train_recon_loss": self.trainer.callback_metrics["Recon_loss/train"],
-                "train_forecast_loss": self.trainer.callback_metrics[
-                    "Forecast_loss/train"
-                ],
-                "val_loss": self.trainer.callback_metrics["Loss/val"],
-                "val_recon_loss": self.trainer.callback_metrics["Recon_loss/val"],
-                "val_forecast_loss": self.trainer.callback_metrics["Forecast_loss/val"],
+                "train_loss": float(self.trainer.callback_metrics["Loss/train"]),
+                "train_recon_loss": float(
+                    self.trainer.callback_metrics["Recon_loss/train"]
+                ),
+                "train_forecast_loss": float(
+                    self.trainer.callback_metrics["Forecast_loss/train"]
+                ),
+                "val_loss": float(self.trainer.callback_metrics["Loss/val"]),
+                "val_recon_loss": float(
+                    self.trainer.callback_metrics["Recon_loss/val"]
+                ),
+                "val_forecast_loss": float(
+                    self.trainer.callback_metrics["Forecast_loss/val"]
+                ),
             }
 
     def forward(self, x):

@@ -44,14 +44,14 @@ def generate_scores(
     reconstructions: torch.Tensor,
     data: torch.Tensor,
     window_size: int,
-    EPSILON: float,
+    epsilon: float = EPSILON,
 ) -> torch.Tensor:
     true_values = data[window_size:]
 
-    score = torch.sqrt((forecasts - true_values) ** 2) + EPSILON * torch.sqrt(
+    score = torch.sqrt((forecasts - true_values) ** 2) + epsilon * torch.sqrt(
         (reconstructions - true_values) ** 2
     )
-    score = score / (1 + EPSILON)
+    score = score / (1 + epsilon)
     return score
 
 
@@ -152,7 +152,7 @@ def main(
         **params["train_params"],
     )
 
-    model = lightning_module.model.to(device)
+    model = lightning_module.model.to("cuda" if device == "gpu" else "mps")
     model.eval()
 
     # Generate predictions and calculate metrics
@@ -179,14 +179,14 @@ def main(
         reconstructions=reconstructions_val,
         data=X_val,
         window_size=window_size,
-        EPSILON=EPSILON,
+        epsilon=params["predictor_params"]["epsilon"],
     )
     test_scores = generate_scores(
         forecasts=forecasts_test,
         reconstructions=reconstructions_test,
         data=X_test,
         window_size=window_size,
-        EPSILON=EPSILON,
+        epsilon=params["predictor_params"]["epsilon"],
     )
     thresholds = get_threshold(
         dataset=dataset,

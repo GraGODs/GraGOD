@@ -134,7 +134,7 @@ class MetricsCalculator:
         self.scores = scores
         self.labels = labels
         self.predictions = predictions
-        self.system_scores = torch.sum(scores, dim=1)
+        self.system_scores = torch.mean(scores, dim=1)
         self.system_labels = (torch.sum(labels, dim=1) > 0).int()
         self.system_predictions = (torch.sum(predictions, dim=1) > 0).int()
 
@@ -461,9 +461,21 @@ class MetricsCalculator:
             )
             for i in range(labels_float64.shape[1])
         ]
-        mean_vus_roc = torch.mean(torch.tensor(per_class_vus_roc))
+        mean_vus_roc = torch.mean(torch.tensor(per_class_vus_roc, dtype=torch.float))
 
         global_vus_roc = None
+
+        system_vus_roc = (
+            vus_roc(
+                y_true=system_labels_float64,
+                y_score=system_scores_float64,
+            )
+            if not (
+                np.allclose(np.unique(system_scores_float64), np.array([0]))
+                or np.allclose(np.unique(system_labels_float64), np.array([0]))
+            )
+            else 0
+        )
 
         return MetricsResult(
             metric_global=global_vus_roc,

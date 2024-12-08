@@ -61,6 +61,12 @@ class PLBaseModule(pl.LightningModule):
 
         self.save_hyperparameters(ignore=["model", "criterion"])
 
+    def _register_best_metrics(self):
+        """
+        Register the best metrics. Defined in the child class.
+        """
+        pass
+
     def on_train_epoch_start(self):
         if (
             self.checkpoint_cb is not None
@@ -182,12 +188,10 @@ class TrainerPL:
         )
 
         self.trainer.fit(self.lightning_module, train_loader, val_loader)
-
         best_metrics = {
-            k: v
-            for k, v in self.lightning_module.best_metrics.items()  # type: ignore
-            if "epoch" in k
+            k: v for k, v in self.lightning_module.best_metrics.items()  # type: ignore
         }
+        print(f"BEST METRICS: {best_metrics}")
         self.logger.log_hyperparams(params=args_summary, metrics=best_metrics)
 
     def predict(self, loader: torch.utils.data.DataLoader):
