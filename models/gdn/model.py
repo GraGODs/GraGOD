@@ -1,4 +1,5 @@
 import math
+from typing import List, Optional
 
 import torch
 import torch.nn as nn
@@ -66,7 +67,9 @@ class GDN(nn.Module):
             embed_dim * edge_set_num, out_layer_num, inter_num=out_layer_inter_dim
         )
 
-        self.cache_edge_index_sets = [None] * edge_set_num
+        self.cache_edge_index_sets = torch.jit.annotate(
+            List[Optional[torch.Tensor]], [None] * edge_set_num
+        )
 
         self.dp = nn.Dropout(dropout)
         self.init_params()

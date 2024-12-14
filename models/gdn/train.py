@@ -159,7 +159,7 @@ def main(
         device=device,
         log_dir=log_dir,
         callbacks=callbacks,
-        checkpoint_cb=callback_dict["checkpoint"],
+        checkpoint_cb=callback_dict["checkpoint"],  # type: ignore
         logger=logger,
         log_every_n_steps=log_every_n_steps,
         weight_decay=weight_decay,
