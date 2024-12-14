@@ -144,11 +144,6 @@ def main(
 
     # Generate predictions and calculate metrics
 
-    forecasts_train = run_model(
-        model=lightning_module,
-        loader=train_loader,
-        device=device,
-    )
     forecasts_val = run_model(
         model=lightning_module,
         loader=val_loader,
@@ -160,33 +155,40 @@ def main(
         device=device,
     )
 
-    train_scores = torch.abs(forecasts_train - X_train[window_size:])
     val_scores = torch.abs(forecasts_val - X_val[window_size:])
     test_scores = torch.abs(forecasts_test - X_test[window_size:])
 
     threshold = get_threshold(
         val_scores, X_val_labels, params["predictor_params"]["n_thresholds"]
     )
-    train_pred = (train_scores > threshold).float()
     val_pred = (val_scores > threshold).float()
     test_pred = (test_scores > threshold).float()
 
-    train_metrics = get_metrics(train_pred, X_train_labels, train_scores)
+    # we only calculate train if there's at least one anomaly
+    if torch.any(X_train_labels == 1):
+        forecasts_train = run_model(
+            model=lightning_module,
+            loader=train_loader,
+            device=device,
+        )
+        train_scores = torch.abs(forecasts_train - X_train[window_size:])
+        train_pred = (train_scores > threshold).float()
+        train_metrics = get_metrics(train_pred, X_train_labels, train_scores)
+        print_all_metrics(train_metrics, "------- Train -------")
+        json.dump(
+            train_metrics,
+            open(
+                os.path.join(
+                    params["predictor_params"]["ckpt_folder"], "train_metrics.json"
+                ),
+                "w",
+            ),
+        )
+
     val_metrics = get_metrics(val_pred, X_val_labels, val_scores)
     test_metrics = get_metrics(test_pred, X_test_labels, test_scores)
-    print_all_metrics(train_metrics, "------- Train -------")
     print_all_metrics(val_metrics, "------- Validation -------")
     print_all_metrics(test_metrics, "------- Test -------")
-
-    json.dump(
-        train_metrics,
-        open(
-            os.path.join(
-                params["predictor_params"]["ckpt_folder"], "train_metrics.json"
-            ),
-            "w",
-        ),
-    )
 
     json.dump(
         val_metrics,
