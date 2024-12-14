@@ -1,4 +1,5 @@
 import math
+from typing import List, Optional
 
 import torch
 import torch.nn as nn
@@ -30,11 +31,12 @@ class GDN(nn.Module):
     Args:
         edge_index_sets: List of edge indices for different graph structures.
         node_num: Number of nodes in the graph.
-        dim: Dimension of node embeddings.
+        embed_dim: Dimension of node embeddings.
         out_layer_inter_dim: Intermediate dimension in output layer.
         input_dim: Input feature dimension.
         out_layer_num: Number of layers in output MLP.
         topk: Number of top similarities to consider for each node.
+        dropout: Dropout rate.
     """
 
     def __init__(
@@ -46,6 +48,7 @@ class GDN(nn.Module):
         input_dim: int = 10,
         out_layer_num: int = 1,
         topk: int = 20,
+        dropout: float = 0.2,
     ):
         super(GDN, self).__init__()
 
@@ -65,9 +68,11 @@ class GDN(nn.Module):
             embed_dim * edge_set_num, out_layer_num, inter_num=out_layer_inter_dim
         )
 
-        self.cache_edge_index_sets = [None] * edge_set_num
+        self.cache_edge_index_sets = torch.jit.annotate(
+            List[Optional[torch.Tensor]], [None] * edge_set_num
+        )
 
-        self.dp = nn.Dropout(0.2)
+        self.dp = nn.Dropout(dropout)
         self.init_params()
 
     def init_params(self):

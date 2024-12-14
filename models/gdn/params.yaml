@@ -3,10 +3,10 @@ dataset: "telco"
 train_params:
   shuffle: true
   model_name: "gdn"
-  batch_size: 128
-  n_epochs: 5
+  batch_size: 512
+  n_epochs: 200
   val_size: 0.1
-  device: "cpu"
+  device: "cuda"
   init_lr: 0.001
   clean: "drop"
   log_dir: "output"
@@ -18,6 +18,11 @@ train_params:
   weight_decay: 0.00001
   eps: 0.00000001
   betas: [0.9, 0.999]
+  monitor: "Loss/val"
+  monitor_mode: "min"
+  early_stop_patience: 20
+  early_stop_delta: 0.0001
+  save_top_k: 1
 
 model_params:
   window_size: 15
@@ -25,6 +30,7 @@ model_params:
   out_layer_num: 5
   out_layer_inter_dim: 256
   topk: 5
+  dropout: 0.2
 
 env_params:
   save_path_pattern: ""
@@ -37,3 +43,7 @@ predictor_params:
   dataset: "telco"
   ckpt_folder: "output/gdn/version_1"
   n_thresholds: 100
+
+optimization_params:
+  study_name: "gdn_optimization"
+  n_trials: 100

@@ -1,4 +1,5 @@
 import argparse
+from typing import Literal
 
 import torch
 import torch.nn as nn
@@ -13,20 +14,6 @@ from gragod.training.callbacks import get_training_callbacks
 from gragod.training.trainer import TrainerPL
 from gragod.types import cast_dataset
 from models.gdn.model import GDN, GDN_PLModule
-
-
-def _get_attack_or_not_attack(labels: torch.Tensor) -> torch.Tensor:
-    """Gets the attack or not attack tensor.
-
-    It's a tensor with 1 if the attack is present in any of the columns and 0 otherwise.
-
-    Args:
-        labels: The labels tensor.
-
-    Returns:
-        The attack or not attack tensor.
-    """
-    return (labels.sum(dim=1) > 0).float()
 
 
 def main(
@@ -50,6 +37,11 @@ def main(
     weight_decay: float,
     eps: float,
     betas: tuple[float, float],
+    monitor: str,
+    monitor_mode: Literal["min", "max"],
+    early_stop_patience: int,
+    early_stop_delta: float,
+    save_top_k: int,
 ):
     """
     Main function to train and evaluate the GDN model.
@@ -73,7 +65,7 @@ def main(
     dataset_config = get_dataset_config(dataset=dataset)
 
     # Load data
-    X_train, X_val, X_test, y_train, y_val, y_test = load_training_data(
+    X_train, X_val, *_ = load_training_data(
         dataset=dataset,
         test_size=test_size,
         val_size=val_size,
@@ -81,9 +73,6 @@ def main(
         clean=clean == CleanMethods.INTERPOLATE.value,
         interpolate_method=interpolate_method,
     )
-    y_train = _get_attack_or_not_attack(y_train)
-    y_val = _get_attack_or_not_attack(y_val)
-    y_test = _get_attack_or_not_attack(y_test)
 
     # TODO: load this from each dataset
     # Create a fully connected graph
@@ -98,7 +87,6 @@ def main(
 
     train_dataset = SlidingWindowDataset(
         data=X_train,
-        labels=y_train,
         edge_index=edge_index,
         window_size=model_params["window_size"],
         drop=clean == CleanMethods.DROP.value,
@@ -110,7 +98,6 @@ def main(
 
     val_dataset = SlidingWindowDataset(
         data=X_val,
-        labels=y_val,
         edge_index=edge_index,
         window_size=model_params["window_size"],
         drop=clean == CleanMethods.DROP.value,
@@ -127,6 +114,7 @@ def main(
         out_layer_num=model_params["out_layer_num"],
         out_layer_inter_dim=model_params["out_layer_inter_dim"],
         topk=model_params["topk"],
+        dropout=model_params["dropout"],
     ).to(device)
 
     args_summary = {
@@ -143,7 +131,11 @@ def main(
     callback_dict = get_training_callbacks(
         log_dir=logger.log_dir,
         model_name=model_name,
-        monitor="Loss/val",
+        monitor=monitor,
+        monitor_mode=monitor_mode,
+        early_stop_patience=early_stop_patience,
+        early_stop_delta=early_stop_delta,
+        save_top_k=save_top_k,
     )
     callbacks = list(callback_dict.values())
 
@@ -158,7 +150,7 @@ def main(
         device=device,
         log_dir=log_dir,
         callbacks=callbacks,
-        checkpoint_cb=callback_dict["checkpoint"],
+        checkpoint_cb=callback_dict["checkpoint"],  # type: ignore
         logger=logger,
         log_every_n_steps=log_every_n_steps,
         weight_decay=weight_decay,
