@@ -110,6 +110,14 @@ def main(
         batch_size=batch_size,
         num_workers=n_workers,
     )
+
+    val_dataset = SlidingWindowDataset(X_val, window_size)
+    val_loader = DataLoader(
+        val_dataset,
+        batch_size=batch_size,
+        num_workers=n_workers,
+    )
+
     test_dataset = SlidingWindowDataset(X_test, window_size)
     test_loader = DataLoader(
         test_dataset,
@@ -151,16 +159,23 @@ def main(
         loader=train_loader,
         device=device,
     )
+
+    forecasts_val, reconstructions_val = run_model(
+        model=lightning_module,
+        loader=val_loader,
+        device=device,
+    )
+
     forecasts_test, reconstructions_test = run_model(
         model=lightning_module,
         loader=test_loader,
         device=device,
     )
 
-    train_scores = generate_scores(
-        forecasts=forecasts_train,
-        reconstructions=reconstructions_train,
-        data=X_train,
+    val_scores = generate_scores(
+        forecasts=forecasts_val,
+        reconstructions=reconstructions_val,
+        data=X_val,
         window_size=window_size,
         EPSILON=EPSILON,
     )
@@ -172,31 +187,71 @@ def main(
         EPSILON=EPSILON,
     )
     thresholds = get_threshold(
-        train_scores, X_train_labels, params["predictor_params"]["n_thresholds"]
+        val_scores, X_val_labels, params["predictor_params"]["n_thresholds"]
     )
 
-    X_test_pred = (test_scores > thresholds).float()
+    # we only calculate train if there's at least one anomaly
+    if torch.any(X_train_labels == 1):
+        forecasts_train, reconstructions_train = run_model(
+            model=lightning_module,
+            loader=train_loader,
+            device=device,
+        )
+        train_scores = generate_scores(
+            forecasts=forecasts_train,
+            reconstructions=reconstructions_train,
+            data=X_train,
+            window_size=window_size,
+            EPSILON=EPSILON,
+        )
+        train_pred = (train_scores > thresholds).float()
+        train_metrics = get_metrics(train_pred, X_train_labels, train_scores)
+        print_all_metrics(train_metrics, "------- Train -------")
+        json.dump(
+            train_metrics,
+            open(
+                os.path.join(
+                    params["predictor_params"]["ckpt_folder"], "train_metrics.json"
+                ),
+                "w",
+            ),
+        )
 
-    metrics = get_metrics(X_test_pred, X_test_labels, test_scores)
-    print_all_metrics(metrics, "------- Test -------")
+    X_test_pred = (test_scores > thresholds).float()
+    X_val_pred = (val_scores > thresholds).float()
+    metrics_val = get_metrics(X_val_pred, X_val_labels, val_scores)
+    metrics_test = get_metrics(X_test_pred, X_test_labels, test_scores)
+    print_all_metrics(metrics_val, "------- Validation -------")
+    print_all_metrics(metrics_test, "------- Test -------")
 
     # save
+
     json.dump(
-        metrics,
+        metrics_val,
         open(
-            os.path.join(params["predictor_params"]["ckpt_folder"], "metrics.json"), "w"
+            os.path.join(params["predictor_params"]["ckpt_folder"], "val_metrics.json"),
+            "w",
+        ),
+    )
+    json.dump(
+        metrics_test,
+        open(
+            os.path.join(
+                params["predictor_params"]["ckpt_folder"], "test_metrics.json"
+            ),
+            "w",
         ),
     )
 
     return {
-        "predictions": X_test_pred,
-        "labels": X_test_labels,
-        "scores": test_scores,
-        "data": X_test,
+        "predictions": X_val_pred,
+        "labels": X_val_labels,
+        "scores": val_scores,
+        "data": X_val,
         "thresholds": thresholds,
-        "forecasts": forecasts_test,
-        "reconstructions": reconstructions_test,
-        "metrics": metrics,
+        "forecasts": forecasts_val,
+        "reconstructions": reconstructions_val,
+        "metrics": metrics_val,
     }
 
 
@@ -205,13 +260,11 @@ if __name__ == "__main__":
     parser.add_argument(
         "--params_file", type=str, default="models/mtad_gat/params.yaml"
     )
-    parser.add_argument("--ckpt_path", type=str, default=None)
     args = parser.parse_args()
     params = load_params(args.params_file, file_type=ParamFileTypes.YAML)
 
     main(
         dataset_name=params["dataset"],
-        ckpt_path=args.ckpt_path,
         **params["train_params"],
         model_params=params["model_params"],
         params=params,
