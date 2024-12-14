@@ -220,13 +220,11 @@ def main(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--params_file", type=str, default="models/gdn/params.yaml")
-    parser.add_argument("--ckpt_path", type=str, default=None)
     args = parser.parse_args()
     params = load_params(args.params_file, file_type=ParamFileTypes.YAML)
 
     main(
         dataset_name=params["dataset"],
-        ckpt_path=args.ckpt_path,
         **params["train_params"],
         model_params=params["model_params"],
         params=params,
