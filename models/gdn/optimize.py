@@ -32,11 +32,6 @@ def objective(
         {
             "init_lr": trial.suggest_float("learning_rate", 1e-4, 1e-2, log=True),
             "weight_decay": trial.suggest_float("weight_decay", 1e-6, 1e-3, log=True),
-            "betas": (
-                trial.suggest_float("beta1", 0.8, 0.99),
-                trial.suggest_float("beta2", 0.8, 0.999),
-            ),
-            "eps": trial.suggest_float("eps", 1e-8, 1e-6, log=True),
         }
     )
 
