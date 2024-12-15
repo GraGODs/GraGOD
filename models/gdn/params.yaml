@@ -30,7 +30,9 @@ model_params:
   out_layer_num: 5
   out_layer_inter_dim: 256
   topk: 5
-  dropout: 0.2
+  heads: 3
+  dropout: 0.1
+  negative_slope: 0.2
 
 env_params:
   save_path_pattern: ""

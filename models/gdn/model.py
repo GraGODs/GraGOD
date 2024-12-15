@@ -1,5 +1,4 @@
 import math
-from typing import List, Optional
 
 import torch
 import torch.nn as nn
@@ -33,9 +32,10 @@ class GDN(nn.Module):
         node_num: Number of nodes in the graph.
         embed_dim: Dimension of node embeddings.
         out_layer_inter_dim: Intermediate dimension in output layer.
-        input_dim: Input feature dimension.
+        window_size: Input feature dimension.
         out_layer_num: Number of layers in output MLP.
         topk: Number of top similarities to consider for each node.
+        heads: Number of attention heads.
         dropout: Dropout rate.
     """
 
@@ -45,32 +45,45 @@ class GDN(nn.Module):
         node_num: int,
         embed_dim: int = 64,
         out_layer_inter_dim: int = 256,
-        input_dim: int = 10,
+        window_size: int = 10,
         out_layer_num: int = 1,
         topk: int = 20,
-        dropout: float = 0.2,
+        heads: int = 1,
+        dropout: float = 0,
+        negative_slope: float = 0.2,
     ):
         super(GDN, self).__init__()
 
         self.edge_index_sets = edge_index_sets
+
         self.embedding = nn.Embedding(node_num, embed_dim)
-        self.bn_outlayer_in = nn.BatchNorm1d(embed_dim)
+        self.bn_outlayer_in = nn.BatchNorm1d(heads * embed_dim)
 
         edge_set_num = len(edge_index_sets)
         self.gnn_layers = nn.ModuleList(
-            [GNNLayer(input_dim, embed_dim, heads=1) for i in range(edge_set_num)]
+            [
+                GNNLayer(
+                    window_size,
+                    embed_dim,
+                    heads=heads,
+                    dropout=dropout,
+                    negative_slope=negative_slope,
+                )
+                for _ in range(edge_set_num)
+            ]
         )
 
         self.topk = topk
         self.learned_graph = None
+        self.heads = heads
 
         self.out_layer = OutLayer(
-            embed_dim * edge_set_num, out_layer_num, inter_num=out_layer_inter_dim
+            embed_dim * heads * edge_set_num,
+            out_layer_num,
+            inter_num=out_layer_inter_dim,
         )
 
-        self.cache_edge_index_sets = torch.jit.annotate(
-            List[Optional[torch.Tensor]], [None] * edge_set_num
-        )
+        self.cache_edge_index_sets = [torch.tensor([]) for _ in range(edge_set_num)]
 
         self.dp = nn.Dropout(dropout)
         self.init_params()
@@ -102,9 +115,8 @@ class GDN(nn.Module):
         for i, edge_index in enumerate(edge_index_sets):
             edge_num = edge_index.shape[1]
             cache_edge_index = self.cache_edge_index_sets[i]
-
             if (
-                cache_edge_index is None
+                cache_edge_index.nelement() == 0
                 or cache_edge_index.shape[1] != edge_num * batch_num
             ):
                 self.cache_edge_index_sets[i] = self._get_batch_edge_index(
@@ -155,7 +167,19 @@ class GDN(nn.Module):
         x = x.view(batch_num, node_num, -1)
 
         indexes = torch.arange(0, node_num).to(device)
-        out = torch.mul(x, self.embedding(indexes))
+        node_embeddings = self.embedding(indexes)
+
+        batch_size, node_num, hidden_dim = x.shape
+        heads = self.heads
+        embed_dim = hidden_dim // heads
+        x_reshaped = x.view(batch_size, node_num, heads, embed_dim)
+
+        embeddings_expanded = node_embeddings.view(node_num, 1, embed_dim).expand(
+            -1, heads, -1
+        )
+
+        out = torch.mul(x_reshaped, embeddings_expanded.unsqueeze(0))
+        out = out.view(batch_size, node_num, heads * embed_dim)
 
         out = out.permute(0, 2, 1)
         out = F.relu(self.bn_outlayer_in(out))

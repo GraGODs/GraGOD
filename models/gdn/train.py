@@ -109,12 +109,7 @@ def main(
     model = GDN(
         [edge_index],
         X_train.shape[1],
-        embed_dim=model_params["embed_dim"],
-        input_dim=model_params["window_size"],
-        out_layer_num=model_params["out_layer_num"],
-        out_layer_inter_dim=model_params["out_layer_inter_dim"],
-        topk=model_params["topk"],
-        dropout=model_params["dropout"],
+        **model_params,
     ).to(device)
 
     args_summary = {
