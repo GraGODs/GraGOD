@@ -22,6 +22,7 @@ def objective(
             "out_layer_inter_dim", 128, 512, step=64
         ),
         "topk": trial.suggest_int("topk", 3, 12, step=3),
+        "heads": trial.suggest_int("heads", 1, 5, step=1),
         "dropout": trial.suggest_float("dropout", 0.1, 0.5, step=0.1),
     }
 
@@ -30,8 +31,10 @@ def objective(
     train_params = base_params["train_params"].copy()
     train_params.update(
         {
-            "init_lr": trial.suggest_float("learning_rate", 1e-4, 1e-2, log=True),
-            "weight_decay": trial.suggest_float("weight_decay", 1e-6, 1e-3, log=True),
+            "init_lr": trial.suggest_categorical("learning_rate", [1e-4, 1e-3, 1e-2]),
+            "weight_decay": trial.suggest_categorical(
+                "weight_decay", [1e-6, 1e-5, 1e-4, 1e-3]
+            ),
         }
     )
 
@@ -64,8 +67,8 @@ def objective(
         **train_params,
     )["metrics"]
 
-    # Return negative VUS-ROC mean score (since Optuna minimizes)
-    return -metrics["vus_roc_mean"]
+    # Return VUS-ROC mean score
+    return metrics["vus_roc_system"]
 
 
 def main():
@@ -81,7 +84,7 @@ def main():
     study_name = base_params["optimization_params"]["study_name"]
     study = optuna.create_study(
         study_name=study_name,
-        direction="minimize",
+        direction="maximize",
         pruner=optuna.pruners.MedianPruner(),
     )
 
