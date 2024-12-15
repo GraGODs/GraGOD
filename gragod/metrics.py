@@ -131,7 +131,10 @@ class MetricsCalculator:
         self.system_labels = (torch.sum(labels, dim=1) > 0).int()
         self.system_predictions = (torch.sum(predictions, dim=1) > 0).int()
 
-        self.calculate_only_system_metrics = labels.shape[1] in [0, 1]
+        self.calculate_only_system_metrics = labels.ndim == 0 or labels.shape[1] in [
+            0,
+            1,
+        ]
 
     def calculate_precision(self) -> MetricsResult | SystemMetricsResult:
         """

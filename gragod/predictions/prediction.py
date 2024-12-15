@@ -7,7 +7,7 @@ from gragod.predictions.spot import SPOT
 def get_threshold(
     scores: torch.Tensor, labels: torch.Tensor, n_thresholds: int
 ) -> torch.Tensor:
-    if labels.shape[1] > 1:
+    if labels.ndim == 0 or labels.shape[1] in [0, 1]:
         return get_threshold_per_class(scores, labels, n_thresholds)
     else:
         return get_threshold_system(scores, labels, n_thresholds)
