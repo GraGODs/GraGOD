@@ -1,10 +1,10 @@
-dataset: "telco"
+dataset: "swat"
 
 train_params:
   shuffle: true
   model_name: "gdn"
   batch_size: 512
-  n_epochs: 200
+  n_epochs: 5
   val_size: 0.1
   device: "cuda"
   init_lr: 0.001

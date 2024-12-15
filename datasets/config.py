@@ -29,7 +29,7 @@ class DatasetConfig:
 
 @dataclass
 class SWATConfig(DatasetConfig):
-    normalize: bool = False
+    normalize: bool = True
     paths: Type[Paths] = SWATPaths
 
 

@@ -75,6 +75,40 @@ class MetricsResult(BaseModel):
         return d
 
 
+class SystemMetricsResult(BaseModel):
+    """
+    System metric is the metric calculated for the system, where the label/prediction
+    are 1 if any of the labels/predictions is 1 for any variable, and 0 otherwise.
+
+    This class is used when the given labels do not have per-class information.
+
+    Attributes:
+        metric_system: System-level metric
+    """
+
+    metric_system: float = Field(
+        ...,
+        description="System-level metric",
+        ge=0,
+        le=1,
+    )
+
+    round_digits: int = Field(
+        default=4, description="Number of decimal places to round to", exclude=True
+    )
+
+    def model_post_init(self, _context):
+        self.metric_system = round(self.metric_system, self.round_digits)
+
+    def model_dump(self, metric_name: str, *args, **kwargs) -> dict:
+        """Convert to dictionary with tensor conversion."""
+        d = super().model_dump(*args, **kwargs)
+
+        d = {k.replace("metric", metric_name): v for k, v in d.items()}
+
+        return d
+
+
 class MetricsCalculator:
     """Calculator for precision, recall, and F1 metrics."""
 
@@ -97,15 +131,31 @@ class MetricsCalculator:
         self.system_labels = (torch.sum(labels, dim=1) > 0).int()
         self.system_predictions = (torch.sum(predictions, dim=1) > 0).int()
 
-    def calculate_precision(self) -> MetricsResult:
+        self.calculate_only_system_metrics = labels.ndim == 0 or labels.shape[1] in [
+            0,
+            1,
+        ]
+
+    def calculate_precision(self) -> MetricsResult | SystemMetricsResult:
         """
         Calculate precision metrics.
 
         Precision = True Positives / Predicted Positives
 
         Returns:
-            MetricsResult: Precision metrics.
+            MetricsResult | SystemMetricsResult: Precision metrics.
         """
+        system_true_positives = torch.sum(self.system_labels & self.system_predictions)
+        system_predicted_positives = torch.sum(self.system_predictions)
+
+        system_precision = (
+            system_true_positives / system_predicted_positives
+            if system_predicted_positives > 0
+            else 0
+        )
+        if self.calculate_only_system_metrics:
+            return SystemMetricsResult(metric_system=float(system_precision))
+
         true_positives = torch.sum((self.labels == 1) & (self.predictions == 1), dim=0)
         predicted_positives = torch.sum(self.predictions == 1, dim=0)
 
@@ -121,15 +171,6 @@ class MetricsCalculator:
         )
         mean_precision = torch.mean(per_class_precision)
 
-        system_true_positives = torch.sum(self.system_labels & self.system_predictions)
-        system_predicted_positives = torch.sum(self.system_predictions)
-
-        system_precision = (
-            system_true_positives / system_predicted_positives
-            if system_predicted_positives > 0
-            else 0
-        )
-
         return MetricsResult(
             metric_global=float(global_precision),
             metric_mean=float(mean_precision),
@@ -137,15 +178,26 @@ class MetricsCalculator:
             metric_system=float(system_precision),
         )
 
-    def calculate_recall(self) -> MetricsResult:
+    def calculate_recall(self) -> MetricsResult | SystemMetricsResult:
         """
         Calculate recall metrics.
 
         Recall = True Positives / Actual Positives
 
         Returns:
-            MetricsResult: Recall metrics.
+            MetricsResult | SystemMetricsResult: Recall metrics.
         """
+        system_true_positives = torch.sum(self.system_labels & self.system_predictions)
+        system_actual_positives = torch.sum(self.system_labels)
+        system_recall = (
+            system_true_positives / system_actual_positives
+            if system_actual_positives > 0
+            else 0
+        )
+
+        if self.calculate_only_system_metrics:
+            return SystemMetricsResult(metric_system=float(system_recall))
+
         true_positives = torch.sum((self.labels == 1) & (self.predictions == 1), dim=0)
         actual_positives = torch.sum(self.labels == 1, dim=0)
 
@@ -162,14 +214,6 @@ class MetricsCalculator:
             else 0
         )
 
-        system_true_positives = torch.sum(self.system_labels & self.system_predictions)
-        system_actual_positives = torch.sum(self.system_labels)
-        system_recall = (
-            system_true_positives / system_actual_positives
-            if system_actual_positives > 0
-            else 0
-        )
-
         return MetricsResult(
             metric_global=float(global_recall),
             metric_mean=float(mean_recall),
@@ -178,8 +222,10 @@ class MetricsCalculator:
         )
 
     def calculate_f1(
-        self, precision: MetricsResult, recall: MetricsResult
-    ) -> MetricsResult:
+        self,
+        precision: MetricsResult | SystemMetricsResult,
+        recall: MetricsResult | SystemMetricsResult,
+    ) -> MetricsResult | SystemMetricsResult:
         """
         Calculate F1 score from precision and recall results.
 
@@ -187,8 +233,21 @@ class MetricsCalculator:
         When Precision + Recall = 0, F1 = 0
 
         Returns:
-            MetricsResult: F1 score metrics.
+            MetricsResult | SystemMetricsResult: F1 score metrics.
         """
+        # Handle division by zero for system metrics
+        system_denominator = precision.metric_system + recall.metric_system
+        system_f1 = (
+            0.0
+            if system_denominator == 0
+            else (2 * precision.metric_system * recall.metric_system)
+            / system_denominator
+        )
+
+        if isinstance(precision, SystemMetricsResult) or isinstance(
+            recall, SystemMetricsResult
+        ):
+            return SystemMetricsResult(metric_system=float(system_f1))
         # Handle division by zero for per-class metrics
         denominator = precision.metric_per_class + recall.metric_per_class
         per_class_f1 = torch.zeros_like(denominator)
@@ -216,15 +275,6 @@ class MetricsCalculator:
         else:
             global_f1 = None
 
-        # Handle division by zero for system metrics
-        system_denominator = precision.metric_system + recall.metric_system
-        system_f1 = (
-            0.0
-            if system_denominator == 0
-            else (2 * precision.metric_system * recall.metric_system)
-            / system_denominator
-        )
-
         return MetricsResult(
             metric_global=global_f1,
             metric_mean=float(mean_f1),
@@ -232,7 +282,9 @@ class MetricsCalculator:
             metric_system=float(system_f1),
         )
 
-    def calculate_range_based_recall(self, alpha: float = 0.0) -> MetricsResult:
+    def calculate_range_based_recall(
+        self, alpha: float = 0.0
+    ) -> MetricsResult | SystemMetricsResult:
         """
         Calculate range-based recall metrics.
         Based on https://arxiv.org/pdf/1803.03639.
@@ -241,12 +293,25 @@ class MetricsCalculator:
             alpha: Relative importance of existence reward. 0 ≤ alpha ≤ 1.
 
         Returns:
-            MetricsResult: Recall metrics.
+            MetricsResult | SystemMetricsResult: Recall metrics.
         """
-        labels_np = np.array(self.labels)
-        predictions_np = np.array(self.predictions)
         system_labels_np = np.array(self.system_labels)
         system_predictions_np = np.array(self.system_predictions)
+
+        system_recall = (
+            ts_recall(system_labels_np, system_predictions_np, alpha=alpha)
+            if not (
+                np.allclose(np.unique(system_predictions_np), np.array([0]))
+                or np.allclose(np.unique(system_labels_np), np.array([0]))
+            )
+            else 0
+        )
+
+        if self.calculate_only_system_metrics:
+            return SystemMetricsResult(metric_system=float(system_recall))
+
+        labels_np = np.array(self.labels)
+        predictions_np = np.array(self.predictions)
 
         per_class_recall = [
             (
@@ -266,15 +331,6 @@ class MetricsCalculator:
         # doesn't make sense the global recall in range based metrics
         global_recall = None
 
-        system_recall = (
-            ts_recall(system_labels_np, system_predictions_np, alpha=alpha)
-            if not (
-                np.allclose(np.unique(system_predictions_np), np.array([0]))
-                or np.allclose(np.unique(system_labels_np), np.array([0]))
-            )
-            else 0
-        )
-
         return MetricsResult(
             metric_global=global_recall,
             metric_mean=float(mean_recall),
@@ -282,7 +338,9 @@ class MetricsCalculator:
             metric_system=float(system_recall),
         )
 
-    def calculate_range_based_precision(self, alpha: float = 0.0) -> MetricsResult:
+    def calculate_range_based_precision(
+        self, alpha: float = 0.0
+    ) -> MetricsResult | SystemMetricsResult:
         """
         Calculate range-based precision metrics.
         Based on https://arxiv.org/pdf/1803.03639.
@@ -291,12 +349,25 @@ class MetricsCalculator:
             alpha: Relative importance of existence reward. 0 ≤ alpha ≤ 1.
 
         Returns:
-            MetricsResult: Precision metrics.
+            MetricsResult | SystemMetricsResult: Precision metrics.
         """
-        labels_np = np.array(self.labels)
-        predictions_np = np.array(self.predictions)
         system_labels_np = np.array(self.system_labels)
         system_predictions_np = np.array(self.system_predictions)
+
+        system_precision = (
+            ts_precision(system_labels_np, system_predictions_np, alpha=alpha)
+            if not (
+                np.allclose(np.unique(system_predictions_np), np.array([0]))
+                or np.allclose(np.unique(system_labels_np), np.array([0]))
+            )
+            else 0
+        )
+
+        if self.calculate_only_system_metrics:
+            return SystemMetricsResult(metric_system=float(system_precision))
+
+        labels_np = np.array(self.labels)
+        predictions_np = np.array(self.predictions)
 
         per_class_precision = [
             (
@@ -318,15 +389,6 @@ class MetricsCalculator:
         # doesn't make sense the global precision in range based metrics
         global_precision = None
 
-        system_precision = (
-            ts_precision(system_labels_np, system_predictions_np, alpha=alpha)
-            if not (
-                np.allclose(np.unique(system_predictions_np), np.array([0]))
-                or np.allclose(np.unique(system_labels_np), np.array([0]))
-            )
-            else 0
-        )
-
         return MetricsResult(
             metric_global=global_precision,
             metric_mean=float(mean_precision),
@@ -338,7 +400,7 @@ class MetricsCalculator:
         self,
         max_buffer_size: int = N_MAX_BUFFER_SIZE_DEFAULT,
         max_th_samples: int = N_TH_SAMPLES_DEFAULT,
-    ):
+    ) -> MetricsResult | SystemMetricsResult:
         """
         Calculate VUS-ROC metrics.
         Based on https://www.paparrizos.org/papers/PaparrizosVLDB22b.pdf.
@@ -353,8 +415,11 @@ class MetricsCalculator:
                 thresholds; too low numbers degrade the metrics' quality.
 
         Returns:
-            MetricsResult: VUS-ROC metrics.
+            MetricsResult | SystemMetricsResult: VUS-ROC metrics.
         """
+
+        system_labels_float64 = np.array(self.system_labels, dtype=np.float64)
+        system_scores_float64 = np.array(self.system_scores, dtype=np.float64)
 
         vus_roc = RangeRocVUS(
             max_buffer_size=max_buffer_size,
@@ -362,10 +427,16 @@ class MetricsCalculator:
             max_samples=max_th_samples,
         )
 
+        system_vus_roc = vus_roc(
+            y_true=system_labels_float64,
+            y_score=system_scores_float64,
+        )
+
+        if self.calculate_only_system_metrics:
+            return SystemMetricsResult(metric_system=float(system_vus_roc))
+
         scores_float64 = np.array(self.scores, dtype=np.float64)
         labels_float64 = np.array(self.labels, dtype=np.float64)
-        system_labels_float64 = np.array(self.system_labels, dtype=np.float64)
-        system_scores_float64 = np.array(self.system_scores, dtype=np.float64)
 
         per_class_vus_roc = [
             (
@@ -384,11 +455,6 @@ class MetricsCalculator:
         mean_vus_roc = torch.mean(torch.tensor(per_class_vus_roc))
 
         global_vus_roc = None
-
-        system_vus_roc = vus_roc(
-            y_true=system_labels_float64,
-            y_score=system_scores_float64,
-        )
 
         return MetricsResult(
             metric_global=global_vus_roc,
@@ -556,9 +622,45 @@ def generate_metrics_per_class_table(metrics: dict) -> str:
     )
 
 
+def generate_system_metrics_table(metrics: dict) -> str:
+    """Generate a table of system metrics as a string."""
+    metrics_table = [
+        ["System"],
+        [
+            "Precision",
+            f"{metrics['precision_system']}",
+        ],
+        [
+            "Recall",
+            f"{metrics['recall_system']}",
+        ],
+        [
+            "F1",
+            f"{metrics['f1_system']}",
+        ],
+        [
+            "Range-based Precision",
+            f"{metrics['range_based_precision_system']}",
+        ],
+        [
+            "Range-based Recall",
+            f"{metrics['range_based_recall_system']}",
+        ],
+        [
+            "VUS-ROC",
+            f"{metrics['vus_roc_system']}",
+        ],
+    ]
+    return tabulate.tabulate(metrics_table, headers="firstrow", tablefmt="grid")
+
+
 def print_all_metrics(metrics: dict, message: str):
-    metrics_table = generate_metrics_table(metrics)
-    metrics_per_class_table = generate_metrics_per_class_table(metrics)
     print(message)
-    print(metrics_table)
-    print(metrics_per_class_table)
+    if "precision_per_class" in metrics:
+        metrics_table = generate_metrics_table(metrics)
+        print(metrics_table)
+        metrics_per_class_table = generate_metrics_per_class_table(metrics)
+        print(metrics_per_class_table)
+    else:
+        metrics_table = generate_system_metrics_table(metrics)
+        print(metrics_table)
