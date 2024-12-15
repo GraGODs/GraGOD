@@ -33,7 +33,7 @@ class GDN(nn.Module):
         node_num: Number of nodes in the graph.
         embed_dim: Dimension of node embeddings.
         out_layer_inter_dim: Intermediate dimension in output layer.
-        input_dim: Input feature dimension.
+        window_size: Input feature dimension.
         out_layer_num: Number of layers in output MLP.
         topk: Number of top similarities to consider for each node.
         heads: Number of attention heads.
@@ -46,7 +46,7 @@ class GDN(nn.Module):
         node_num: int,
         embed_dim: int = 64,
         out_layer_inter_dim: int = 256,
-        input_dim: int = 10,
+        window_size: int = 10,
         out_layer_num: int = 1,
         topk: int = 20,
         heads: int = 1,
@@ -64,7 +64,7 @@ class GDN(nn.Module):
         self.gnn_layers = nn.ModuleList(
             [
                 GNNLayer(
-                    input_dim,
+                    window_size,
                     embed_dim,
                     heads=heads,
                     dropout=dropout,
