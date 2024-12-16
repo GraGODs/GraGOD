@@ -1,4 +1,4 @@
-dataset: "telco"
+dataset: "swat"
 
 model_params:
   window_size: 90
@@ -17,7 +17,7 @@ model_params:
 
 train_params:
   model_name: "mtad_gat"
-  n_epochs: 200
+  n_epochs: 100
   batch_size: 128
   init_lr: 0.001
   target_dims: null
@@ -40,5 +40,4 @@ predictor_params:
   dataset: "telco"
   n_thresholds: 100
   epsilon: 0.8
-
-save_path: "saved_models/mtad_gat"
+  ckpt_folder: "output/mtad_gat_optuna_generic_search/mtad_gat_trial_23/version_0/"

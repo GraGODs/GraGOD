@@ -16,6 +16,7 @@ def get_training_callbacks(
     early_stop_patience: int = 10,
     early_stop_delta: float = 0.001,
     save_top_k: int = 1,
+    use_early_stopping: bool = True,
 ) -> dict[str, Callback]:
     """Creates common callbacks used for training models.
 

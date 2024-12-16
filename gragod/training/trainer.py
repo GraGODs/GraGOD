@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 import torch.utils.data
 import torch.utils.data.dataloader
+from lightning.pytorch.utilities import grad_norm
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
 
@@ -33,6 +34,7 @@ class PLBaseModule(pl.LightningModule):
         weight_decay: float = 1e-5,
         eps: float = 1e-8,
         betas: tuple[float, float] = (0.9, 0.999),
+        gradient_clip_val: float = 1.0,
         *args,
         **kwargs,
     ):
@@ -47,6 +49,7 @@ class PLBaseModule(pl.LightningModule):
         self.weight_decay = weight_decay
         self.eps = eps
         self.betas = betas
+        self.gradient_clip_val = gradient_clip_val
 
         if isinstance(criterion, nn.Module):
             self.criterion = criterion

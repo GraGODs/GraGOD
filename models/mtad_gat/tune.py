@@ -29,7 +29,7 @@ set_seeds(RANDOM_SEED)
 
 
 def get_experiment_metrics(
-    trainer, val_loader, train_loader, X_train, X_val, y_val, model_params, epsilon
+    trainer, val_loader,  X_val, y_val, model_params, epsilon
 ):
     # Get metrics
     output_val = trainer.predict(val_loader)
@@ -44,10 +44,10 @@ def get_experiment_metrics(
         epsilon=epsilon,
     )
 
-    output_train = trainer.predict(train_loader)
-    forecasts, reconstructions = zip(*output_train)
-    forecasts = torch.cat(forecasts)
-    reconstructions = torch.cat(reconstructions)[:, -1, :]
+    # output_train = trainer.predict(train_loader)
+    # forecasts, reconstructions = zip(*output_train)
+    # forecasts = torch.cat(forecasts)
+    # reconstructions = torch.cat(reconstructions)[:, -1, :]
 
     threshold = get_threshold(
         val_scores, y_val[model_params["window_size"] :], n_thresholds=10
@@ -132,12 +132,12 @@ def objective(trial: optuna.Trial, params, X_train, X_val, y_train, y_val, log_d
         "n_thresholds": params["predictor_params"]["n_thresholds"],
         "epsilon": trial.suggest_categorical("epsilon", [0.4, 0.6, 0.8]),
     }
-    initial_index = 5000
-    last_index = 10000
-    X_train = X_train[initial_index:last_index]
-    y_train = y_train[initial_index:last_index]
-    X_val = X_val[initial_index:last_index]
-    y_val = y_val[initial_index:last_index]
+    # initial_index = 5000
+    # last_index = 10000
+    # X_train = X_train[initial_index:last_index]
+    # y_train = y_train[initial_index:last_index]
+    # X_val = X_val[initial_index:last_index]
+    # y_val = y_val[initial_index:last_index]
 
     train_loader = create_datasets(
         X_train,
@@ -233,21 +233,19 @@ def objective(trial: optuna.Trial, params, X_train, X_val, y_train, y_val, log_d
         **params["train_params"],
     )
 
-    val_metrics = get_experiment_metrics(
+    train_metrics = get_experiment_metrics(
         trainer=trainer,
-        val_loader=inference_val_loader,
-        train_loader=inference_train_loader,
-        X_val=X_val,
+        val_loader=inference_train_loader,
+        X_val=X_train,
         model_params=model_params,
-        X_train=X_train,
-        y_val=y_val,
+        y_val=y_train,
         epsilon=predictor_params["epsilon"],
     )
-    print_all_metrics(val_metrics, "------- Val -------")
+    print_all_metrics(train_metrics, "------- Train -------")
 
     # save
     json.dump(
-        val_metrics,
+        train_metrics,
         open(
             os.path.join(
                 logger.log_dir,
@@ -257,7 +255,7 @@ def objective(trial: optuna.Trial, params, X_train, X_val, y_train, y_val, log_d
         ),
     )
     # Log metrics to tensorboard
-    for metric_name, metric_value in val_metrics.items():
+    for metric_name, metric_value in train_metrics.items():
         if isinstance(metric_value, (int, float)):
             trainer.logger.experiment.add_scalar(
                 f"val_metrics/{metric_name}", metric_value, trial.number
@@ -273,7 +271,7 @@ def objective(trial: optuna.Trial, params, X_train, X_val, y_train, y_val, log_d
     # Save study after each trial
     save_study(trial.study, log_dir)
 
-    return val_metrics["vus_roc_mean"]
+    return train_metrics["vus_roc_mean"]
 
 
 def load_study(log_dir):
@@ -297,7 +295,7 @@ def main(params_file: str, n_trials: int):
     params = load_params(params_file, file_type=ParamFileTypes.YAML)
 
     # Setup logging
-    log_dir = Path(params["train_params"]["log_dir"]) / "mtad_gat_optuna_generic_search"
+    log_dir = Path(params["train_params"]["log_dir"]) / "mtad_gat_optuna_generic_search_swat"
     log_dir.mkdir(parents=True, exist_ok=True)
 
     # Try to load existing study
