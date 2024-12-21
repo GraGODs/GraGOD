@@ -34,6 +34,7 @@ def main(
     weight_decay: float,
     eps: float,
     betas: tuple[float, float],
+    down_len: int | None = None,
 ):
     """
     Main function to train and evaluate the GCN model.
@@ -64,6 +65,7 @@ def main(
         normalize=dataset_config.normalize,
         clean=clean == CleanMethods.INTERPOLATE.value,
         interpolate_method=interpolate_method,
+        down_len=down_len,
     )
 
     # TODO: we should load the edge_index (graph connectivity) from each dataset

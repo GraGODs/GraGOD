@@ -42,6 +42,7 @@ def main(
     early_stop_patience: int,
     early_stop_delta: float,
     save_top_k: int,
+    down_len: int | None = None,
 ):
     """
     Main function to train and evaluate the GDN model.
@@ -72,6 +73,7 @@ def main(
         normalize=dataset_config.normalize,
         clean=clean == CleanMethods.INTERPOLATE.value,
         interpolate_method=interpolate_method,
+        down_len=down_len,
     )
 
     # TODO: load this from each dataset
@@ -158,6 +160,8 @@ def main(
         trainer.load(ckpt_path)
 
     trainer.fit(train_loader, val_loader, args_summary=args_summary)
+
+    return trainer
 
 
 if __name__ == "__main__":

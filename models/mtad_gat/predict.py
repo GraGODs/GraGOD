@@ -69,6 +69,7 @@ def main(
     clean: str = "interpolate",
     interpolate_method: InterPolationMethods | None = None,
     params: dict = {},
+    down_len: int | None = None,
     **kwargs,
 ) -> dict:
     """
@@ -96,6 +97,7 @@ def main(
         normalize=dataset_config.normalize,
         clean=clean == CleanMethods.INTERPOLATE,
         interpolate_method=interpolate_method,
+        down_len=down_len,
     )
 
     window_size = model_params["window_size"]

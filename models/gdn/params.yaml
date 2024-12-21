@@ -1,10 +1,10 @@
-dataset: "swat"
+dataset: "telco"
 
 train_params:
   shuffle: true
   model_name: "gdn"
-  batch_size: 512
-  n_epochs: 5
+  batch_size: 32
+  n_epochs: 50
   val_size: 0.1
   device: "cuda"
   init_lr: 0.001
@@ -15,23 +15,24 @@ train_params:
   log_every_n_steps: 1
   interpolate_method: null
   ckpt_path: null
-  weight_decay: 0.00001
+  weight_decay: 0
   eps: 0.00000001
-  betas: [0.9, 0.999]
+  betas: [0.9, 0.99]
   monitor: "Loss/val"
   monitor_mode: "min"
   early_stop_patience: 20
   early_stop_delta: 0.0001
   save_top_k: 1
+  down_len: 10
 
 model_params:
-  window_size: 15
+  window_size: 50
   embed_dim: 64
-  out_layer_num: 5
-  out_layer_inter_dim: 256
-  topk: 5
-  heads: 3
-  dropout: 0.1
+  out_layer_num: 1
+  out_layer_inter_dim: 128
+  topk: 2
+  heads: 1
+  dropout: 0.0
   negative_slope: 0.2
 
 env_params:
@@ -42,10 +43,10 @@ env_params:
   save_path: "msl"
 
 predictor_params:
-  dataset: "telco"
-  ckpt_folder: "output/gdn/version_1"
-  n_thresholds: 100
-
+  dataset: "swat"
+  ckpt_folder: "output/gdn/version_8"
+  n_thresholds: 1000
+  window_size_smooth: 5
 optimization_params:
   study_name: "gdn_optimization"
   n_trials: 100

@@ -111,3 +111,60 @@ def preprocess_df(
     labels = torch.tensor(labels).to(torch.float32) if labels is not None else None
 
     return data, labels, scaler
+
+
+def downsample_data(data: torch.Tensor, down_len: int) -> torch.Tensor:
+    """
+    Downsample the data by taking the median of each downsample window.
+
+    Args:
+        data: The data to downsample (n_samples, n_features)
+        down_len: The length of the downsample window.
+    Returns:
+        The downsampled data (n_samples // down_len, n_features)
+    """
+    # Reshape to (n_windows, window_size, n_features) and take median
+    n_samples, n_features = data.shape
+    n_windows = n_samples // down_len
+    reshaped = data[: n_windows * down_len].reshape(n_windows, down_len, n_features)
+    return torch.median(reshaped, dim=1).values
+
+
+def downsample_labels(labels: torch.Tensor, down_len: int) -> torch.Tensor:
+    """
+    Downsample the labels by taking the mode of each downsample window.
+
+    Args:
+        labels: The labels to downsample (n_samples, n_features)
+        down_len: The length of the downsample window.
+    Returns:
+        The downsampled labels (n_samples // down_len, n_features)
+    """
+    # Reshape to (n_windows, window_size, n_features) and take mode
+    n_samples, n_features = labels.shape
+    n_windows = n_samples // down_len
+    reshaped = labels[: n_windows * down_len].reshape(n_windows, down_len, n_features)
+    return torch.mode(reshaped, dim=1).values.round()
+
+
+def downsample(
+    data: torch.Tensor, labels: torch.Tensor, down_len: int
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    """
+    Downsample the data and labels.
+    Args:
+        data: The data to downsample (n_samples, n_features)
+        labels: The labels to downsample (n_samples, n_features)
+        down_len: The length of the downsample window.
+    Returns:
+        The downsampled data and labels (n_samples // down_len, n_features)
+    """
+    data_downsampled = downsample_data(data, down_len)
+    labels_downsampled = downsample_labels(labels, down_len)
+    if labels_downsampled.shape[0] != data_downsampled.shape[0]:
+        raise ValueError(
+            f"""Downsampled data and labels have different lengths
+            Data shape {data_downsampled.shape},
+            Labels shape {labels_downsampled.shape}"""
+        )
+    return data_downsampled, labels_downsampled
