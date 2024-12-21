@@ -47,24 +47,16 @@ def load_swat_df_val(
     return df_val, df_val_labels
 
 
-def split_val_df(
-    df_val: pd.DataFrame, df_val_labels: pd.DataFrame, val_size: float = 0.6
-) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    """
-    Split the validation dataset into two parts: validation and test.
-    Args:
-        df_val: The DataFrame with the validation data.
-        df_val_labels: The labels of the validation data.
-        val_size: The size of the validation set.
-    Returns:
-        The validation and test datasets.
-    """
-    val_size = int(val_size * len(df_val))
-    df_test = df_val.iloc[val_size:]
-    df_test_labels = df_val_labels.iloc[val_size:]
-    df_val = df_val.iloc[:val_size]
-    df_val_labels = df_val_labels.iloc[:val_size]
-    return df_val, df_val_labels, df_test, df_test_labels
+def load_swat_df_test(
+    name: str = SWATPaths.name_test,
+    path_to_dataset: str = SWATPaths.base_path,
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    file = os.path.join(path_to_dataset, name)
+    df_test = pd.read_csv(file)
+    df_test_labels = (df_test["Normal/Attack"] == "Attack").astype(int)
+    df_test_labels = df_test_labels.to_frame()
+    df_test = df_test.drop(columns=["Normal/Attack"])
+    return df_test, df_test_labels
 
 
 def load_swat_df(
@@ -82,9 +74,7 @@ def load_swat_df(
     """
     df_train, df_train_labels = load_swat_df_train(path_to_dataset=path_to_dataset)
     df_val, df_val_labels = load_swat_df_val(path_to_dataset=path_to_dataset)
-    df_val, df_val_labels, df_test, df_test_labels = split_val_df(
-        df_val, df_val_labels, val_size=val_size
-    )
+    df_test, df_test_labels = load_swat_df_test(path_to_dataset=path_to_dataset)
 
     return df_train, df_train_labels, df_val, df_val_labels, df_test, df_test_labels
 

@@ -104,8 +104,8 @@ def preprocess_df(
             mask = labels == 1.0
             data[mask] = np.nan
 
-    data = interpolate_data(data, method=interpolate_method)
-    print("Data cleaned!")
+        data = interpolate_data(data, method=interpolate_method)
+        print("Data cleaned!")
 
     data = torch.tensor(data).to(torch.float32)
     labels = torch.tensor(labels).to(torch.float32) if labels is not None else None
