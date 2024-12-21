@@ -10,7 +10,11 @@ from datasets.config import get_dataset_config
 from datasets.dataset import SlidingWindowDataset
 from gragod import CleanMethods, InterPolationMethods, ParamFileTypes
 from gragod.metrics import get_metrics, print_all_metrics
-from gragod.predictions.prediction import get_threshold
+from gragod.predictions.prediction import (
+    get_threshold,
+    smooth_scores,
+    standarize_error_scores,
+)
 from gragod.training import load_params, load_training_data
 from gragod.types import cast_dataset
 from models.gdn.model import GDN, GDN_PLModule
@@ -159,6 +163,15 @@ def main(
 
     val_scores = torch.abs(forecasts_val - X_val[window_size:])
     test_scores = torch.abs(forecasts_test - X_test[window_size:])
+
+    val_scores = standarize_error_scores(val_scores)
+    val_scores = smooth_scores(
+        val_scores, params["predictor_params"]["window_size_smooth"]
+    )
+    test_scores = standarize_error_scores(test_scores)
+    test_scores = smooth_scores(
+        test_scores, params["predictor_params"]["window_size_smooth"]
+    )
 
     threshold = get_threshold(
         dataset=dataset,
