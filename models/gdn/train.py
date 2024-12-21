@@ -65,7 +65,7 @@ def main(
     dataset_config = get_dataset_config(dataset=dataset)
 
     # Load data
-    X_train, X_val, *_ = load_training_data(
+    X_train, X_val, _, y_train, y_val, _ = load_training_data(
         dataset=dataset,
         test_size=test_size,
         val_size=val_size,
@@ -89,6 +89,7 @@ def main(
         data=X_train,
         edge_index=edge_index,
         window_size=model_params["window_size"],
+        labels=y_train,
         drop=clean == CleanMethods.DROP.value,
     )
 
@@ -100,6 +101,7 @@ def main(
         data=X_val,
         edge_index=edge_index,
         window_size=model_params["window_size"],
+        labels=y_val,
         drop=clean == CleanMethods.DROP.value,
     )
     val_loader = DataLoader(
