@@ -14,6 +14,7 @@ class SWATPaths(Paths):
     base_path: str = "datasets_files/swat"
     name_train: str = "SWaT_data_train.csv"
     name_val: str = "SWaT_data_val.csv"
+    name_test: str = "SWaT_data_test.csv"
 
 
 @dataclass
