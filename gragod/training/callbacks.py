@@ -14,7 +14,7 @@ def get_training_callbacks(
     monitor: str = "Loss/val",
     monitor_mode: Literal["min", "max"] = "min",
     early_stop_patience: int = 10,
-    early_stop_delta: float = 0.0001,
+    early_stop_delta: float = 0.001,
     save_top_k: int = 1,
 ) -> dict[str, Callback]:
     """Creates common callbacks used for training models.
