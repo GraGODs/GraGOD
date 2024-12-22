@@ -36,7 +36,7 @@ class SWATConfig(DatasetConfig):
 
 @dataclass
 class TELCOConfig(DatasetConfig):
-    normalize: bool = False
+    normalize: bool = False  # Seems to make results worse
     paths: Type[Paths] = TELCOPaths
 
 
