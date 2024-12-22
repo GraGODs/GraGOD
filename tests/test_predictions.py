@@ -4,6 +4,7 @@ from gragod.training import load_params, set_seeds
 from gragod.types import Datasets, ParamFileTypes
 from models.gcn.predict import main as predict_gcn
 from models.gdn.predict import main as predict_gdn
+from models.gru.predict import main as predict_gru
 from models.mtad_gat.predict import main as predict_mtad_gat
 
 
@@ -84,3 +85,27 @@ def test_mtad_gat_predictions():
 
     # Add assertions to verify the prediction result
     assert result is not None, "MTAD-GAT prediction result should not be None"
+
+
+@pytest.mark.parallel
+def test_gru_predictions():
+    """
+    Test predictions for the GRU model.
+    """
+    dataset = Datasets.TELCO
+
+    # Load parameters for GRU model
+    gru_params = load_params("models/gru/params.yaml", file_type=ParamFileTypes.YAML)
+    gru_params["train_params"]["device"] = "cpu"
+
+    # Set random seed for reproducibility
+    set_seeds(42)
+
+    # Run predictions for GRU model
+    result = predict_gru(  # noqa: F841
+        dataset_name=dataset.value,
+        **gru_params["train_params"],
+        model_params=gru_params["model_params"],
+        params=gru_params,
+    )
+    assert result is not None, "GRU prediction result should not be None"

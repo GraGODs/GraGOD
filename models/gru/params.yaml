@@ -1,0 +1,34 @@
+dataset: "telco"
+
+model_params:
+  window_size: 256
+  hidden_size: 256
+  n_layers: 9
+  bidirectional: true
+  rnn_dropout: 0.3
+  fc_dropout: 0.3
+
+train_params:
+  model_name: "gru_test_normalization"
+  n_epochs: 200
+  batch_size: 1024
+  init_lr: 0.001
+  target_dims: null
+  device: "gpu"
+  n_workers: 1
+  log_dir: "output"
+  log_every_n_steps: 1
+  test_size: 0.1
+  val_size: 0.1
+  shuffle: true
+  clean: "drop"
+  interpolate_method: null
+  weight_decay: 0.00001
+  eps: 0.00000001
+  betas: [0.9, 0.999]
+  horizon: 1
+
+predictor_params:
+  dataset: "telco"
+  n_thresholds: 1000
+  ckpt_folder: "output/gru_test_normalization/version_2/" 
