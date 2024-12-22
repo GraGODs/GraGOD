@@ -5,6 +5,7 @@ from gragod.training import load_params, set_seeds
 from gragod.types import Datasets, ParamFileTypes
 from models.gcn.train import main as train_gcn
 from models.gdn.train import main as train_gdn
+from models.gru.train import main as train_gru
 from models.mtad_gat.train import main as train_mtad_gat
 
 
@@ -85,3 +86,29 @@ def test_mtad_gat_training():
         params=mtad_gat_params,
     )
     print(f"{Fore.GREEN}MTAD-GAT training completed!{Style.RESET_ALL}")
+
+
+@pytest.mark.parallel
+def test_gru_training():
+    """
+    Run 1 epoch of training for the GRU model for the given dataset.
+    """
+
+    dataset = Datasets.TELCO
+
+    # Load parameters for GRU model
+    gru_params = load_params("models/gru/params.yaml", file_type=ParamFileTypes.YAML)
+    gru_params["train_params"]["n_epochs"] = 2
+    gru_params["train_params"]["device"] = "cpu"
+
+    # Set random seed for reproducibility
+    set_seeds(42)
+
+    # Run 1 epoch of training for GRU model
+    train_gru(
+        dataset_name=dataset.value,
+        **gru_params["train_params"],
+        model_params=gru_params["model_params"],
+        params=gru_params,
+    )
+    print(f"{Fore.GREEN}GRU training completed!{Style.RESET_ALL}")

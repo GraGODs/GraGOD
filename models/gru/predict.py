@@ -120,7 +120,7 @@ def main(
         interpolate_method=interpolate_method,
     )
 
-    window_size = model_params["window_size"]
+    window_size = model_params.pop("window_size")
     X_train_labels = X_train_labels[window_size:]
     X_val_labels = X_val_labels[window_size:]
     X_test_labels = X_test_labels[window_size:]

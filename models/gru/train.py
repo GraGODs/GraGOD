@@ -56,7 +56,7 @@ def main(
     )
 
     # Create dataloaders
-    window_size = model_params["window_size"]
+    window_size = model_params.pop("window_size")
 
     train_dataset = SlidingWindowDataset(
         X_train,

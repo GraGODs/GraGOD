@@ -114,6 +114,7 @@ def objective(
 
     # Get trial hyperparameters
     model_params = {
+        "window_size": trial.suggest_categorical("window_size", [64, 128, 256, 512]),
         "hidden_size": trial.suggest_categorical("hidden_size", [16, 32, 64, 128, 256]),
         "n_layers": trial.suggest_categorical("n_layers", [1, 3, 5, 7]),
         "bidirectional": True,
@@ -122,7 +123,6 @@ def objective(
     }
 
     train_params_search = {
-        "window_size": trial.suggest_categorical("window_size", [64, 128, 256, 512]),
         "init_lr": trial.suggest_categorical("init_lr", [1e-4, 1e-3]),
         "weight_decay": params["train_params"]["weight_decay"],
         "eps": params["train_params"]["eps"],
@@ -130,10 +130,11 @@ def objective(
     }
 
     # Create datasets
+    window_size = model_params.pop("window_size")
     train_loader = create_datasets(
         X_train,
         y_train,
-        window_size=train_params_search["window_size"],
+        window_size=window_size,
         horizon=params["train_params"]["horizon"],
         batch_size=params["train_params"]["batch_size"],
         shuffle=params["train_params"]["shuffle"],
@@ -143,7 +144,7 @@ def objective(
     val_loader = create_datasets(
         X_val,
         y_val,
-        window_size=train_params_search["window_size"],
+        window_size=window_size,
         horizon=params["train_params"]["horizon"],
         batch_size=params["train_params"]["batch_size"],
         shuffle=False,
@@ -153,7 +154,7 @@ def objective(
     inference_train_loader = create_datasets(
         X_train,
         y_train,
-        window_size=train_params_search["window_size"],
+        window_size=window_size,
         horizon=params["train_params"]["horizon"],
         batch_size=params["train_params"]["batch_size"],
         shuffle=False,
