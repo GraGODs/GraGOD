@@ -28,9 +28,7 @@ RANDOM_SEED = 42
 set_seeds(RANDOM_SEED)
 
 
-def get_experiment_metrics(
-    trainer, val_loader,  X_val, y_val, model_params, epsilon
-):
+def get_experiment_metrics(trainer, val_loader, X_val, y_val, model_params, epsilon):
     # Get metrics
     output_val = trainer.predict(val_loader)
     forecasts, reconstructions = zip(*output_val)
@@ -98,32 +96,28 @@ def objective(trial: optuna.Trial, params, X_train, X_val, y_train, y_val, log_d
     # Get trial hyperparameters
     print(f"Trial number: {trial.number}")
     shared_params = {
-        "n_layers": trial.suggest_int("n_layers", 1, 5, step=1),
-        "hid_dim": trial.suggest_int("hid_dim", 300, 600, step=100),
+        "n_layers": 3,
+        "hid_dim": trial.suggest_categorical("hid_dim", [128, 256, 512]),
     }
 
     model_params = {
-        "window_size": trial.suggest_int("window_size", 50, 350, step=50),
-        "kernel_size": trial.suggest_int("kernel_size", 5, 11, step=2),
+        "window_size": trial.suggest_categorical("window_size", [64, 128, 256, 512]),
+        "kernel_size": trial.suggest_categorical("kernel_size", [7, 9]),
         "use_gatv2": trial.suggest_categorical("use_gatv2", [True, False]),
-        "feat_gat_embed_dim": None,  # trial.suggest_int(
-        # "feat_gat_embed_dim", 100, 400, step=100
-        # ),
-        "time_gat_embed_dim": None,  # trial.suggest_int(
-        # "time_gat_embed_dim", 100, 400, step=100
-        # ),
+        "feat_gat_embed_dim": None,
+        "time_gat_embed_dim": None,
         "recon_n_layers": shared_params["n_layers"],
-        "forecast_n_layers": shared_params["n_layers"],
-        "gru_n_layers": shared_params["n_layers"],
         "recon_hid_dim": shared_params["hid_dim"],
+        "forecast_n_layers": shared_params["n_layers"],
         "forecast_hid_dim": shared_params["hid_dim"],
-        "gru_hid_dim": shared_params["hid_dim"],
-        "dropout": trial.suggest_float("dropout", 0.1, 0.5, step=0.1),
+        "gru_n_layers": trial.suggest_categorical("gru_n_layers", [3, 5, 7]),
+        "gru_hid_dim": trial.suggest_categorical("gru_hid_dim", [128, 256, 512]),
+        "dropout": trial.suggest_float("dropout", 0.1, 0.3, step=0.1),
         "alpha": 0.02,
     }
 
     train_params_search = {
-        "init_lr": trial.suggest_categorical("init_lr", [1e-4, 1e-3]),
+        "init_lr": trial.suggest_categorical("init_lr", [1e-4, 1e-3, 1e-5]),
         "weight_decay": params["train_params"]["weight_decay"],
         "eps": params["train_params"]["eps"],
         "betas": params["train_params"]["betas"],
@@ -295,7 +289,9 @@ def main(params_file: str, n_trials: int):
     params = load_params(params_file, file_type=ParamFileTypes.YAML)
 
     # Setup logging
-    log_dir = Path(params["train_params"]["log_dir"]) / "mtad_gat_optuna_generic_search_swat"
+    log_dir = (
+        Path(params["train_params"]["log_dir"]) / "mtad_gat_optuna_generic_search_swat"
+    )
     log_dir.mkdir(parents=True, exist_ok=True)
 
     # Try to load existing study
