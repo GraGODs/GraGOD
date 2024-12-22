@@ -31,6 +31,7 @@ seaborn = "^0.13.2"
 colorama = "^0.4.6"
 pytest-xdist = "^3.5.0"
 optuna = "^4.1.0"
+tsai = "^0.3.9"
 
 [tool.poetry.group.dev.dependencies]
 temporian = "^0.9.0"
