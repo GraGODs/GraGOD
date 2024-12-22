@@ -19,6 +19,7 @@ def test_gcn_training():
     # Load parameters for GCN model
     gcn_params = load_params("models/gcn/params.yaml", file_type=ParamFileTypes.YAML)
     gcn_params["train_params"]["n_epochs"] = 2
+    gcn_params["train_params"]["device"] = "cpu"
 
     # Set random seed for reproducibility
     set_seeds(42)
@@ -44,6 +45,7 @@ def test_gdn_training():
     # Load parameters for GDN model
     gdn_params = load_params("models/gdn/params.yaml", file_type=ParamFileTypes.YAML)
     gdn_params["train_params"]["n_epochs"] = 2
+    gdn_params["train_params"]["device"] = "cpu"
 
     # Set random seed for reproducibility
     set_seeds(42)
@@ -71,7 +73,7 @@ def test_mtad_gat_training():
         "models/mtad_gat/params.yaml", file_type=ParamFileTypes.YAML
     )
     mtad_gat_params["train_params"]["n_epochs"] = 2
-
+    mtad_gat_params["train_params"]["device"] = "cpu"
     # Set random seed for reproducibility
     set_seeds(42)
 
