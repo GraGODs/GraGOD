@@ -163,7 +163,10 @@ def main(
     test_scores = torch.abs(forecasts_test - X_test[window_size:])
 
     threshold = get_threshold(
-        val_scores, X_val_labels, params["predictor_params"]["n_thresholds"]
+        dataset=dataset,
+        scores=val_scores,
+        labels=X_val_labels,
+        n_thresholds=params["predictor_params"]["n_thresholds"],
     )
     val_pred = (val_scores > threshold).float()
     test_pred = (test_scores > threshold).float()

@@ -8,8 +8,10 @@ from prts import ts_precision, ts_recall
 from pydantic import BaseModel, ConfigDict, Field
 from timeeval.metrics.vus_metrics import RangeRocVUS
 
-N_TH_SAMPLES_DEFAULT = 1000
-N_MAX_BUFFER_SIZE_DEFAULT = 100
+from gragod.types import Datasets
+
+N_TH_SAMPLES_DEFAULT = 100
+MAX_BUFFER_SIZE_DEFAULT = {Datasets.TELCO: 2, Datasets.SWAT: 6}
 
 
 class MetricsResult(BaseModel):
@@ -115,7 +117,11 @@ class MetricsCalculator:
     # TODO: Save scores, labels, predictions, system_scores, system_labels,
     #       system_predictions to calculate metrics later
     def __init__(
-        self, labels: torch.Tensor, predictions: torch.Tensor, scores: torch.Tensor
+        self,
+        dataset: Datasets,
+        labels: torch.Tensor,
+        predictions: torch.Tensor,
+        scores: torch.Tensor,
     ):
         """
         Initialize calculator with labels and predictions.
@@ -124,6 +130,7 @@ class MetricsCalculator:
             labels: Ground truth labels tensor (n_samples, n_nodes)
             predictions: Predicted labels tensor (n_samples, n_nodes)
         """
+        self.dataset = dataset
         self.scores = scores
         self.labels = labels
         self.predictions = predictions
@@ -398,7 +405,7 @@ class MetricsCalculator:
 
     def calculate_vus_roc(
         self,
-        max_buffer_size: int = N_MAX_BUFFER_SIZE_DEFAULT,
+        max_buffer_size: int | None = None,
         max_th_samples: int = N_TH_SAMPLES_DEFAULT,
     ) -> MetricsResult | SystemMetricsResult:
         """
@@ -417,6 +424,8 @@ class MetricsCalculator:
         Returns:
             MetricsResult | SystemMetricsResult: VUS-ROC metrics.
         """
+        if max_buffer_size is None:
+            max_buffer_size = MAX_BUFFER_SIZE_DEFAULT[self.dataset]
 
         system_labels_float64 = np.array(self.system_labels, dtype=np.float64)
         system_scores_float64 = np.array(self.system_scores, dtype=np.float64)
@@ -524,7 +533,10 @@ def visualize_metrics(
 
 
 def get_metrics(
-    predictions: torch.Tensor, labels: torch.Tensor, scores: torch.Tensor
+    dataset: Datasets,
+    predictions: torch.Tensor,
+    labels: torch.Tensor,
+    scores: torch.Tensor,
 ) -> dict:
     """
     Calculate and visualize all metrics for given predictions and labels.
@@ -536,7 +548,9 @@ def get_metrics(
     Returns:
         Dictionary containing all calculated metrics
     """
-    calculator = MetricsCalculator(labels, predictions, scores)
+    calculator = MetricsCalculator(
+        dataset=dataset, labels=labels, predictions=predictions, scores=scores
+    )
     metrics = calculator.get_all_metrics()
 
     return metrics
