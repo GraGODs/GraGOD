@@ -43,6 +43,7 @@ def main(
     weight_decay: float = 1e-5,
     eps: float = 1e-8,
     betas: tuple[float, float] = (0.9, 0.999),
+    down_len: int | None = None,
 ):
     dataset = cast_dataset(dataset_name)
     dataset_config = get_dataset_config(dataset=dataset)
@@ -55,6 +56,7 @@ def main(
         normalize=dataset_config.normalize,
         clean=clean == CleanMethods.INTERPOLATE.value,
         interpolate_method=interpolate_method,
+        down_len=down_len,
     )
 
     # Create dataloaders

@@ -5,7 +5,7 @@ import pandas as pd
 import torch
 
 from datasets.config import SWATPaths
-from datasets.data_processing import InterPolationMethods, preprocess_df
+from datasets.data_processing import InterPolationMethods, downsample, preprocess_df
 
 
 def load_swat_df_train(
@@ -85,6 +85,7 @@ def load_swat_training_data(
     clean: bool = False,
     scaler=None,
     interpolate_method: InterPolationMethods | None = None,
+    down_len: int | None = None,
 ) -> Tuple[torch.Tensor, ...]:
     """
     Loads the training dataset from the given path and returns a pandas DataFrame.
@@ -94,6 +95,8 @@ def load_swat_training_data(
         clean: Whether to clean the data. Default is False.
         scaler: The scaler to use for normalization.
         interpolate_method: The method to use for interpolation.
+        down_len: The length of the downsample window.
+                If None, no downsampling is performed.
     Returns:
         A pandas DataFrame containing the training dataset.
     """
@@ -132,5 +135,20 @@ def load_swat_training_data(
 
     if X_train_labels is None or X_test_labels is None or X_val_labels is None:
         raise ValueError("SWAT labels are not being loaded.")
+
+    # The first 6 hours worth of training data is discarded since the
+    # system takes 5-6 hours to stabilize.
+    six_hours_in_seconds = 6 * 60 * 60
+    X_train = X_train[six_hours_in_seconds:]
+    X_train_labels = X_train_labels[six_hours_in_seconds:]
+
+    if down_len is not None:
+        if down_len < 1:
+            raise ValueError("Downsample length must be greater than 0")
+
+        print(f"Downsampling data by {down_len}")
+        X_train, X_train_labels = downsample(X_train, X_train_labels, down_len)
+        X_val, X_val_labels = downsample(X_val, X_val_labels, down_len)
+        X_test, X_test_labels = downsample(X_test, X_test_labels, down_len)
 
     return X_train, X_val, X_test, X_train_labels, X_val_labels, X_test_labels

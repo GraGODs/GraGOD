@@ -50,6 +50,7 @@ def main(
     clean: CleanMethods = CleanMethods.NONE,
     interpolate_method: InterPolationMethods | None = None,
     params: dict = {},
+    down_len: int | None = None,
     **kwargs,
 ):
     """
@@ -74,6 +75,7 @@ def main(
         normalize=dataset_config.normalize,
         clean=False,
         interpolate_method=interpolate_method,
+        down_len=down_len,
     )
 
     print(f"Initial data shapes: {X_train.shape}, {X_test.shape}")

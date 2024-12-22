@@ -120,6 +120,48 @@ def get_threshold_system(
     return best_threshold
 
 
+def standarize_error_scores(scores: torch.Tensor) -> torch.Tensor:
+    """
+    Normalize error scores using robust statistics (median and IQR)
+      to prevent any single sensor from dominating.
+
+    Args:
+        scores: Tensor of shape (n_samples, n_features) containing error values
+
+    Returns:
+        Normalized scores using median and IQR normalization
+    """
+    # Calculate median and IQR along time dimension (dim=0)
+    medians = torch.median(scores, dim=0).values
+    q75 = torch.quantile(scores, 0.75, dim=0)
+    q25 = torch.quantile(scores, 0.25, dim=0)
+    iqr = q75 - q25
+
+    # Normalize using median and IQR
+    normalized_scores = (scores - medians) / iqr
+
+    return normalized_scores
+
+
+def smooth_scores(scores: torch.Tensor, window_size: int) -> torch.Tensor:
+    """
+    Smooth scores using a moving average.
+
+    Args:
+        scores: Tensor of shape (n_samples, n_features) containing error values
+        window_size: Size of the moving average window
+
+    Returns:
+        Smoothed scores using a moving average (n_samples, n_features)
+    """
+    # Pad the input to handle boundary effects
+    pad_size = window_size - 1
+    padded_scores = torch.nn.functional.pad(scores, (pad_size, 0), mode="replicate")
+    return torch.nn.functional.avg_pool1d(
+        padded_scores, kernel_size=window_size, stride=1
+    )
+
+
 def get_spot_predictions(
     train_score: torch.Tensor, test_score: torch.Tensor
 ) -> tuple[torch.Tensor, torch.Tensor]:

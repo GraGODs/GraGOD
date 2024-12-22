@@ -52,6 +52,7 @@ def load_training_data(
     normalize: bool = False,
     clean: bool = False,
     interpolate_method: InterPolationMethods | None = None,
+    down_len: int | None = None,
 ):
     """
     Load the training data for the given dataset.
@@ -62,6 +63,8 @@ def load_training_data(
         normalize: Whether to normalize the data.
         clean: Whether to remove anomalies from the data.
         interpolate_method: The method to use to interpolate the missing values.
+        down_len: The length of the downsample window.
+                If None, no downsampling is performed.
     Returns:
         The training, validation and test data as torch tensors.
     """
@@ -90,7 +93,10 @@ def load_training_data(
 
     if dataset == Datasets.SWAT:
         return load_swat_training_data(
-            normalize=normalize, clean=clean, interpolate_method=interpolate_method
+            normalize=normalize,
+            clean=clean,
+            interpolate_method=interpolate_method,
+            down_len=down_len,
         )
     elif dataset == Datasets.TELCO:
         logger.warning(
