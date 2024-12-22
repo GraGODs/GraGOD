@@ -78,7 +78,7 @@ class SlidingWindowDataset(Dataset):
         # [index, index + window_size + horizon] are 0
         valid_indices_mask = [
             not torch.any(
-                self.labels[i : i + self.window_size + self.horizon],
+                self.labels[i + self.window_size : i + self.window_size + self.horizon],
             )
             for i in range(len(self.data) - self.window_size - self.horizon)
         ]

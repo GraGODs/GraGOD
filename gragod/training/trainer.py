@@ -10,6 +10,9 @@ from pytorch_lightning.loggers import TensorBoardLogger
 
 from gragod import PathType
 
+# TODO:
+# - Add SWA
+
 
 class PLBaseModule(pl.LightningModule):
     """
@@ -47,9 +50,14 @@ class PLBaseModule(pl.LightningModule):
 
         if isinstance(criterion, nn.Module):
             self.criterion = criterion
-        else:
+        elif isinstance(criterion, dict):
             for key, value in criterion.items():
                 setattr(self, key, value)
+        else:
+            raise ValueError(
+                "Criterion must be a nn.Module or a dictionary of nn.Module"
+                f"Criterion: {criterion}"
+            )
 
         self.save_hyperparameters(ignore=["model", "criterion"])
 
@@ -80,8 +88,9 @@ class PLBaseModule(pl.LightningModule):
             betas=self.betas,
         )
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, mode="min", factor=0.1, patience=5, verbose=True  # type: ignore
+            optimizer, mode="min", factor=0.5, patience=8, verbose=True  # type: ignore
         )
+
         return {
             "optimizer": optimizer,
             "lr_scheduler": {
@@ -169,6 +178,7 @@ class TrainerPL:
             logger=self.logger,
             log_every_n_steps=self.log_every_n_steps,
             callbacks=self.callbacks,
+            gradient_clip_val=1.0,
         )
 
         trainer.fit(self.lightning_module, train_loader, val_loader)

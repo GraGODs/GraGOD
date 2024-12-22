@@ -27,3 +27,7 @@ def jit_compile_model(input_example: torch.Tensor, model, save_dir: PathType):
 
     print(f"Saving model in {save_dir}")
     torch.jit.save(traced_model, save_dir)
+
+
+def pytest_is_running():
+    return any(arg.startswith("pytest") for arg in sys.argv)

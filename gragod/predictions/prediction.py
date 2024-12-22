@@ -2,19 +2,20 @@ import torch
 
 from gragod.metrics import MetricsCalculator, SystemMetricsResult
 from gragod.predictions.spot import SPOT
+from gragod.types import Datasets
 
 
 def get_threshold(
-    scores: torch.Tensor, labels: torch.Tensor, n_thresholds: int
+    dataset: Datasets, scores: torch.Tensor, labels: torch.Tensor, n_thresholds: int
 ) -> torch.Tensor:
     if labels.ndim == 0 or labels.shape[1] in [0, 1]:
-        return get_threshold_system(scores, labels, n_thresholds)
+        return get_threshold_system(dataset, scores, labels, n_thresholds)
     else:
-        return get_threshold_per_class(scores, labels, n_thresholds)
+        return get_threshold_per_class(dataset, scores, labels, n_thresholds)
 
 
 def get_threshold_per_class(
-    scores: torch.Tensor, labels: torch.Tensor, n_thresholds: int
+    dataset: Datasets, scores: torch.Tensor, labels: torch.Tensor, n_thresholds: int
 ) -> torch.Tensor:
     """
     Gets the threshold for the scores for each time series.
@@ -30,7 +31,9 @@ def get_threshold_per_class(
     # Initial best thresholds with highest scores
     max_scores = best_thresholds = torch.max(scores, dim=0)[0]
     preds = scores > best_thresholds.unsqueeze(0)
-    metrics = MetricsCalculator(labels, preds, scores)
+    metrics = MetricsCalculator(
+        dataset=dataset, labels=labels, predictions=preds, scores=scores
+    )
     precision = metrics.calculate_precision()
     recall = metrics.calculate_recall()
     f1 = metrics.calculate_f1(precision, recall)
@@ -51,7 +54,9 @@ def get_threshold_per_class(
     for threshold in thresholds:
         preds = (scores > threshold.unsqueeze(0)).float()
 
-        metrics = MetricsCalculator(labels, preds, scores)
+        metrics = MetricsCalculator(
+            dataset=dataset, labels=labels, predictions=preds, scores=scores
+        )
         precision = metrics.calculate_precision()
         recall = metrics.calculate_recall()
         f1 = metrics.calculate_f1(precision, recall)
@@ -70,7 +75,7 @@ def get_threshold_per_class(
 
 
 def get_threshold_system(
-    scores: torch.Tensor, labels: torch.Tensor, n_thresholds: int
+    dataset: Datasets, scores: torch.Tensor, labels: torch.Tensor, n_thresholds: int
 ) -> torch.Tensor:
     """
     Get the threshold for the scores.
@@ -87,7 +92,9 @@ def get_threshold_system(
     # Initial best thresholds with highest scores
     max_score = best_threshold = torch.max(scores)
     preds = scores > best_threshold
-    metrics = MetricsCalculator(labels, preds, scores)
+    metrics = MetricsCalculator(
+        dataset=dataset, labels=labels, predictions=preds, scores=scores
+    )
     precision = metrics.calculate_precision()
     recall = metrics.calculate_recall()
     f1 = metrics.calculate_f1(precision, recall)
@@ -99,7 +106,9 @@ def get_threshold_system(
     for threshold in thresholds:
         preds = (scores > threshold).float()
 
-        metrics = MetricsCalculator(labels, preds, scores)
+        metrics = MetricsCalculator(
+            dataset=dataset, labels=labels, predictions=preds, scores=scores
+        )
         precision = metrics.calculate_precision()
         recall = metrics.calculate_recall()
         f1 = metrics.calculate_f1(precision, recall)

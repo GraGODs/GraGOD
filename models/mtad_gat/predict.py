@@ -187,7 +187,10 @@ def main(
         EPSILON=EPSILON,
     )
     thresholds = get_threshold(
-        val_scores, X_val_labels, params["predictor_params"]["n_thresholds"]
+        dataset=dataset,
+        scores=val_scores,
+        labels=X_val_labels,
+        n_thresholds=params["predictor_params"]["n_thresholds"],
     )
 
     # we only calculate train if there's at least one anomaly
