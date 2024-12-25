@@ -48,5 +48,7 @@ predictor_params:
   reg_level: 1
   ckpt_folder: "output/mtad_gat/version_5"
   n_thresholds: 100
+  window_size_smooth: 5
+  post_process_scores: true
 
 save_path: "saved_models/mtad_gat"

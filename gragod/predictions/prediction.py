@@ -121,6 +121,26 @@ def get_threshold_system(
     return best_threshold
 
 
+def post_process_scores(scores: torch.Tensor, window_size: int = 5) -> torch.Tensor:
+    """
+    Post process the scores by applying smoothing and standardization.
+
+    This function performs two steps:
+    1. Smooths the scores using a moving average
+    2. Standardizes the scores using robust statistics (median and IQR) to normalize
+       the scale across features
+
+    Args:
+        scores: Tensor of shape (n_samples, n_features) containing error values
+
+    Returns:
+        Post processed scores using a moving average and normalization
+    """
+    scores = standarize_error_scores(scores)
+    scores = smooth_scores(scores, window_size=window_size)
+    return scores
+
+
 def standarize_error_scores(scores: torch.Tensor) -> torch.Tensor:
     """
     Normalize error scores using robust statistics (median and IQR)

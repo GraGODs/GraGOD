@@ -11,7 +11,7 @@ from datasets.dataset import SlidingWindowDataset
 from gragod import InterPolationMethods, ParamFileTypes
 from gragod.metrics.calculator import get_metrics
 from gragod.metrics.visualization import print_all_metrics
-from gragod.predictions.prediction import get_threshold
+from gragod.predictions.prediction import get_threshold, post_process_scores
 from gragod.training import load_params, load_training_data, set_seeds
 from gragod.types import CleanMethods, cast_dataset
 from models.mtad_gat.model import MTAD_GAT, MTAD_GAT_PLModule
@@ -157,12 +157,6 @@ def main(
     model.eval()
 
     # Generate predictions and calculate metrics
-    forecasts_train, reconstructions_train = run_model(
-        model=lightning_module,
-        loader=train_loader,
-        device=device,
-    )
-
     forecasts_val, reconstructions_val = run_model(
         model=lightning_module,
         loader=val_loader,
@@ -189,6 +183,17 @@ def main(
         window_size=window_size,
         EPSILON=EPSILON,
     )
+
+    if params["predictor_params"]["post_process_scores"]:
+        val_scores = post_process_scores(
+            val_scores,
+            window_size=params["predictor_params"]["window_size_smooth"],
+        )
+        test_scores = post_process_scores(
+            test_scores,
+            window_size=params["predictor_params"]["window_size_smooth"],
+        )
+
     thresholds = get_threshold(
         dataset=dataset,
         scores=val_scores,
@@ -210,8 +215,18 @@ def main(
             window_size=window_size,
             EPSILON=EPSILON,
         )
+        if params["predictor_params"]["post_process_scores"]:
+            train_scores = post_process_scores(
+                train_scores,
+                window_size=params["predictor_params"]["window_size_smooth"],
+            )
         train_pred = (train_scores > thresholds).float()
-        train_metrics = get_metrics(train_pred, X_train_labels, train_scores)
+        train_metrics = get_metrics(
+            dataset=dataset,
+            predictions=train_pred,
+            labels=X_train_labels,
+            scores=train_scores,
+        )
         print_all_metrics(train_metrics, "------- Train -------")
         json.dump(
             train_metrics,
@@ -225,8 +240,18 @@ def main(
 
     X_test_pred = (test_scores > thresholds).float()
     X_val_pred = (val_scores > thresholds).float()
-    metrics_val = get_metrics(X_val_pred, X_val_labels, val_scores)
-    metrics_test = get_metrics(X_test_pred, X_test_labels, test_scores)
+    metrics_val = get_metrics(
+        dataset=dataset,
+        predictions=X_val_pred,
+        labels=X_val_labels,
+        scores=val_scores,
+    )
+    metrics_test = get_metrics(
+        dataset=dataset,
+        predictions=X_test_pred,
+        labels=X_test_labels,
+        scores=test_scores,
+    )
     print_all_metrics(metrics_val, "------- Validation -------")
     print_all_metrics(metrics_test, "------- Test -------")
 

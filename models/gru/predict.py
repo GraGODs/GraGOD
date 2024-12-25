@@ -11,7 +11,7 @@ from datasets.dataset import SlidingWindowDataset
 from gragod import InterPolationMethods, ParamFileTypes
 from gragod.metrics.calculator import get_metrics
 from gragod.metrics.visualization import print_all_metrics
-from gragod.predictions.prediction import get_threshold
+from gragod.predictions.prediction import get_threshold, post_process_scores
 from gragod.training import load_params, load_training_data, set_seeds
 from gragod.types import CleanMethods, cast_dataset
 from models.gru.model import GRU_PLModule, GRUModel
@@ -169,11 +169,6 @@ def main(
     model.eval()
 
     # Generate predictions and calculate metrics
-    forecasts_train = run_model(
-        model=lightning_module,
-        loader=train_loader,
-        device=device,
-    )
     forecasts_val = run_model(
         model=lightning_module,
         loader=val_loader,
@@ -185,11 +180,6 @@ def main(
         device=device,
     )
 
-    train_scores = generate_scores(
-        forecasts=forecasts_train,
-        data=X_train,
-        window_size=window_size,
-    )
     val_scores = generate_scores(
         forecasts=forecasts_val,
         data=X_val,
@@ -202,19 +192,45 @@ def main(
     )
     thresholds = get_threshold(
         dataset=dataset,
-        scores=train_scores,
-        labels=X_train_labels,
+        scores=val_scores,
+        labels=X_val_labels,
         n_thresholds=params["predictor_params"]["n_thresholds"],
     )
 
-    X_train_pred = (train_scores > thresholds).float()
-    metrics_train = get_metrics(
-        dataset=dataset,
-        predictions=X_train_pred,
-        labels=X_train_labels,
-        scores=train_scores,
-    )
-    print_all_metrics(metrics_train, "------- Train -------")
+    # we only calculate train if there's at least one anomaly
+    if torch.any(X_train_labels == 1):
+        forecasts_train = run_model(
+            model=lightning_module,
+            loader=train_loader,
+            device=device,
+        )
+        train_scores = generate_scores(
+            forecasts=forecasts_train,
+            data=X_train,
+            window_size=window_size,
+        )
+        if params["predictor_params"]["post_process_scores"]:
+            train_scores = post_process_scores(
+                train_scores,
+                window_size=params["predictor_params"]["window_size_smooth"],
+            )
+        X_train_pred = (train_scores > thresholds).float()
+        train_metrics = get_metrics(
+            dataset=dataset,
+            predictions=X_train_pred,
+            labels=X_train_labels,
+            scores=train_scores,
+        )
+        print_all_metrics(train_metrics, "------- Train -------")
+        json.dump(
+            train_metrics,
+            open(
+                os.path.join(
+                    params["predictor_params"]["ckpt_folder"], "train_metrics.json"
+                ),
+                "w",
+            ),
+        )
 
     X_val_pred = (val_scores > thresholds).float()
     metrics_val = get_metrics(
@@ -236,15 +252,6 @@ def main(
 
     # save
     json.dump(
-        metrics_train,
-        open(
-            os.path.join(
-                params["predictor_params"]["ckpt_folder"], "metrics_train.json"
-            ),
-            "w",
-        ),
-    )
-    json.dump(
         metrics_val,
         open(
             os.path.join(params["predictor_params"]["ckpt_folder"], "metrics_val.json"),
@@ -252,13 +259,13 @@ def main(
         ),
     )
     return {
-        "predictions": X_train_pred,
-        "labels": X_train_labels,
-        "scores": train_scores,
-        "data": X_train,
+        "predictions": X_val_pred,
+        "labels": X_val_labels,
+        "scores": val_scores,
+        "data": X_val,
         "thresholds": thresholds,
-        "forecasts": forecasts_train,
-        "metrics": metrics_train,
+        "forecasts": forecasts_val,
+        "metrics": metrics_val,
     }
 
 
