@@ -11,7 +11,7 @@ from timeeval.metrics.vus_metrics import RangeRocVUS
 from gragod.types import Datasets
 
 N_TH_SAMPLES_DEFAULT = 100
-MAX_BUFFER_SIZE_DEFAULT = {Datasets.TELCO: 2, Datasets.SWAT: 6}
+MAX_BUFFER_SIZE_DEFAULT = {Datasets.TELCO: 2, Datasets.SWAT: 3}
 
 
 class MetricsResult(BaseModel):
@@ -436,9 +436,13 @@ class MetricsCalculator:
             max_samples=max_th_samples,
         )
 
-        system_vus_roc = vus_roc(
-            y_true=system_labels_float64,
-            y_score=system_scores_float64,
+        system_vus_roc = (
+            vus_roc(
+                y_true=system_labels_float64,
+                y_score=system_scores_float64,
+            )
+            if torch.sum(self.system_labels) > 0
+            else 0
         )
 
         if self.calculate_only_system_metrics:
