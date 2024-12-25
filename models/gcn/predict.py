@@ -11,7 +11,7 @@ from datasets.dataset import SlidingWindowDataset
 from gragod import CleanMethods, InterPolationMethods, ParamFileTypes
 from gragod.metrics.calculator import get_metrics
 from gragod.metrics.visualization import print_all_metrics
-from gragod.predictions.prediction import get_threshold, post_process_scores
+from gragod.predictions.prediction import generate_scores, get_threshold
 from gragod.training import load_params, load_training_data
 from gragod.types import cast_dataset
 from models.gcn.model import GCN, GCN_PLModule
@@ -162,16 +162,21 @@ def main(
         edge_index=edge_index,
     )
 
-    val_scores = torch.abs(forecasts_val - X_val[window_size:])
-    test_scores = torch.abs(forecasts_test - X_test[window_size:])
+    val_scores = generate_scores(
+        predictions=forecasts_val,
+        true_values=X_val[window_size:],
+        score_type=params["predictor_params"]["score_type"],
+        post_process=params["predictor_params"]["post_process_scores"],
+        window_size_smooth=params["predictor_params"]["window_size_smooth"],
+    )
 
-    if params["predictor_params"]["post_process_scores"]:
-        val_scores = post_process_scores(
-            val_scores, window_size=params["predictor_params"]["window_size_smooth"]
-        )
-        test_scores = post_process_scores(
-            test_scores, window_size=params["predictor_params"]["window_size_smooth"]
-        )
+    test_scores = generate_scores(
+        predictions=forecasts_test,
+        true_values=X_test[window_size:],
+        score_type=params["predictor_params"]["score_type"],
+        post_process=params["predictor_params"]["post_process_scores"],
+        window_size_smooth=params["predictor_params"]["window_size_smooth"],
+    )
 
     threshold = get_threshold(
         dataset=dataset,
@@ -190,13 +195,14 @@ def main(
             device=device,
             edge_index=edge_index,
         )
-        train_scores = torch.abs(forecasts_train - X_train[window_size:])
+        train_scores = generate_scores(
+            predictions=forecasts_train,
+            true_values=X_train[window_size:],
+            score_type=params["predictor_params"]["score_type"],
+            post_process=params["predictor_params"]["post_process_scores"],
+            window_size_smooth=params["predictor_params"]["window_size_smooth"],
+        )
         train_pred = (train_scores > threshold).float()
-        if params["predictor_params"]["post_process_scores"]:
-            train_scores = post_process_scores(
-                train_scores,
-                window_size=params["predictor_params"]["window_size_smooth"],
-            )
         train_metrics = get_metrics(
             dataset=dataset,
             predictions=train_pred,

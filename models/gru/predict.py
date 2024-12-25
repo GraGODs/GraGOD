@@ -11,7 +11,7 @@ from datasets.dataset import SlidingWindowDataset
 from gragod import InterPolationMethods, ParamFileTypes
 from gragod.metrics.calculator import get_metrics
 from gragod.metrics.visualization import print_all_metrics
-from gragod.predictions.prediction import get_threshold, post_process_scores
+from gragod.predictions.prediction import generate_scores, get_threshold
 from gragod.training import load_params, load_training_data, set_seeds
 from gragod.types import CleanMethods, cast_dataset
 from models.gru.model import GRU_PLModule, GRUModel
@@ -41,31 +41,6 @@ def run_model(
     forecasts = torch.cat(output)  # type: ignore
 
     return forecasts
-
-
-def generate_scores(
-    forecasts: torch.Tensor,
-    data: torch.Tensor,
-    window_size: int,
-) -> torch.Tensor:
-    """
-    Generate anomaly scores for a given forecasts and data.
-    Scores are calculated as the square root of the squared difference between the
-    forecasts and the true values.
-
-    Args:
-        forecasts: The forecasts to use for scoring.
-        data: The data to use for scoring.
-        window_size: The window size to use for scoring.
-
-    Returns:
-        torch.Tensor: The scores.
-    """
-    true_values = data[window_size:]
-
-    score = torch.sqrt((forecasts - true_values) ** 2)
-
-    return score
 
 
 def main(
@@ -181,15 +156,20 @@ def main(
     )
 
     val_scores = generate_scores(
-        forecasts=forecasts_val,
-        data=X_val,
-        window_size=window_size,
+        predictions=forecasts_val,
+        true_values=X_val[window_size:],
+        score_type=params["predictor_params"]["score_type"],
+        post_process=params["predictor_params"]["post_process_scores"],
+        window_size_smooth=params["predictor_params"]["window_size_smooth"],
     )
     test_scores = generate_scores(
-        forecasts=forecasts_test,
-        data=X_test,
-        window_size=window_size,
+        predictions=forecasts_test,
+        true_values=X_test[window_size:],
+        score_type=params["predictor_params"]["score_type"],
+        post_process=params["predictor_params"]["post_process_scores"],
+        window_size_smooth=params["predictor_params"]["window_size_smooth"],
     )
+
     thresholds = get_threshold(
         dataset=dataset,
         scores=val_scores,
@@ -205,15 +185,12 @@ def main(
             device=device,
         )
         train_scores = generate_scores(
-            forecasts=forecasts_train,
-            data=X_train,
-            window_size=window_size,
+            predictions=forecasts_train,
+            true_values=X_train[window_size:],
+            score_type=params["predictor_params"]["score_type"],
+            post_process=params["predictor_params"]["post_process_scores"],
+            window_size_smooth=params["predictor_params"]["window_size_smooth"],
         )
-        if params["predictor_params"]["post_process_scores"]:
-            train_scores = post_process_scores(
-                train_scores,
-                window_size=params["predictor_params"]["window_size_smooth"],
-            )
         X_train_pred = (train_scores > thresholds).float()
         train_metrics = get_metrics(
             dataset=dataset,

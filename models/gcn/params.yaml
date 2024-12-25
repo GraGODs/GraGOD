@@ -35,3 +35,4 @@ predictor_params:
   n_thresholds: 100
   window_size_smooth: 5
   post_process_scores: true
+  score_type: "abs"

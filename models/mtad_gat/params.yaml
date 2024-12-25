@@ -17,7 +17,7 @@ model_params:
 
 train_params:
   model_name: "mtad_gat"
-  n_epochs: 30
+  n_epochs: 2
   batch_size: 264
   init_lr: 0.001
   target_dims: null
@@ -46,9 +46,9 @@ predictor_params:
   use_mov_av: false
   gamma: 0.8
   reg_level: 1
-  ckpt_folder: "output/mtad_gat/version_5"
+  ckpt_folder: "output/mtad_gat/version_2"
   n_thresholds: 100
   window_size_smooth: 5
   post_process_scores: true
-
+  score_type: "mse"
 save_path: "saved_models/mtad_gat"

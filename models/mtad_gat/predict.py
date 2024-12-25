@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+from typing import Literal
 
 import pytorch_lightning as pl
 import torch
@@ -11,7 +12,8 @@ from datasets.dataset import SlidingWindowDataset
 from gragod import InterPolationMethods, ParamFileTypes
 from gragod.metrics.calculator import get_metrics
 from gragod.metrics.visualization import print_all_metrics
-from gragod.predictions.prediction import get_threshold, post_process_scores
+from gragod.predictions.prediction import generate_scores as generate_scores_generic
+from gragod.predictions.prediction import get_threshold
 from gragod.training import load_params, load_training_data, set_seeds
 from gragod.types import CleanMethods, cast_dataset
 from models.mtad_gat.model import MTAD_GAT, MTAD_GAT_PLModule
@@ -43,15 +45,27 @@ def run_model(
 def generate_scores(
     forecasts: torch.Tensor,
     reconstructions: torch.Tensor,
-    data: torch.Tensor,
-    window_size: int,
-    EPSILON: float,
+    true_values: torch.Tensor,
+    score_type: Literal["abs", "mse"] = "abs",
+    post_process: bool = False,
+    window_size_smooth: int = 5,
 ) -> torch.Tensor:
-    true_values = data[window_size:]
-
-    score = torch.sqrt((forecasts - true_values) ** 2) + EPSILON * torch.sqrt(
-        (reconstructions - true_values) ** 2
+    scores_forecasts = generate_scores_generic(
+        predictions=forecasts,
+        true_values=true_values,
+        score_type=score_type,
+        post_process=post_process,
+        window_size_smooth=window_size_smooth,
     )
+    scores_reconstructions = generate_scores_generic(
+        predictions=reconstructions,
+        true_values=true_values,
+        score_type=score_type,
+        post_process=post_process,
+        window_size_smooth=window_size_smooth,
+    )
+
+    score = scores_forecasts + EPSILON * scores_reconstructions
     score = score / (1 + EPSILON)
     return score
 
@@ -172,27 +186,19 @@ def main(
     val_scores = generate_scores(
         forecasts=forecasts_val,
         reconstructions=reconstructions_val,
-        data=X_val,
-        window_size=window_size,
-        EPSILON=EPSILON,
+        true_values=X_val[window_size:],
+        score_type=params["predictor_params"]["score_type"],
+        post_process=params["predictor_params"]["post_process_scores"],
+        window_size_smooth=params["predictor_params"]["window_size_smooth"],
     )
     test_scores = generate_scores(
         forecasts=forecasts_test,
         reconstructions=reconstructions_test,
-        data=X_test,
-        window_size=window_size,
-        EPSILON=EPSILON,
+        true_values=X_test[window_size:],
+        score_type=params["predictor_params"]["score_type"],
+        post_process=params["predictor_params"]["post_process_scores"],
+        window_size_smooth=params["predictor_params"]["window_size_smooth"],
     )
-
-    if params["predictor_params"]["post_process_scores"]:
-        val_scores = post_process_scores(
-            val_scores,
-            window_size=params["predictor_params"]["window_size_smooth"],
-        )
-        test_scores = post_process_scores(
-            test_scores,
-            window_size=params["predictor_params"]["window_size_smooth"],
-        )
 
     thresholds = get_threshold(
         dataset=dataset,
@@ -211,15 +217,11 @@ def main(
         train_scores = generate_scores(
             forecasts=forecasts_train,
             reconstructions=reconstructions_train,
-            data=X_train,
-            window_size=window_size,
-            EPSILON=EPSILON,
+            true_values=X_train[window_size:],
+            score_type=params["predictor_params"]["score_type"],
+            post_process=params["predictor_params"]["post_process_scores"],
+            window_size_smooth=params["predictor_params"]["window_size_smooth"],
         )
-        if params["predictor_params"]["post_process_scores"]:
-            train_scores = post_process_scores(
-                train_scores,
-                window_size=params["predictor_params"]["window_size_smooth"],
-            )
         train_pred = (train_scores > thresholds).float()
         train_metrics = get_metrics(
             dataset=dataset,
