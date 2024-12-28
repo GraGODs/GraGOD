@@ -126,7 +126,7 @@ def get_threshold_system(
 def generate_scores(
     predictions: torch.Tensor,
     true_values: torch.Tensor,
-    score_type: Literal["abs", "mse"] = "abs",
+    score_type: Literal["abs", "mse"] = "mse",
     post_process: bool = False,
     window_size_smooth: int = 5,
 ) -> torch.Tensor:
