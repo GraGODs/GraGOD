@@ -3,7 +3,7 @@ import os
 import pickle
 from pathlib import Path
 from time import time
-from typing import Callable, Tuple
+from typing import Callable, Dict, Tuple, Union
 
 import optuna
 import torch
@@ -16,8 +16,13 @@ from gragod.types import MODEL_NAMES
 RANDOM_SEED = 42
 
 
-def save_study(study, log_dir):
-    """Save study to disk."""
+def save_study(study: optuna.Study, log_dir: Union[str, Path]) -> None:
+    """Save Optuna study to disk.
+
+    Args:
+        study: Optuna study object to save
+        log_dir: Directory to save the study in
+    """
     study_path = os.path.join(log_dir, "study.pkl")
     with open(study_path, "wb") as fout:
         pickle.dump(study, fout)
@@ -26,6 +31,14 @@ def save_study(study, log_dir):
 def load_model_functions(
     model_name: MODEL_NAMES,
 ) -> Tuple[Callable, Callable, Callable]:
+    """Load training, prediction and parameter tuning functions for a model.
+
+    Args:
+        model_name: Name of the model to load functions for
+
+    Returns:
+        Tuple containing training, prediction and parameter tuning functions
+    """
     if model_name == "gru":
         from models.gru.predict import main as predict_gru
         from models.gru.train import main as train_gru
@@ -55,10 +68,20 @@ def load_model_functions(
 def objective(
     model: MODEL_NAMES,
     trial: optuna.Trial,
-    params: dict,
+    params: Dict,
     optimization_metric: str,
-):
-    """Optuna objective function."""
+) -> float:
+    """Optuna objective function for hyperparameter optimization.
+
+    Args:
+        model: Name of the model to optimize
+        trial: Current Optuna trial
+        params: Dictionary containing model parameters
+        optimization_metric: Metric to optimize for
+
+    Returns:
+        Value of the optimization metric for current trial
+    """
     start_time = time()
     print(f"Trial number: {trial.number}")
 
@@ -113,7 +136,14 @@ def main(
     model: MODEL_NAMES,
     params_file: str,
     optimization_metric: str,
-):
+) -> None:
+    """Main function to run hyperparameter optimization.
+
+    Args:
+        model: Name of the model to optimize
+        params_file: Path to parameter file
+        optimization_metric: Metric to optimize for
+    """
     torch.set_float32_matmul_precision("medium")
     set_seeds(RANDOM_SEED)
 

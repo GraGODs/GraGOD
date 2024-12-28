@@ -43,7 +43,7 @@ def main(
     save_top_k: int,
     ckpt_path: str | None = None,
     down_len: int | None = None,
-):
+) -> TrainerPL:
     """
     Main function to train and evaluate the GDN model.
 

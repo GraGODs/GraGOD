@@ -35,7 +35,7 @@ def main(
     eps: float,
     betas: tuple[float, float],
     down_len: int | None = None,
-):
+) -> TrainerPL:
     """
     Main function to train and evaluate the GCN model.
 

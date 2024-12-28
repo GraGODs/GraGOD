@@ -53,7 +53,7 @@ def main(
     params: dict = {},
     down_len: int | None = None,
     **kwargs,
-):
+) -> dict:
     """
     Main function to load data, model and generate predictions.
     Returns a dictionary containing evaluation metrics.
