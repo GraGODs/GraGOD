@@ -35,6 +35,7 @@ predictor_params:
   window_size_smooth: 5
   post_process_scores: true
   score_type: "mse"
+  ckpt_folder: "output/gru/version_0"
 
 optimization_params:
   study_name: "gru_optimization"

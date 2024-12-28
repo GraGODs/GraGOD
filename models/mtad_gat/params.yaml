@@ -17,7 +17,11 @@ model_params:
 
 train_params:
   model_name: "mtad_gat"
+<<<<<<< HEAD
   n_epochs: 2
+=======
+  n_epochs: 30
+>>>>>>> fix: add params.yaml again?
   batch_size: 264
   init_lr: 0.001
   target_dims: null
@@ -51,6 +55,9 @@ predictor_params:
   window_size_smooth: 5
   post_process_scores: true
   score_type: "mse"
+  ckpt_folder: "output/mtad_gat/version_5"
+  n_thresholds: 100
+
 save_path: "saved_models/mtad_gat"
 
 optimization_params:
