@@ -11,11 +11,7 @@ from datasets.dataset import SlidingWindowDataset
 from gragod import CleanMethods, InterPolationMethods, ParamFileTypes
 from gragod.metrics.calculator import get_metrics
 from gragod.metrics.visualization import print_all_metrics
-from gragod.predictions.prediction import (
-    get_threshold,
-    smooth_scores,
-    standarize_error_scores,
-)
+from gragod.predictions.prediction import generate_scores, get_threshold
 from gragod.training import load_params, load_training_data
 from gragod.types import cast_dataset
 from models.gdn.model import GDN, GDN_PLModule
@@ -162,16 +158,20 @@ def main(
         device=device,
     )
 
-    val_scores = torch.abs(forecasts_val - X_val[window_size:])
-    test_scores = torch.abs(forecasts_test - X_test[window_size:])
-
-    val_scores = standarize_error_scores(val_scores)
-    val_scores = smooth_scores(
-        val_scores, params["predictor_params"]["window_size_smooth"]
+    val_scores = generate_scores(
+        predictions=forecasts_val,
+        true_values=X_val[window_size:],
+        score_type=params["predictor_params"]["score_type"],
+        post_process=params["predictor_params"]["post_process_scores"],
+        window_size_smooth=params["predictor_params"]["window_size_smooth"],
     )
-    test_scores = standarize_error_scores(test_scores)
-    test_scores = smooth_scores(
-        test_scores, params["predictor_params"]["window_size_smooth"]
+
+    test_scores = generate_scores(
+        predictions=forecasts_test,
+        true_values=X_test[window_size:],
+        score_type=params["predictor_params"]["score_type"],
+        post_process=params["predictor_params"]["post_process_scores"],
+        window_size_smooth=params["predictor_params"]["window_size_smooth"],
     )
 
     threshold = get_threshold(
@@ -190,9 +190,20 @@ def main(
             loader=train_loader,
             device=device,
         )
-        train_scores = torch.abs(forecasts_train - X_train[window_size:])
+        train_scores = generate_scores(
+            predictions=forecasts_train,
+            true_values=X_train[window_size:],
+            score_type=params["predictor_params"]["score_type"],
+            post_process=params["predictor_params"]["post_process_scores"],
+            window_size_smooth=params["predictor_params"]["window_size_smooth"],
+        )
         train_pred = (train_scores > threshold).float()
-        train_metrics = get_metrics(train_pred, X_train_labels, train_scores)
+        train_metrics = get_metrics(
+            dataset=dataset,
+            predictions=train_pred,
+            labels=X_train_labels,
+            scores=train_scores,
+        )
         print_all_metrics(train_metrics, "------- Train -------")
         json.dump(
             train_metrics,
@@ -204,8 +215,18 @@ def main(
             ),
         )
 
-    val_metrics = get_metrics(val_pred, X_val_labels, val_scores)
-    test_metrics = get_metrics(test_pred, X_test_labels, test_scores)
+    val_metrics = get_metrics(
+        dataset=dataset,
+        predictions=val_pred,
+        labels=X_val_labels,
+        scores=val_scores,
+    )
+    test_metrics = get_metrics(
+        dataset=dataset,
+        predictions=test_pred,
+        labels=X_test_labels,
+        scores=test_scores,
+    )
     print_all_metrics(val_metrics, "------- Validation -------")
     print_all_metrics(test_metrics, "------- Test -------")
 

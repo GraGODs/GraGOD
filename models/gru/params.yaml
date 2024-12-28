@@ -31,4 +31,7 @@ train_params:
 predictor_params:
   dataset: "telco"
   n_thresholds: 1000
-  ckpt_folder: "output/gru_test_normalization/version_2/" 
+  ckpt_folder: "output/gru/version_1/"
+  window_size_smooth: 5
+  post_process_scores: true
+  score_type: "mse"

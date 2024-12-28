@@ -47,6 +47,9 @@ predictor_params:
   ckpt_folder: "output/gdn/version_8"
   n_thresholds: 1000
   window_size_smooth: 5
+  post_process_scores: true
+  score_type: "abs"
+
 optimization_params:
   study_name: "gdn_optimization"
   n_trials: 100

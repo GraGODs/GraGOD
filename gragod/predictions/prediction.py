@@ -1,3 +1,5 @@
+from typing import Literal
+
 import torch
 
 from gragod.metrics.calculator import MetricsCalculator
@@ -119,6 +121,55 @@ def get_threshold_system(
             best_threshold = threshold
 
     return best_threshold
+
+
+def generate_scores(
+    predictions: torch.Tensor,
+    true_values: torch.Tensor,
+    score_type: Literal["abs", "mse"] = "mse",
+    post_process: bool = False,
+    window_size_smooth: int = 5,
+) -> torch.Tensor:
+    """
+    Generate scores for the predictions.
+
+    Args:
+        predictions: Tensor of shape (n_samples, n_features) containing predictions
+        true_values: Tensor of shape (n_samples, n_features) containing true values
+        score_type: Type of score to use, either "mse" or "abs". Default is "mse".
+
+    Returns:
+        Tensor of shape (n_samples, n_features) containing scores
+    """
+    if score_type == "abs":
+        scores = torch.abs(predictions - true_values)
+    elif score_type == "mse":
+        scores = torch.sqrt((predictions - true_values) ** 2)
+
+    if post_process:
+        scores = post_process_scores(scores, window_size_smooth)
+
+    return scores
+
+
+def post_process_scores(scores: torch.Tensor, window_size: int = 5) -> torch.Tensor:
+    """
+    Post process the scores by applying smoothing and standardization.
+
+    This function performs two steps:
+    1. Smooths the scores using a moving average
+    2. Standardizes the scores using robust statistics (median and IQR) to normalize
+       the scale across features
+
+    Args:
+        scores: Tensor of shape (n_samples, n_features) containing error values
+
+    Returns:
+        Post processed scores using a moving average and normalization
+    """
+    scores = standarize_error_scores(scores)
+    scores = smooth_scores(scores, window_size=window_size)
+    return scores
 
 
 def standarize_error_scores(scores: torch.Tensor) -> torch.Tensor:

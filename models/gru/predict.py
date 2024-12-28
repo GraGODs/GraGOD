@@ -11,7 +11,7 @@ from datasets.dataset import SlidingWindowDataset
 from gragod import InterPolationMethods, ParamFileTypes
 from gragod.metrics.calculator import get_metrics
 from gragod.metrics.visualization import print_all_metrics
-from gragod.predictions.prediction import get_threshold
+from gragod.predictions.prediction import generate_scores, get_threshold
 from gragod.training import load_params, load_training_data, set_seeds
 from gragod.types import CleanMethods, cast_dataset
 from models.gru.model import GRU_PLModule, GRUModel
@@ -41,31 +41,6 @@ def run_model(
     forecasts = torch.cat(output)  # type: ignore
 
     return forecasts
-
-
-def generate_scores(
-    forecasts: torch.Tensor,
-    data: torch.Tensor,
-    window_size: int,
-) -> torch.Tensor:
-    """
-    Generate anomaly scores for a given forecasts and data.
-    Scores are calculated as the square root of the squared difference between the
-    forecasts and the true values.
-
-    Args:
-        forecasts: The forecasts to use for scoring.
-        data: The data to use for scoring.
-        window_size: The window size to use for scoring.
-
-    Returns:
-        torch.Tensor: The scores.
-    """
-    true_values = data[window_size:]
-
-    score = torch.sqrt((forecasts - true_values) ** 2)
-
-    return score
 
 
 def main(
@@ -169,11 +144,6 @@ def main(
     model.eval()
 
     # Generate predictions and calculate metrics
-    forecasts_train = run_model(
-        model=lightning_module,
-        loader=train_loader,
-        device=device,
-    )
     forecasts_val = run_model(
         model=lightning_module,
         loader=val_loader,
@@ -185,36 +155,59 @@ def main(
         device=device,
     )
 
-    train_scores = generate_scores(
-        forecasts=forecasts_train,
-        data=X_train,
-        window_size=window_size,
-    )
     val_scores = generate_scores(
-        forecasts=forecasts_val,
-        data=X_val,
-        window_size=window_size,
+        predictions=forecasts_val,
+        true_values=X_val[window_size:],
+        score_type=params["predictor_params"]["score_type"],
+        post_process=params["predictor_params"]["post_process_scores"],
+        window_size_smooth=params["predictor_params"]["window_size_smooth"],
     )
     test_scores = generate_scores(
-        forecasts=forecasts_test,
-        data=X_test,
-        window_size=window_size,
+        predictions=forecasts_test,
+        true_values=X_test[window_size:],
+        score_type=params["predictor_params"]["score_type"],
+        post_process=params["predictor_params"]["post_process_scores"],
+        window_size_smooth=params["predictor_params"]["window_size_smooth"],
     )
+
     thresholds = get_threshold(
         dataset=dataset,
-        scores=train_scores,
-        labels=X_train_labels,
+        scores=val_scores,
+        labels=X_val_labels,
         n_thresholds=params["predictor_params"]["n_thresholds"],
     )
 
-    X_train_pred = (train_scores > thresholds).float()
-    metrics_train = get_metrics(
-        dataset=dataset,
-        predictions=X_train_pred,
-        labels=X_train_labels,
-        scores=train_scores,
-    )
-    print_all_metrics(metrics_train, "------- Train -------")
+    # we only calculate train if there's at least one anomaly
+    if torch.any(X_train_labels == 1):
+        forecasts_train = run_model(
+            model=lightning_module,
+            loader=train_loader,
+            device=device,
+        )
+        train_scores = generate_scores(
+            predictions=forecasts_train,
+            true_values=X_train[window_size:],
+            score_type=params["predictor_params"]["score_type"],
+            post_process=params["predictor_params"]["post_process_scores"],
+            window_size_smooth=params["predictor_params"]["window_size_smooth"],
+        )
+        X_train_pred = (train_scores > thresholds).float()
+        train_metrics = get_metrics(
+            dataset=dataset,
+            predictions=X_train_pred,
+            labels=X_train_labels,
+            scores=train_scores,
+        )
+        print_all_metrics(train_metrics, "------- Train -------")
+        json.dump(
+            train_metrics,
+            open(
+                os.path.join(
+                    params["predictor_params"]["ckpt_folder"], "train_metrics.json"
+                ),
+                "w",
+            ),
+        )
 
     X_val_pred = (val_scores > thresholds).float()
     metrics_val = get_metrics(
@@ -236,15 +229,6 @@ def main(
 
     # save
     json.dump(
-        metrics_train,
-        open(
-            os.path.join(
-                params["predictor_params"]["ckpt_folder"], "metrics_train.json"
-            ),
-            "w",
-        ),
-    )
-    json.dump(
         metrics_val,
         open(
             os.path.join(params["predictor_params"]["ckpt_folder"], "metrics_val.json"),
@@ -252,13 +236,13 @@ def main(
         ),
     )
     return {
-        "predictions": X_train_pred,
-        "labels": X_train_labels,
-        "scores": train_scores,
-        "data": X_train,
+        "predictions": X_val_pred,
+        "labels": X_val_labels,
+        "scores": val_scores,
+        "data": X_val,
         "thresholds": thresholds,
-        "forecasts": forecasts_train,
-        "metrics": metrics_train,
+        "forecasts": forecasts_val,
+        "metrics": metrics_val,
     }
 
 
