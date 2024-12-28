@@ -143,6 +143,8 @@ def main(
 
     trainer.fit(train_loader, val_loader, args_summary=args_summary)
 
+    return trainer
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

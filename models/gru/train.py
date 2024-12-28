@@ -56,7 +56,7 @@ def main(
     )
 
     # Create dataloaders
-    window_size = model_params.pop("window_size")
+    window_size = model_params["window_size"]
 
     train_dataset = SlidingWindowDataset(
         X_train,
@@ -141,6 +141,8 @@ def main(
         trainer.load(ckpt_path)
 
     trainer.fit(train_loader, val_loader, args_summary=args_summary)
+
+    return trainer
 
 
 if __name__ == "__main__":

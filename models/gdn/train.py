@@ -33,7 +33,6 @@ def main(
     n_workers: int,
     log_dir: str,
     log_every_n_steps: int,
-    ckpt_path: str | None,
     weight_decay: float,
     eps: float,
     betas: tuple[float, float],
@@ -42,6 +41,7 @@ def main(
     early_stop_patience: int,
     early_stop_delta: float,
     save_top_k: int,
+    ckpt_path: str | None = None,
     down_len: int | None = None,
 ):
     """
