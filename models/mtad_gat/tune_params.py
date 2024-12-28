@@ -1,4 +1,7 @@
-def get_tune_model_params(trial) -> dict:
+import optuna
+
+
+def get_tune_model_params(trial: optuna.Trial) -> dict:
     shared_params = {
         "n_layers": 3,
         "hid_dim": trial.suggest_categorical("hid_dim", [32, 64]),

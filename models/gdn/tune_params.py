@@ -1,4 +1,7 @@
-def get_tune_model_params(trial) -> dict:
+import optuna
+
+
+def get_tune_model_params(trial: optuna.Trial) -> dict:
     return {
         "window_size": trial.suggest_int("window_size", 5, 250, step=25),
         "embed_dim": trial.suggest_int("embed_dim", 32, 128, step=16),

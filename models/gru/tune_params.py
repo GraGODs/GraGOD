@@ -1,4 +1,7 @@
-def get_tune_model_params(trial) -> dict:
+import optuna
+
+
+def get_tune_model_params(trial: optuna.Trial) -> dict:
     return {
         "window_size": trial.suggest_categorical("window_size", [64, 128, 256, 512]),
         "hidden_size": trial.suggest_categorical("hidden_size", [16, 32, 64, 128, 256]),
