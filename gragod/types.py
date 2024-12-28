@@ -1,5 +1,6 @@
 import os
 from enum import Enum
+from typing import Literal
 
 PathType = str | os.PathLike
 
@@ -31,3 +32,6 @@ class CleanMethods(Enum):
     NONE = "none"
     INTERPOLATE = "interpolate"
     DROP = "drop"
+
+
+MODEL_NAMES = Literal["gru", "gcn", "gdn", "mtad_gat"]
