@@ -1,6 +1,7 @@
 import torch
 
-from gragod.metrics import MetricsCalculator, SystemMetricsResult
+from gragod.metrics.calculator import MetricsCalculator
+from gragod.metrics.models import SystemMetricsResult
 from gragod.predictions.spot import SPOT
 from gragod.types import Datasets
 
