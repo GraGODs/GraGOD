@@ -1,7 +1,4 @@
-import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
-import seaborn as sns
 import torch
 from prts import ts_precision, ts_recall
 from timeeval.metrics.vus_metrics import RangeRocVUS
@@ -144,6 +141,7 @@ class MetricsCalculator:
         Returns:
             MetricsResult | SystemMetricsResult: F1 score metrics.
         """
+
         # Handle division by zero for system metrics
         system_denominator = precision.metric_system + recall.metric_system
         system_f1 = (
@@ -157,6 +155,7 @@ class MetricsCalculator:
             recall, SystemMetricsResult
         ):
             return SystemMetricsResult(metric_system=float(system_f1))
+
         # Handle division by zero for per-class metrics
         denominator = precision.metric_per_class + recall.metric_per_class
         per_class_f1 = torch.zeros_like(denominator)
@@ -192,7 +191,7 @@ class MetricsCalculator:
         )
 
     def calculate_range_based_recall(
-        self, alpha: float = 0.0
+        self, alpha: float = 1.0
     ) -> MetricsResult | SystemMetricsResult:
         """
         Calculate range-based recall metrics.
@@ -234,8 +233,8 @@ class MetricsCalculator:
             )
             for i in range(self.labels.shape[1])
         ]
-
-        mean_recall = torch.mean(torch.tensor(per_class_recall, dtype=torch.float))
+        per_class_recall = torch.tensor(per_class_recall, dtype=torch.float)
+        mean_recall = torch.mean(per_class_recall)
 
         # doesn't make sense the global recall in range based metrics
         global_recall = None
@@ -243,12 +242,12 @@ class MetricsCalculator:
         return MetricsResult(
             metric_global=global_recall,
             metric_mean=float(mean_recall),
-            metric_per_class=torch.tensor(per_class_recall),
+            metric_per_class=per_class_recall,
             metric_system=float(system_recall),
         )
 
     def calculate_range_based_precision(
-        self, alpha: float = 0.0
+        self, alpha: float = 1.0
     ) -> MetricsResult | SystemMetricsResult:
         """
         Calculate range-based precision metrics.
@@ -290,10 +289,9 @@ class MetricsCalculator:
             )
             for i in range(self.labels.shape[1])
         ]
+        per_class_precision = torch.tensor(per_class_precision, dtype=torch.float)
 
-        mean_precision = torch.mean(
-            torch.tensor(per_class_precision, dtype=torch.float)
-        )
+        mean_precision = torch.mean(per_class_precision)
 
         # doesn't make sense the global precision in range based metrics
         global_precision = None
@@ -301,9 +299,19 @@ class MetricsCalculator:
         return MetricsResult(
             metric_global=global_precision,
             metric_mean=float(mean_precision),
-            metric_per_class=torch.tensor(per_class_precision),
+            metric_per_class=per_class_precision,
             metric_system=float(system_precision),
         )
+
+    def calculate_range_based_f1(
+        self,
+        range_based_precision: MetricsResult | SystemMetricsResult,
+        range_based_recall: MetricsResult | SystemMetricsResult,
+    ) -> MetricsResult | SystemMetricsResult:
+        """
+        Calculate range-based F1 score metrics.
+        """
+        return self.calculate_f1(range_based_precision, range_based_recall)
 
     def calculate_vus_roc(
         self,
@@ -378,7 +386,7 @@ class MetricsCalculator:
             metric_system=float(system_vus_roc),
         )
 
-    def get_all_metrics(self, alpha: float = 0.0) -> dict[str, torch.Tensor]:
+    def get_all_metrics(self, alpha: float = 1.0) -> dict[str, torch.Tensor]:
         """
         Calculate all metrics and return as dictionary.
 
@@ -393,6 +401,9 @@ class MetricsCalculator:
         f1 = self.calculate_f1(precision, recall)
         range_based_precision = self.calculate_range_based_precision(alpha=alpha)
         range_based_recall = self.calculate_range_based_recall(alpha=alpha)
+        range_based_f1 = self.calculate_range_based_f1(
+            range_based_precision, range_based_recall
+        )
         vus_roc = self.calculate_vus_roc()
 
         return {
@@ -401,41 +412,9 @@ class MetricsCalculator:
             **f1.model_dump("f1"),
             **range_based_precision.model_dump("range_based_precision"),
             **range_based_recall.model_dump("range_based_recall"),
+            **range_based_f1.model_dump("range_based_f1"),
             **vus_roc.model_dump("vus_roc"),
         }
-
-
-def visualize_metrics(
-    metrics_dict: dict[str, torch.Tensor], output_path: str = "metrics_heatmap.png"
-):
-    """
-    Create and save a heatmap visualization of per-class metrics.
-
-    Args:
-        metrics_dict: Dictionary containing calculated metrics
-        output_path: Path to save the heatmap image
-    """
-    metrics_df = pd.DataFrame(
-        {
-            "Precision": metrics_dict["precision_per_class"],
-            "Recall": metrics_dict["recall_per_class"],
-            "F1 Score": metrics_dict["f1_per_class"],
-            "Range-based Precision": metrics_dict["range_based_precision_per_class"],
-            "Range-based Recall": metrics_dict["range_based_recall_per_class"],
-            "VUS-ROC": metrics_dict["vus_roc_per_class"],
-        }
-    )
-
-    plt.figure(figsize=(10, 6))
-    sns.heatmap(metrics_df.T, annot=True, cmap="YlOrRd", fmt=".3f")
-    plt.title("Performance Metrics per Class")
-    plt.xlabel("Class")
-    plt.tight_layout()
-    plt.savefig(output_path)
-    plt.close()
-
-    print("\nMetrics per class:")
-    print(metrics_df.round(3).to_string())
 
 
 def get_metrics(
@@ -443,6 +422,7 @@ def get_metrics(
     predictions: torch.Tensor,
     labels: torch.Tensor,
     scores: torch.Tensor,
+    range_metrics_alpha: float = 1.0,
 ) -> dict:
     """
     Calculate and visualize all metrics for given predictions and labels.
@@ -457,6 +437,6 @@ def get_metrics(
     calculator = MetricsCalculator(
         dataset=dataset, labels=labels, predictions=predictions, scores=scores
     )
-    metrics = calculator.get_all_metrics()
+    metrics = calculator.get_all_metrics(alpha=range_metrics_alpha)
 
     return metrics

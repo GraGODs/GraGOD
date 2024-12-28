@@ -1,116 +1,70 @@
 import tabulate
 
 
-def generate_metrics_table(metrics: dict) -> str:
+def generate_metrics_table(metrics: dict, only_system: bool = False) -> str:
     """Generate a table of metrics as a string."""
-    metrics_table = [
-        ["Global", "Mean", "System"],
-        [
-            "Precision",
-            f"{metrics['precision_global']}",
-            f"{metrics['precision_mean']}",
-            f"{metrics['precision_system']}",
-        ],
-        [
-            "Recall",
-            f"{metrics['recall_global']}",
-            f"{metrics['recall_mean']}",
-            f"{metrics['recall_system']}",
-        ],
-        [
-            "F1",
-            f"{metrics['f1_global']}",
-            f"{metrics['f1_mean']}",
-            f"{metrics['f1_system']}",
-        ],
-        [
-            "Range-based Precision",
-            f"{metrics['range_based_precision_global']}",
-            f"{metrics['range_based_precision_mean']}",
-            f"{metrics['range_based_precision_system']}",
-        ],
-        [
-            "Range-based Recall",
-            f"{metrics['range_based_recall_global']}",
-            f"{metrics['range_based_recall_mean']}",
-            f"{metrics['range_based_recall_system']}",
-        ],
-        [
-            "VUS-ROC",
-            f"{metrics['vus_roc_global']}",
-            f"{metrics['vus_roc_mean']}",
-            f"{metrics['vus_roc_system']}",
-        ],
-    ]
+
+    # Define metric groups and their display names
+    metric_groups = {}
+    for metric in metrics.keys():
+        if metric.endswith("_system"):
+            metric_name = metric.replace("_system", "")
+            metric_groups[metric_name] = metric_name.title()
+
+    # Create headers
+    if only_system:
+        metrics_table = [["System"]]
+    else:
+        metrics_table = [["Metric", "Global", "Mean", "System"]]
+
+    # Build table rows dynamically
+    for metric_key, metric_name in metric_groups.items():
+        if only_system:
+            row = [
+                f"{metrics.get(f'{metric_key}_system', '')}",
+            ]
+        else:
+            row = [
+                metric_name,
+                f"{metrics.get(f'{metric_key}_global', '')}",
+                f"{metrics.get(f'{metric_key}_mean', '')}",
+                f"{metrics.get(f'{metric_key}_system', '')}",
+            ]
+        metrics_table.append(row)
+
     return tabulate.tabulate(metrics_table, headers="firstrow", tablefmt="grid")
 
 
 def generate_metrics_per_class_table(metrics: dict) -> str:
     """Generate a table of per-class metrics as a string."""
-    precision = metrics["precision_per_class"]
-    recall = metrics["recall_per_class"]
-    f1 = metrics["f1_per_class"]
-    range_based_precision = metrics["range_based_precision_per_class"]
-    range_based_recall = metrics["range_based_recall_per_class"]
-    vus_roc = metrics["vus_roc_per_class"]
-    metrics_per_class_table = [
-        [
-            i,
-            precision[i],
-            recall[i],
-            f1[i],
-            range_based_precision[i],
-            range_based_recall[i],
-            vus_roc[i],
-        ]
-        for i in range(len(precision))
+
+    n_classes = 0
+    metrics_per_class = {}
+    for metric in metrics.keys():
+        if metric.endswith("_per_class"):
+            metrics_per_class[metric] = metrics[metric]
+            n_classes = len(metrics_per_class[metric])
+
+    if n_classes == 0:
+        raise ValueError("No per-class metrics found")
+
+    metrics_per_class_table = []
+    for i in range(n_classes):
+        table_i = []
+        table_i.append(i)
+        for metric in metrics_per_class.keys():
+            table_i.append(metrics_per_class[metric][i])
+        metrics_per_class_table.append(table_i)
+
+    headers = ["Class"] + [
+        key.replace("_per_class", "").title() for key in metrics_per_class.keys()
     ]
 
     return tabulate.tabulate(
         metrics_per_class_table,
-        headers=[
-            "Class",
-            "Precision",
-            "Recall",
-            "F1",
-            "Range-based Precision",
-            "Range-based Recall",
-            "VUS-ROC",
-        ],
+        headers=headers,
         tablefmt="grid",
     )
-
-
-def generate_system_metrics_table(metrics: dict) -> str:
-    """Generate a table of system metrics as a string."""
-    metrics_table = [
-        ["System"],
-        [
-            "Precision",
-            f"{metrics['precision_system']}",
-        ],
-        [
-            "Recall",
-            f"{metrics['recall_system']}",
-        ],
-        [
-            "F1",
-            f"{metrics['f1_system']}",
-        ],
-        [
-            "Range-based Precision",
-            f"{metrics['range_based_precision_system']}",
-        ],
-        [
-            "Range-based Recall",
-            f"{metrics['range_based_recall_system']}",
-        ],
-        [
-            "VUS-ROC",
-            f"{metrics['vus_roc_system']}",
-        ],
-    ]
-    return tabulate.tabulate(metrics_table, headers="firstrow", tablefmt="grid")
 
 
 def print_all_metrics(metrics: dict, message: str):
@@ -121,5 +75,5 @@ def print_all_metrics(metrics: dict, message: str):
         metrics_per_class_table = generate_metrics_per_class_table(metrics)
         print(metrics_per_class_table)
     else:
-        metrics_table = generate_system_metrics_table(metrics)
+        metrics_table = generate_metrics_table(metrics, only_system=True)
         print(metrics_table)

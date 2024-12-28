@@ -7,16 +7,26 @@ from gragod.types import Datasets
 
 
 def get_threshold(
-    dataset: Datasets, scores: torch.Tensor, labels: torch.Tensor, n_thresholds: int
+    dataset: Datasets,
+    scores: torch.Tensor,
+    labels: torch.Tensor,
+    n_thresholds: int,
+    range_based: bool = False,
 ) -> torch.Tensor:
     if labels.ndim == 0 or labels.shape[1] in [0, 1]:
         return get_threshold_system(dataset, scores, labels, n_thresholds)
     else:
-        return get_threshold_per_class(dataset, scores, labels, n_thresholds)
+        return get_threshold_per_class(
+            dataset, scores, labels, n_thresholds, range_based
+        )
 
 
 def get_threshold_per_class(
-    dataset: Datasets, scores: torch.Tensor, labels: torch.Tensor, n_thresholds: int
+    dataset: Datasets,
+    scores: torch.Tensor,
+    labels: torch.Tensor,
+    n_thresholds: int,
+    range_based: bool = False,
 ) -> torch.Tensor:
     """
     Gets the threshold for the scores for each time series.
@@ -35,9 +45,14 @@ def get_threshold_per_class(
     metrics = MetricsCalculator(
         dataset=dataset, labels=labels, predictions=preds, scores=scores
     )
-    precision = metrics.calculate_precision()
-    recall = metrics.calculate_recall()
-    f1 = metrics.calculate_f1(precision, recall)
+    if range_based:
+        precision = metrics.calculate_range_based_precision()
+        recall = metrics.calculate_range_based_recall()
+        f1 = metrics.calculate_range_based_f1(precision, recall)
+    else:
+        precision = metrics.calculate_precision()
+        recall = metrics.calculate_recall()
+        f1 = metrics.calculate_f1(precision, recall)
 
     # Check if we got a SystemMetricsResult
     if isinstance(f1, SystemMetricsResult):
@@ -58,9 +73,14 @@ def get_threshold_per_class(
         metrics = MetricsCalculator(
             dataset=dataset, labels=labels, predictions=preds, scores=scores
         )
-        precision = metrics.calculate_precision()
-        recall = metrics.calculate_recall()
-        f1 = metrics.calculate_f1(precision, recall)
+        if range_based:
+            precision = metrics.calculate_range_based_precision()
+            recall = metrics.calculate_range_based_recall()
+            f1 = metrics.calculate_range_based_f1(precision, recall)
+        else:
+            precision = metrics.calculate_precision()
+            recall = metrics.calculate_recall()
+            f1 = metrics.calculate_f1(precision, recall)
 
         if isinstance(f1, SystemMetricsResult):
             raise ValueError(
