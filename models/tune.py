@@ -101,7 +101,7 @@ def objective(
         trainer.logger.log_dir, params["train_params"]["model_name"] + ".ckpt"
     )
 
-    params["predictor_params"]["ckpt_folder"] = os.path.join(trainer.logger.log_dir)
+    params["predictor_params"]["ckpt_folder"] = trainer.logger.log_dir
 
     predictions_dict = predict_func(
         dataset_name=params["dataset"],
