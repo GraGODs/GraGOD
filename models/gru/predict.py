@@ -140,7 +140,7 @@ def main(
         **params["train_params"],
     )
 
-    model = lightning_module.model.to("cuda" if device == "gpu" else "mps")
+    model = lightning_module.model.to(device)
     model.eval()
 
     # Generate predictions and calculate metrics
