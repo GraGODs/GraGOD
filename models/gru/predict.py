@@ -130,7 +130,6 @@ def main(
     n_features = X_train.shape[1]
     model = GRUModel(
         n_features=n_features,
-        out_dim=n_features,
         **model_params,
     )
 
