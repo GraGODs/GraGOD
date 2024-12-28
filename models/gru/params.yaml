@@ -9,7 +9,7 @@ model_params:
   fc_dropout: 0.3
 
 train_params:
-  model_name: "gru_test_normalization"
+  model_name: "gru"
   n_epochs: 200
   batch_size: 1024
   init_lr: 0.001
@@ -35,3 +35,7 @@ predictor_params:
   window_size_smooth: 5
   post_process_scores: true
   score_type: "mse"
+
+optimization_params:
+  study_name: "gru_optimization"
+  n_trials: 100

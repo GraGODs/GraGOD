@@ -52,3 +52,7 @@ predictor_params:
   post_process_scores: true
   score_type: "mse"
 save_path: "saved_models/mtad_gat"
+
+optimization_params:
+  study_name: "mtad_gat_optimization"
+  n_trials: 100
