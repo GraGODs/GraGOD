@@ -66,7 +66,9 @@ def load_model_functions(
 
 
 def objective(
-    model: MODEL_NAMES,
+    train_func: Callable,
+    predict_func: Callable,
+    get_tune_params: Callable,
     trial: optuna.Trial,
     params: Dict,
     optimization_metric: str,
@@ -84,8 +86,6 @@ def objective(
     """
     start_time = time()
     print(f"Trial number: {trial.number}")
-
-    train_func, predict_func, get_tune_params = load_model_functions(model)
 
     # Get trial hyperparameters
     model_params = get_tune_params(trial)
@@ -119,7 +119,6 @@ def objective(
                         f"{split}_metrics/{metric_name}", metric_value, trial.number
                     )
     # Deallocate memory
-    del model
     del trainer
     torch.cuda.empty_cache()
 
@@ -164,10 +163,14 @@ def main(
         sampler=optuna.samplers.TPESampler(seed=RANDOM_SEED),
     )
 
+    train_func, predict_func, get_tune_params = load_model_functions(model)
+
     # Run optimization
     study.optimize(
         lambda trial: objective(
-            model=model,
+            train_func=train_func,
+            predict_func=predict_func,
+            get_tune_params=get_tune_params,
             trial=trial,
             params=params,
             optimization_metric=optimization_metric,
