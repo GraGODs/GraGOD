@@ -9,7 +9,8 @@ from torch.utils.data import DataLoader
 from datasets.config import get_dataset_config
 from datasets.dataset import SlidingWindowDataset
 from gragod import InterPolationMethods, ParamFileTypes
-from gragod.metrics import get_metrics, print_all_metrics
+from gragod.metrics.calculator import get_metrics
+from gragod.metrics.visualization import print_all_metrics
 from gragod.predictions.prediction import get_threshold
 from gragod.training import load_params, load_training_data, set_seeds
 from gragod.types import CleanMethods, cast_dataset
