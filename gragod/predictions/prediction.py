@@ -11,7 +11,7 @@ def get_threshold(
     scores: torch.Tensor,
     labels: torch.Tensor,
     n_thresholds: int,
-    range_based: bool = False,
+    range_based: bool = True,
 ) -> torch.Tensor:
     if labels.ndim == 0 or labels.shape[1] in [0, 1]:
         return get_threshold_system(dataset, scores, labels, n_thresholds)
