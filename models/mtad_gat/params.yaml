@@ -63,4 +63,4 @@ save_path: "saved_models/mtad_gat"
 optimization_params:
   study_name: "mtad_gat_optimization"
   n_trials: 100
-  optimization_metric: "vus_roc_system"
+  metric: "vus_roc_system"

@@ -112,8 +112,8 @@ def objective(
     end_time = time()
     print(f"Trial {trial.number} completed in {end_time - start_time:.2f} seconds")
 
-    optimization_metric = params["optimization_params"]["optimization_metric"]
-    return predictions_dict["val"]["metrics"][optimization_metric]
+    metric = params["optimization_params"]["metric"]
+    return predictions_dict["val"]["metrics"][metric]
 
 
 def main(
