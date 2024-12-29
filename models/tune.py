@@ -177,7 +177,6 @@ if __name__ == "__main__":
     parser.add_argument(
         "--model",
         type=str,
-        default="gru",
         help="Model to tune",
     )  # one of gru, gcn, gdn, mtad_gat
     parser.add_argument(
