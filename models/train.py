@@ -13,7 +13,7 @@ from gragod import CleanMethods, InterPolationMethods, ParamFileTypes
 from gragod.training import load_params, load_training_data, set_seeds
 from gragod.training.callbacks import get_training_callbacks
 from gragod.training.trainer import PLBaseModule, TrainerPL
-from gragod.types import Models, cast_dataset, cast_model
+from gragod.types import Datasets, Models, cast_dataset, cast_model
 
 RANDOM_SEED = 42
 
@@ -47,7 +47,7 @@ def get_model_and_module(model: Models) -> Tuple[type[Module], type[PLBaseModule
 
 def train(
     model: Models,
-    dataset_name: str,
+    dataset: Datasets,
     model_name: str,
     model_params: Dict[str, Any],
     params: Dict[str, Any],
@@ -112,7 +112,6 @@ def train(
     Returns:
         Trained model trainer
     """
-    dataset = cast_dataset(dataset_name)
     dataset_config = get_dataset_config(dataset=dataset)
 
     # Load data
@@ -237,10 +236,10 @@ def main(model_name: str, params_file: str) -> None:
     """
     params = load_params(params_file, file_type=ParamFileTypes.YAML)
     set_seeds(RANDOM_SEED)
-    model = cast_model(model_name)
+
     train(
-        model=model,
-        dataset_name=params["dataset"],
+        model=cast_model(model_name),
+        dataset=cast_dataset(params["dataset"]),
         **params["train_params"],
         model_params=params["model_params"],
         params=params,
