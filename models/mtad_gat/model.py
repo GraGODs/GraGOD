@@ -57,6 +57,7 @@ class MTAD_GAT(nn.Module):
         recon_hid_dim=300,
         dropout=0.3,
         alpha=0.2,
+        **kwargs,
     ):
         super(MTAD_GAT, self).__init__()
 

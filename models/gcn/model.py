@@ -18,7 +18,12 @@ class GCN(torch.nn.Module):
     """
 
     def __init__(
-        self, window_size: int = 5, n_layers: int = 3, hidden_dim: int = 32, K: int = 1
+        self,
+        window_size: int = 5,
+        n_layers: int = 3,
+        hidden_dim: int = 32,
+        K: int = 1,
+        **kwargs,
     ):
         super(GCN, self).__init__()
         self.window_size = window_size

@@ -28,8 +28,8 @@ class GDN(nn.Module):
         dp: Dropout layer.
 
     Args:
-        edge_index_sets: List of edge indices for different graph structures.
-        node_num: Number of nodes in the graph.
+        edge_index: List of edge indices for different graph structures.
+        n_features: Number of nodes in the graph.
         embed_dim: Dimension of node embeddings.
         out_layer_inter_dim: Intermediate dimension in output layer.
         window_size: Input feature dimension.
@@ -41,8 +41,8 @@ class GDN(nn.Module):
 
     def __init__(
         self,
-        edge_index_sets: list[torch.Tensor],
-        node_num: int,
+        edge_index: list[torch.Tensor],
+        n_features: int,
         embed_dim: int = 64,
         out_layer_inter_dim: int = 256,
         window_size: int = 10,
@@ -51,15 +51,16 @@ class GDN(nn.Module):
         heads: int = 1,
         dropout: float = 0,
         negative_slope: float = 0.2,
+        **kwargs,
     ):
         super(GDN, self).__init__()
 
-        self.edge_index_sets = edge_index_sets
+        self.edge_index_sets = edge_index
 
-        self.embedding = nn.Embedding(node_num, embed_dim)
+        self.embedding = nn.Embedding(n_features, embed_dim)
         self.bn_outlayer_in = nn.BatchNorm1d(heads * embed_dim)
 
-        edge_set_num = len(edge_index_sets)
+        edge_set_num = len(edge_index)
         self.gnn_layers = nn.ModuleList(
             [
                 GNNLayer(
