@@ -22,12 +22,12 @@ class GRUModel(nn.Module):
     def __init__(
         self,
         n_features: int,
-        out_dim: int,
         hidden_size: int = 300,
         n_layers: int = 3,
         bidirectional: bool = True,
         rnn_dropout: float = 0.0,
         fc_dropout: float = 0.3,
+        **kwargs,
     ):
         super(GRUModel, self).__init__()
 

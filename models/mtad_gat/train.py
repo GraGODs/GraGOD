@@ -44,7 +44,7 @@ def main(
     eps: float = 1e-8,
     betas: tuple[float, float] = (0.9, 0.999),
     down_len: int | None = None,
-):
+) -> TrainerPL:
     dataset = cast_dataset(dataset_name)
     dataset_config = get_dataset_config(dataset=dataset)
 
@@ -144,6 +144,8 @@ def main(
         trainer.load(ckpt_path)
 
     trainer.fit(train_loader, val_loader, args_summary=args_summary)
+
+    return trainer
 
 
 if __name__ == "__main__":

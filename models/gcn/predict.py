@@ -53,11 +53,13 @@ def main(
     params: dict = {},
     down_len: int | None = None,
     **kwargs,
-):
+) -> dict:
     """
     Main function to load data, model and generate predictions.
     Returns a dictionary containing evaluation metrics.
     """
+    return_dict = {}
+
     dataset = cast_dataset(dataset_name)
     dataset_config = get_dataset_config(dataset=dataset)
 
@@ -220,6 +222,18 @@ def main(
             ),
         )
 
+        return_dict["train"] = {
+            "predictions": train_pred,
+            "labels": X_train_labels,
+            "scores": train_scores,
+            "data": X_train,
+            "thresholds": threshold,
+            "forecasts": forecasts_train,
+            "metrics": train_metrics,
+        }
+
+    val_metrics = get_metrics(dataset, val_pred, X_val_labels, val_scores)
+    test_metrics = get_metrics(dataset, test_pred, X_test_labels, test_scores)
     val_metrics = get_metrics(
         dataset=dataset,
         predictions=val_pred,
@@ -253,7 +267,17 @@ def main(
         ),
     )
 
-    return {
+    return_dict["val"] = {
+        "predictions": val_pred,
+        "labels": X_val_labels,
+        "scores": val_scores,
+        "data": X_val,
+        "thresholds": threshold,
+        "forecasts": forecasts_val,
+        "metrics": val_metrics,
+    }
+
+    return_dict["test"] = {
         "predictions": test_pred,
         "labels": X_test_labels,
         "scores": test_scores,
@@ -262,6 +286,8 @@ def main(
         "forecasts": forecasts_test,
         "metrics": test_metrics,
     }
+
+    return return_dict
 
 
 if __name__ == "__main__":

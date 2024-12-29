@@ -66,6 +66,7 @@ def main(
         dict: A dictionary containing predictions, labels, scores, data, thresholds,
         forecasts, reconstructions, and metrics.
     """
+    return_dict = {}
 
     checkpoint_path = (
         os.path.join(params["predictor_params"]["ckpt_folder"], "gru.ckpt")
@@ -96,7 +97,8 @@ def main(
         interpolate_method=interpolate_method,
     )
 
-    window_size = model_params.pop("window_size")
+    window_size = model_params["window_size"]
+
     X_train_labels = X_train_labels[window_size:]
     X_val_labels = X_val_labels[window_size:]
     X_test_labels = X_test_labels[window_size:]
@@ -128,7 +130,6 @@ def main(
     n_features = X_train.shape[1]
     model = GRUModel(
         n_features=n_features,
-        out_dim=n_features,
         **model_params,
     )
 
@@ -140,7 +141,7 @@ def main(
         **params["train_params"],
     )
 
-    model = lightning_module.model.to("cuda" if device == "gpu" else "mps")
+    model = lightning_module.model.to(device)
     model.eval()
 
     # Generate predictions and calculate metrics
@@ -177,7 +178,6 @@ def main(
         n_thresholds=params["predictor_params"]["n_thresholds"],
     )
 
-    # we only calculate train if there's at least one anomaly
     if torch.any(X_train_labels == 1):
         forecasts_train = run_model(
             model=lightning_module,
@@ -191,6 +191,7 @@ def main(
             post_process=params["predictor_params"]["post_process_scores"],
             window_size_smooth=params["predictor_params"]["window_size_smooth"],
         )
+
         X_train_pred = (train_scores > thresholds).float()
         train_metrics = get_metrics(
             dataset=dataset,
@@ -208,6 +209,16 @@ def main(
                 "w",
             ),
         )
+
+        return_dict["train"] = {
+            "predictions": X_train_pred,
+            "labels": X_train_labels,
+            "scores": train_scores,
+            "data": X_train,
+            "thresholds": thresholds,
+            "forecasts": forecasts_train,
+            "metrics": train_metrics,
+        }
 
     X_val_pred = (val_scores > thresholds).float()
     metrics_val = get_metrics(
@@ -236,13 +247,24 @@ def main(
         ),
     )
     return {
-        "predictions": X_val_pred,
-        "labels": X_val_labels,
-        "scores": val_scores,
-        "data": X_val,
-        "thresholds": thresholds,
-        "forecasts": forecasts_val,
-        "metrics": metrics_val,
+        "val": {
+            "predictions": X_val_pred,
+            "labels": X_val_labels,
+            "scores": val_scores,
+            "data": X_val,
+            "thresholds": thresholds,
+            "forecasts": forecasts_val,
+            "metrics": metrics_val,
+        },
+        "test": {
+            "predictions": X_test_pred,
+            "labels": X_test_labels,
+            "scores": test_scores,
+            "data": X_test,
+            "thresholds": thresholds,
+            "forecasts": forecasts_test,
+            "metrics": metrics_test,
+        },
     }
 
 

@@ -4,17 +4,16 @@ train_params:
   shuffle: true
   model_name: "gdn"
   batch_size: 32
-  n_epochs: 50
+  n_epochs: 3
   val_size: 0.1
   device: "cuda"
   init_lr: 0.001
   clean: "drop"
-  log_dir: "output"
+  log_dir: "temp"
   n_workers: 0
   test_size: 0.1
   log_every_n_steps: 1
   interpolate_method: null
-  ckpt_path: null
   weight_decay: 0
   eps: 0.00000001
   betas: [0.9, 0.99]
@@ -23,7 +22,7 @@ train_params:
   early_stop_patience: 20
   early_stop_delta: 0.0001
   save_top_k: 1
-  down_len: 10
+  down_len: 100
 
 model_params:
   window_size: 50
@@ -53,3 +52,4 @@ predictor_params:
 optimization_params:
   study_name: "gdn_optimization"
   n_trials: 100
+  metric: "vus_roc_system"

@@ -36,3 +36,8 @@ predictor_params:
   window_size_smooth: 5
   post_process_scores: true
   score_type: "abs"
+
+optimization_params:
+  study_name: "gcn_optimization"
+  n_trials: 100
+  metric: "vus_roc_system"

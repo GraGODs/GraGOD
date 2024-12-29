@@ -52,13 +52,15 @@ def main(
     params: dict = {},
     down_len: int | None = None,
     **kwargs,
-):
+) -> dict:
     """
     Main function to load data, model and generate predictions.
     Returns a dictionary containing evaluation metrics.
     """
     dataset = cast_dataset(dataset_name)
     dataset_config = get_dataset_config(dataset=dataset)
+
+    return_dict = {}
 
     # Load data
     (
@@ -184,6 +186,7 @@ def main(
     test_pred = (test_scores > threshold).float()
 
     # we only calculate train if there's at least one anomaly
+
     if torch.any(X_train_labels == 1):
         forecasts_train = run_model(
             model=lightning_module,
@@ -248,7 +251,7 @@ def main(
         ),
     )
 
-    return {
+    return_dict["val"] = {
         "predictions": val_pred,
         "labels": X_val_labels,
         "scores": val_scores,
@@ -257,6 +260,17 @@ def main(
         "forecasts": forecasts_val,
         "metrics": val_metrics,
     }
+    return_dict["test"] = {
+        "predictions": test_pred,
+        "labels": X_test_labels,
+        "scores": test_scores,
+        "data": X_test,
+        "thresholds": threshold,
+        "forecasts": forecasts_test,
+        "metrics": test_metrics,
+    }
+
+    return return_dict
 
 
 if __name__ == "__main__":

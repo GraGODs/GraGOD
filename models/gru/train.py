@@ -41,7 +41,7 @@ def main(
     eps: float = 1e-8,
     betas: tuple[float, float] = (0.9, 0.999),
     horizon: int = 1,
-):
+) -> TrainerPL:
     dataset = cast_dataset(dataset_name)
     dataset_config = get_dataset_config(dataset=dataset)
 
@@ -56,7 +56,7 @@ def main(
     )
 
     # Create dataloaders
-    window_size = model_params.pop("window_size")
+    window_size = model_params["window_size"]
 
     train_dataset = SlidingWindowDataset(
         X_train,
@@ -88,11 +88,9 @@ def main(
 
     # Create model
     n_features = X_train.shape[1]
-    out_dim = X_train.shape[1]
 
     model = GRUModel(
         n_features=n_features,
-        out_dim=out_dim,
         **model_params,
     )
 
@@ -141,6 +139,8 @@ def main(
         trainer.load(ckpt_path)
 
     trainer.fit(train_loader, val_loader, args_summary=args_summary)
+
+    return trainer
 
 
 if __name__ == "__main__":

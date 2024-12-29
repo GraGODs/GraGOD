@@ -35,7 +35,7 @@ def main(
     eps: float,
     betas: tuple[float, float],
     down_len: int | None = None,
-):
+) -> TrainerPL:
     """
     Main function to train and evaluate the GCN model.
 
@@ -142,6 +142,8 @@ def main(
         trainer.load(ckpt_path)
 
     trainer.fit(train_loader, val_loader, args_summary=args_summary)
+
+    return trainer
 
 
 if __name__ == "__main__":

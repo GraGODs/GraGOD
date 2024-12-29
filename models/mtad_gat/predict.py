@@ -94,6 +94,7 @@ def main(
         dict: A dictionary containing predictions, labels, scores, data, thresholds,
         forecasts, reconstructions, and metrics.
     """
+    return_dict = {}
     dataset = cast_dataset(dataset_name)
     dataset_config = get_dataset_config(dataset=dataset)
 
@@ -240,6 +241,16 @@ def main(
             ),
         )
 
+        return_dict["train"] = {
+            "predictions": train_pred,
+            "labels": X_train_labels,
+            "scores": train_scores,
+            "data": X_train,
+            "thresholds": thresholds,
+            "forecasts": forecasts_train,
+            "metrics": train_metrics,
+        }
+
     X_test_pred = (test_scores > thresholds).float()
     X_val_pred = (val_scores > thresholds).float()
     metrics_val = get_metrics(
@@ -258,7 +269,6 @@ def main(
     print_all_metrics(metrics_test, "------- Test -------")
 
     # save
-
     json.dump(
         metrics_val,
         open(
@@ -276,7 +286,7 @@ def main(
         ),
     )
 
-    return {
+    return_dict["val"] = {
         "predictions": X_val_pred,
         "labels": X_val_labels,
         "scores": val_scores,
@@ -286,6 +296,19 @@ def main(
         "reconstructions": reconstructions_val,
         "metrics": metrics_val,
     }
+
+    return_dict["test"] = {
+        "predictions": X_test_pred,
+        "labels": X_test_labels,
+        "scores": test_scores,
+        "data": X_test,
+        "thresholds": thresholds,
+        "forecasts": forecasts_test,
+        "reconstructions": reconstructions_test,
+        "metrics": metrics_test,
+    }
+
+    return return_dict
 
 
 if __name__ == "__main__":

@@ -9,12 +9,12 @@ model_params:
   fc_dropout: 0.3
 
 train_params:
-  model_name: "gru_test_normalization"
+  model_name: "gru"
   n_epochs: 200
   batch_size: 1024
   init_lr: 0.001
   target_dims: null
-  device: "gpu"
+  device: "cuda"
   n_workers: 1
   log_dir: "output"
   log_every_n_steps: 1
@@ -35,3 +35,9 @@ predictor_params:
   window_size_smooth: 5
   post_process_scores: true
   score_type: "mse"
+  ckpt_folder: "output/gru/version_0"
+
+optimization_params:
+  study_name: "gru_optimization"
+  n_trials: 100
+  metric: "vus_roc_system"
