@@ -1,5 +1,48 @@
 import torch
-from torch.utils.data import Dataset
+from torch.utils.data import DataLoader, Dataset
+
+from gragod import CleanMethods
+
+
+def get_data_loader(
+    X: torch.Tensor,
+    edge_index: torch.Tensor,
+    y: torch.Tensor,
+    window_size: int,
+    clean: CleanMethods,
+    batch_size: int,
+    n_workers: int,
+    shuffle: bool,
+):
+    """
+    Load a data loader for a sliding window dataset.
+
+    Args:
+        X: The input data.
+        edge_index: The edge index of the graph.
+        y: The labels.
+        window_size: The size of the sliding window.
+        clean: The clean method.
+        batch_size: The batch size.
+        n_workers: The number of workers.
+        shuffle: Whether to shuffle the data.
+
+    Returns:
+        A DataLoader for the sliding window dataset.
+    """
+    dataset = SlidingWindowDataset(
+        data=X,
+        edge_index=edge_index,
+        window_size=window_size,
+        labels=y,
+        drop=clean == CleanMethods.DROP.value,
+    )
+
+    loader = DataLoader(
+        dataset, batch_size=batch_size, num_workers=n_workers, shuffle=shuffle
+    )
+
+    return loader
 
 
 class SlidingWindowDataset(Dataset):
