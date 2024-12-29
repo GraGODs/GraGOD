@@ -11,13 +11,14 @@ import yaml
 from gragod import ParamFileTypes
 from gragod.training import load_params, set_seeds
 from gragod.types import Models, cast_model
+from models.train import train
 
 RANDOM_SEED = 42
 
 
 def load_model_functions(
     model_name: Models,
-) -> Tuple[Callable, Callable, Callable]:
+) -> Tuple[Callable, Callable]:
     """Load training, prediction and parameter tuning functions for a model.
 
     Args:
@@ -28,32 +29,28 @@ def load_model_functions(
     """
     if model_name == Models.GRU:
         from models.gru.predict import main as predict_gru
-        from models.gru.train import main as train_gru
         from models.gru.tune_params import get_tune_model_params
 
-        return train_gru, predict_gru, get_tune_model_params
+        return predict_gru, get_tune_model_params
     elif model_name == Models.GCN:
         from models.gcn.predict import main as predict_gcn
-        from models.gcn.train import main as train_gcn
         from models.gcn.tune_params import get_tune_model_params
 
-        return train_gcn, predict_gcn, get_tune_model_params
+        return predict_gcn, get_tune_model_params
     elif model_name == Models.GDN:
         from models.gdn.predict import main as predict_gdn
-        from models.gdn.train import main as train_gdn
         from models.gdn.tune_params import get_tune_model_params
 
-        return train_gdn, predict_gdn, get_tune_model_params
+        return predict_gdn, get_tune_model_params
     elif model_name == Models.MTAD_GAT:
         from models.mtad_gat.predict import main as predict_mtad_gat
-        from models.mtad_gat.train import main as train_mtad_gat
         from models.mtad_gat.tune_params import get_tune_model_params
 
-        return train_mtad_gat, predict_mtad_gat, get_tune_model_params
+        return predict_mtad_gat, get_tune_model_params
 
 
 def objective(
-    train_func: Callable,
+    model_name: Models,
     predict_func: Callable,
     get_tune_params: Callable,
     trial: optuna.Trial,
@@ -62,7 +59,6 @@ def objective(
     """Optuna objective function for hyperparameter optimization.
 
     Args:
-        train_func: Training function for the model
         predict_func: Prediction function for the model
         get_tune_params: Function to get the model parameters
         trial: Current Optuna trial
@@ -77,7 +73,8 @@ def objective(
     # Get trial hyperparameters
     model_params = get_tune_params(trial)
 
-    trainer = train_func(
+    trainer = train(
+        model=model_name,
         dataset_name=params["dataset"],
         **params["train_params"],
         model_params=model_params,
@@ -146,12 +143,12 @@ def main(
         sampler=optuna.samplers.TPESampler(seed=RANDOM_SEED),
     )
 
-    train_func, predict_func, get_tune_params = load_model_functions(model)
+    predict_func, get_tune_params = load_model_functions(model)
 
     # Run optimization
     study.optimize(
         lambda trial: objective(
-            train_func=train_func,
+            model_name=model,
             predict_func=predict_func,
             get_tune_params=get_tune_params,
             trial=trial,

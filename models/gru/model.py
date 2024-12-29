@@ -10,7 +10,6 @@ class GRUModel(nn.Module):
     GRU model class. Implements a GRU with a forecasting head.
     Args:
         n_features: Number of input features
-        window_size: Length of the input sequence
         out_dim: Number of features to output
         hidden_size: Hidden dimension in the GRU layer
         n_layers: Number of layers in the GRU

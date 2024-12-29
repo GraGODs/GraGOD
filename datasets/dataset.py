@@ -1,5 +1,7 @@
 import torch
-from torch.utils.data import Dataset
+from torch.utils.data import DataLoader, Dataset
+
+from gragod import CleanMethods
 
 
 class SlidingWindowDataset(Dataset):
@@ -90,3 +92,54 @@ class SlidingWindowDataset(Dataset):
         )
 
         return valid_indices
+
+
+def get_data_loader(
+    X: torch.Tensor,
+    edge_index: torch.Tensor,
+    y: torch.Tensor,
+    window_size: int,
+    clean: CleanMethods,
+    batch_size: int,
+    n_workers: int,
+    shuffle: bool,
+    pin_memory: bool = False,
+    pin_memory_device: str = "",
+):
+    """
+    Load a data loader for a sliding window dataset.
+
+    Args:
+        X: The input data.
+        edge_index: The edge index of the graph.
+        y: The labels.
+        window_size: The size of the sliding window.
+        clean: The clean method.
+        batch_size: The batch size.
+        n_workers: The number of workers.
+        shuffle: Whether to shuffle the data.
+        pin_memory: Whether to pin memory.
+        pin_memory_device: The device to pin memory on.
+
+    Returns:
+        A DataLoader for the sliding window dataset.
+    """
+    dataset = SlidingWindowDataset(
+        data=X,
+        edge_index=edge_index,
+        window_size=window_size,
+        labels=y,
+        drop=clean == CleanMethods.DROP.value,
+    )
+
+    loader = DataLoader(
+        dataset,
+        batch_size=batch_size,
+        num_workers=n_workers,
+        shuffle=shuffle,
+        persistent_workers=n_workers > 0,
+        pin_memory=pin_memory,
+        pin_memory_device=pin_memory_device,
+    )
+
+    return loader
