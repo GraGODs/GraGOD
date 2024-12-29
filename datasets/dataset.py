@@ -103,6 +103,8 @@ def get_data_loader(
     batch_size: int,
     n_workers: int,
     shuffle: bool,
+    pin_memory: bool = False,
+    pin_memory_device: str = "",
 ):
     """
     Load a data loader for a sliding window dataset.
@@ -116,6 +118,8 @@ def get_data_loader(
         batch_size: The batch size.
         n_workers: The number of workers.
         shuffle: Whether to shuffle the data.
+        pin_memory: Whether to pin memory.
+        pin_memory_device: The device to pin memory on.
 
     Returns:
         A DataLoader for the sliding window dataset.
@@ -129,7 +133,13 @@ def get_data_loader(
     )
 
     loader = DataLoader(
-        dataset, batch_size=batch_size, num_workers=n_workers, shuffle=shuffle
+        dataset,
+        batch_size=batch_size,
+        num_workers=n_workers,
+        shuffle=shuffle,
+        persistent_workers=n_workers > 0,
+        pin_memory=pin_memory,
+        pin_memory_device=pin_memory_device,
     )
 
     return loader
