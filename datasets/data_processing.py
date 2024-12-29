@@ -79,6 +79,7 @@ def preprocess_df(
     clean: bool = False,
     scaler=None,
     interpolate_method: InterPolationMethods | None = None,
+    max_std: float = 0.0,
 ) -> Tuple[torch.Tensor, torch.Tensor | None, BaseEstimator | None]:
     """
     Preprocess the given data DataFrame.
@@ -91,6 +92,15 @@ def preprocess_df(
     Returns:
         The preprocessed data and labels DataFrames.
     """
+    # Remove outliers
+    if max_std > 0.0:
+        z_scores = (data_df - data_df.mean()) / data_df.std()
+        abs_z_scores = np.abs(z_scores)
+        filtered_entries = abs_z_scores > max_std
+        data_df = data_df.mask(filtered_entries)
+        data_df.ffill(inplace=True)
+        data_df.bfill(inplace=True)
+
     data = convert_df_to_tensor(data_df)
     labels = convert_df_to_tensor(labels_df) if labels_df is not None else None
 
