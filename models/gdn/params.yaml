@@ -52,3 +52,4 @@ predictor_params:
 optimization_params:
   study_name: "gdn_optimization"
   n_trials: 100
+  optimization_metric: "vus_roc_system"

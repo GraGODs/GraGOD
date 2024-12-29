@@ -71,15 +71,15 @@ def objective(
     get_tune_params: Callable,
     trial: optuna.Trial,
     params: Dict,
-    optimization_metric: str,
 ) -> float:
     """Optuna objective function for hyperparameter optimization.
 
     Args:
-        model: Name of the model to optimize
+        train_func: Training function for the model
+        predict_func: Prediction function for the model
+        get_tune_params: Function to get the model parameters
         trial: Current Optuna trial
         params: Dictionary containing model parameters
-        optimization_metric: Metric to optimize for
 
     Returns:
         Value of the optimization metric for current trial
@@ -127,21 +127,19 @@ def objective(
 
     # Save study after each trial
     save_study(trial.study, params["train_params"]["log_dir"])
-
+    optimization_metric = params["optimization_params"]["optimization_metric"]
     return predictions_dict["val"]["metrics"][optimization_metric]
 
 
 def main(
     model: Models,
     params_file: str,
-    optimization_metric: str,
 ) -> None:
     """Main function to run hyperparameter optimization.
 
     Args:
         model: Name of the model to optimize
         params_file: Path to parameter file
-        optimization_metric: Metric to optimize for
     """
     torch.set_float32_matmul_precision("medium")
     set_seeds(RANDOM_SEED)
@@ -173,7 +171,6 @@ def main(
             get_tune_params=get_tune_params,
             trial=trial,
             params=params,
-            optimization_metric=optimization_metric,
         ),
         n_trials=params["optimization_params"]["n_trials"],
     )
@@ -203,11 +200,6 @@ if __name__ == "__main__":
         type=str,
         default=None,
     )
-    parser.add_argument(
-        "--optimization_metric",
-        type=str,
-        default="vus_roc_system",
-    )
     args = parser.parse_args()
 
     if args.params_file is None:
@@ -215,4 +207,4 @@ if __name__ == "__main__":
 
     # Cast the model string to enum
     model = cast_model(args.model)
-    main(model, args.params_file, args.optimization_metric)
+    main(model, args.params_file)
