@@ -1,9 +1,8 @@
 import argparse
 import os
-import pickle
 from pathlib import Path
 from time import time
-from typing import Callable, Dict, Tuple, Union
+from typing import Callable, Dict, Tuple
 
 import optuna
 import torch
@@ -14,18 +13,6 @@ from gragod.training import load_params, set_seeds
 from gragod.types import Models, cast_model
 
 RANDOM_SEED = 42
-
-
-def save_study(study: optuna.Study, log_dir: Union[str, Path]) -> None:
-    """Save Optuna study to disk.
-
-    Args:
-        study: Optuna study object to save
-        log_dir: Directory to save the study in
-    """
-    study_path = os.path.join(log_dir, "study.pkl")
-    with open(study_path, "wb") as fout:
-        pickle.dump(study, fout)
 
 
 def load_model_functions(
@@ -125,8 +112,6 @@ def objective(
     end_time = time()
     print(f"Trial {trial.number} completed in {end_time - start_time:.2f} seconds")
 
-    # Save study after each trial
-    save_study(trial.study, params["train_params"]["log_dir"])
     optimization_metric = params["optimization_params"]["optimization_metric"]
     return predictions_dict["val"]["metrics"][optimization_metric]
 
