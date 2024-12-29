@@ -2,11 +2,8 @@ import pytest
 from colorama import Fore, Style
 
 from gragod.training import load_params, set_seeds
-from gragod.types import Datasets, ParamFileTypes
-from models.gcn.train import main as train_gcn
-from models.gdn.train import main as train_gdn
-from models.gru.train import main as train_gru
-from models.mtad_gat.train import main as train_mtad_gat
+from gragod.types import Datasets, Models, ParamFileTypes
+from models.train import train
 
 
 @pytest.mark.parallel
@@ -26,7 +23,8 @@ def test_gcn_training():
     set_seeds(42)
 
     # Run 1 epoch of training for GCN model
-    train_gcn(
+    train(
+        model=Models.GCN,
         dataset_name=dataset.value,
         **gcn_params["train_params"],
         model_params=gcn_params["model_params"],
@@ -52,7 +50,8 @@ def test_gdn_training():
     set_seeds(42)
 
     # Run 1 epoch of training for GDN model
-    train_gdn(
+    train(
+        model=Models.GDN,
         dataset_name=dataset.value,
         **gdn_params["train_params"],
         model_params=gdn_params["model_params"],
@@ -79,7 +78,8 @@ def test_mtad_gat_training():
     set_seeds(42)
 
     # Run 1 epoch of training for MTAD-GAT model
-    train_mtad_gat(
+    train(
+        model=Models.MTAD_GAT,
         dataset_name=dataset.value,
         **mtad_gat_params["train_params"],
         model_params=mtad_gat_params["model_params"],
@@ -105,7 +105,8 @@ def test_gru_training():
     set_seeds(42)
 
     # Run 1 epoch of training for GRU model
-    train_gru(
+    train(
+        model=Models.GRU,
         dataset_name=dataset.value,
         **gru_params["train_params"],
         model_params=gru_params["model_params"],
