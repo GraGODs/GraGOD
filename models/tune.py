@@ -11,7 +11,7 @@ import yaml
 
 from gragod import ParamFileTypes
 from gragod.training import load_params, set_seeds
-from gragod.types import MODEL_NAMES
+from gragod.types import Models, cast_model
 
 RANDOM_SEED = 42
 
@@ -29,7 +29,7 @@ def save_study(study: optuna.Study, log_dir: Union[str, Path]) -> None:
 
 
 def load_model_functions(
-    model_name: MODEL_NAMES,
+    model_name: Models,
 ) -> Tuple[Callable, Callable, Callable]:
     """Load training, prediction and parameter tuning functions for a model.
 
@@ -39,25 +39,25 @@ def load_model_functions(
     Returns:
         Tuple containing training, prediction and parameter tuning functions
     """
-    if model_name == "gru":
+    if model_name == Models.GRU:
         from models.gru.predict import main as predict_gru
         from models.gru.train import main as train_gru
         from models.gru.tune_params import get_tune_model_params
 
         return train_gru, predict_gru, get_tune_model_params
-    elif model_name == "gcn":
+    elif model_name == Models.GCN:
         from models.gcn.predict import main as predict_gcn
         from models.gcn.train import main as train_gcn
         from models.gcn.tune_params import get_tune_model_params
 
         return train_gcn, predict_gcn, get_tune_model_params
-    elif model_name == "gdn":
+    elif model_name == Models.GDN:
         from models.gdn.predict import main as predict_gdn
         from models.gdn.train import main as train_gdn
         from models.gdn.tune_params import get_tune_model_params
 
         return train_gdn, predict_gdn, get_tune_model_params
-    elif model_name == "mtad_gat":
+    elif model_name == Models.MTAD_GAT:
         from models.mtad_gat.predict import main as predict_mtad_gat
         from models.mtad_gat.train import main as train_mtad_gat
         from models.mtad_gat.tune_params import get_tune_model_params
@@ -132,7 +132,7 @@ def objective(
 
 
 def main(
-    model: MODEL_NAMES,
+    model: Models,
     params_file: str,
     optimization_metric: str,
 ) -> None:
@@ -213,4 +213,6 @@ if __name__ == "__main__":
     if args.params_file is None:
         args.params_file = f"models/{args.model}/params.yaml"
 
-    main(args.model, args.params_file, args.optimization_metric)
+    # Cast the model string to enum
+    model = cast_model(args.model)
+    main(model, args.params_file, args.optimization_metric)

@@ -1,6 +1,5 @@
 import os
 from enum import Enum
-from typing import Literal
 
 PathType = str | os.PathLike
 
@@ -34,4 +33,15 @@ class CleanMethods(Enum):
     DROP = "drop"
 
 
-MODEL_NAMES = Literal["gru", "gcn", "gdn", "mtad_gat"]
+class Models(Enum):
+    GRU = "gru"
+    GCN = "gcn"
+    GDN = "gdn"
+    MTAD_GAT = "mtad_gat"
+
+
+def cast_model(model: str) -> Models:
+    try:
+        return Models(model)
+    except ValueError:
+        raise ValueError(f"{model} is not a valid model")
