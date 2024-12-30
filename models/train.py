@@ -1,4 +1,6 @@
 import argparse
+import json
+import os
 from typing import Any, Dict, Literal, Optional, Tuple, cast
 
 import torch
@@ -8,41 +10,15 @@ from torch import nn
 from torch.nn import Module
 
 from datasets.config import get_dataset_config
-from datasets.dataset import get_data_loader
+from datasets.dataset import get_data_loader, get_edge_index
 from gragod import CleanMethods, InterPolationMethods, ParamFileTypes
+from gragod.models import get_model_and_module
 from gragod.training import load_params, load_training_data, set_seeds
 from gragod.training.callbacks import get_training_callbacks
-from gragod.training.trainer import PLBaseModule, TrainerPL
-from gragod.types import Datasets, Models, cast_dataset, cast_model
+from gragod.training.trainer import TrainerPL
+from gragod.types import Datasets, Models, cast_dataset
 
 RANDOM_SEED = 42
-
-
-def get_model_and_module(model: Models) -> Tuple[type[Module], type[PLBaseModule]]:
-    """Get the model and corresponding PyTorch Lightning module classes.
-
-    Args:
-        model: The model type to get classes for
-
-    Returns:
-        Tuple containing the model class and its corresponding Lightning module class
-    """
-    if model == Models.GRU:
-        from models.gru.model import GRU_PLModule, GRUModel
-
-        return GRUModel, GRU_PLModule
-    elif model == Models.GCN:
-        from models.gcn.model import GCN, GCN_PLModule
-
-        return GCN, GCN_PLModule
-    elif model == Models.GDN:
-        from models.gdn.model import GDN, GDN_PLModule
-
-        return GDN, GDN_PLModule
-    elif model == Models.MTAD_GAT:
-        from models.mtad_gat.model import MTAD_GAT, MTAD_GAT_PLModule
-
-        return MTAD_GAT, MTAD_GAT_PLModule
 
 
 def train(
@@ -125,16 +101,9 @@ def train(
         down_len=down_len,
     )
 
-    # TODO: load this from each dataset
-    # Create a fully connected graph
-    edge_index = (
-        torch.tensor(
-            [[i, j] for i in range(X_train.shape[1]) for j in range(X_train.shape[1])],
-            dtype=torch.long,  # edge_index must be long type
-        )
-        .t()
-        .to(device)
-    )
+    print(f"Initial data shapes: Train: {X_train.shape}, Val: {X_val.shape}")
+
+    edge_index = get_edge_index(X_train, device)
 
     train_loader = get_data_loader(
         X=X_train,
@@ -214,20 +183,27 @@ def train(
 
     if ckpt_path:
         trainer.load(ckpt_path)
+    model_params["edge_index"] = edge_index.tolist()
 
     args_summary = {
-        "dataset": dataset,
+        "dataset": dataset.value,
         "model_params": model_params,
         "train_params": params["train_params"],
         "predictor_params": params["predictor_params"],
     }
+    print(args_summary)
 
+    # Save args_summary to a file
+    with open(os.path.join(log_dir, "args_summary.json"), "w") as f:
+        json.dump(args_summary, f)
+
+    model_params["edge_index"] = torch.tensor(model_params["edge_index"]).to(device)
     trainer.fit(train_loader, val_loader, args_summary=args_summary)
 
     return trainer
 
 
-def main(model_name: str, params_file: str) -> None:
+def main(model: Models, params_file: str) -> None:
     """Main training function.
 
     Args:
@@ -238,7 +214,7 @@ def main(model_name: str, params_file: str) -> None:
     set_seeds(RANDOM_SEED)
 
     train(
-        model=cast_model(model_name),
+        model=model,
         dataset=cast_dataset(params["dataset"]),
         **params["train_params"],
         model_params=params["model_params"],
@@ -250,8 +226,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--model",
-        type=str,
-        help="Model to train (gru, gcn, gdn, mtad_gat)",
+        type=Models,
+        help=f"Model to train ({', '.join(model.value for model in Models)})",
     )
     parser.add_argument(
         "--params_file",
@@ -261,6 +237,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.params_file is None:
-        args.params_file = f"models/{args.model}/params.yaml"
+        args.params_file = f"models/{args.model.value}/params.yaml"
 
     main(args.model, args.params_file)
