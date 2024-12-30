@@ -59,7 +59,34 @@ class PLBaseModule(pl.LightningModule):
                 f"Criterion: {criterion}"
             )
 
-        self.save_hyperparameters(ignore=["model", "criterion"])
+        self.save_hyperparameters()
+
+    def _register_best_metrics(self):
+        pass
+
+    def forward(self, *args, **kwargs) -> Any:
+        pass
+
+    def call_logger(self, *args, **kwargs) -> Any:
+        pass
+
+    def shared_step(self, *args, **kwargs) -> Any:
+        pass
+
+    def training_step(self, *args, **kwargs) -> Any:
+        pass
+
+    def validation_step(self, *args, **kwargs) -> Any:
+        pass
+
+    def predict_step(self, *args, **kwargs) -> Any:
+        pass
+
+    def postprocess_predict(self, *args, **kwargs) -> Any:
+        pass
+
+    def calculate_anomaly_score(self, *args, **kwargs) -> Any:
+        pass
 
     def on_train_epoch_start(self):
         if (
