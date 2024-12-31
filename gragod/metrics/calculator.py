@@ -1,9 +1,15 @@
+import json
+import os
+from pathlib import Path
+from typing import Literal
+
 import numpy as np
 import torch
 from prts import ts_precision, ts_recall
 from timeeval.metrics.vus_metrics import RangeRocVUS
 
 from gragod.metrics.models import MetricsResult, SystemMetricsResult
+from gragod.metrics.visualization import print_all_metrics
 from gragod.types import Datasets
 
 N_TH_SAMPLES_DEFAULT = 100
@@ -439,4 +445,27 @@ def get_metrics(
     )
     metrics = calculator.get_all_metrics(alpha=range_metrics_alpha)
 
+    return metrics
+
+
+def get_metrics_and_save(
+    dataset: Datasets,
+    predictions: torch.Tensor,
+    labels: torch.Tensor,
+    scores: torch.Tensor,
+    save_dir: Path,
+    dataset_split: Literal["train", "val", "test"],
+):
+    metrics = get_metrics(dataset, predictions, labels, scores)
+    print_all_metrics(metrics, f"------- {dataset_split} -------")
+    json.dump(
+        metrics,
+        open(
+            os.path.join(
+                save_dir,
+                f"{dataset_split}_metrics.json",
+            ),
+            "w",
+        ),
+    )
     return metrics

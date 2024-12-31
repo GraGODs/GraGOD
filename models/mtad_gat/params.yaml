@@ -40,7 +40,7 @@ predictor_params:
   target_dims: null
   post_process_scores: true
   score_type: "mse"
-  ckpt_folder: "output/mtad_gat/version_0"
+  ckpt_folder: "output/mtad_gat/version_2"
   n_thresholds: 100
   epsilon: 0.8
   window_size_smooth: 5

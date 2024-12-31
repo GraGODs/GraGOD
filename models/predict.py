@@ -1,8 +1,6 @@
 import argparse
-import json
-import os
 from pathlib import Path
-from typing import Literal, TypedDict
+from typing import Literal, TypedDict, cast
 
 import pytorch_lightning as pl
 import torch
@@ -12,8 +10,7 @@ from torch.utils.data import DataLoader
 from datasets.config import get_dataset_config
 from datasets.dataset import get_data_loader, get_edge_index
 from gragod import CleanMethods, Datasets, Models, ParamFileTypes
-from gragod.metrics.calculator import get_metrics
-from gragod.metrics.visualization import print_all_metrics
+from gragod.metrics.calculator import get_metrics_and_save
 from gragod.models import get_model_and_module
 from gragod.predictions.prediction import get_threshold, post_process_scores
 from gragod.training import load_params, load_training_data, set_seeds
@@ -79,24 +76,91 @@ def calculate_metrics(
     save_dir: Path,
 ):
     y_pred = (scores > threshold).float()
-    metrics = get_metrics(
+    metrics = get_metrics_and_save(
         dataset=dataset,
         predictions=y_pred,
         labels=y,
         scores=scores,
-    )
-    print_all_metrics(metrics, f"------- {dataset_split} -------")
-    json.dump(
-        metrics,
-        open(
-            os.path.join(
-                save_dir,
-                f"{dataset_split}_metrics.json",
-            ),
-            "w",
-        ),
+        save_dir=save_dir,
+        dataset_split=dataset_split,
     )
     return metrics, y_pred
+
+
+def process_dataset(
+    model: pl.LightningModule,
+    X_true: torch.Tensor,
+    y: torch.Tensor,
+    thresholds: torch.Tensor | None,
+    device: str,
+    dataset: Datasets,
+    edge_index: torch.Tensor,
+    save_metrics_dir: Path,
+    n_thresholds: int = 100,
+    window_size_smooth: int = 5,
+    post_process: bool = True,
+    window_size: int = 5,
+    batch_size: int = 264,
+    n_workers: int = 0,
+):
+    # Create test dataloader
+    loader = get_data_loader(
+        X=X_true,
+        edge_index=edge_index,
+        y=y,
+        window_size=window_size,
+        clean=CleanMethods.NONE,
+        batch_size=batch_size,
+        n_workers=n_workers,
+        shuffle=False,
+    )
+
+    # First `window_size` samples are not used for prediction
+    X_true = X_true[window_size:]
+    y = y[window_size:]
+
+    # Run model
+    scores, output = run_model(
+        model=model,
+        loader=loader,
+        device=device,
+        X_true=X_true,
+        post_process=post_process,
+        window_size_smooth=window_size_smooth,
+    )
+
+    if thresholds is None:
+        thresholds = get_threshold(
+            dataset=dataset,
+            scores=scores,
+            labels=y,
+            n_thresholds=n_thresholds,
+        )
+
+    # Calculate metrics
+    if torch.any(y == 1):
+        metrics, y_pred = calculate_metrics(
+            scores=scores,
+            threshold=thresholds,
+            y=y,
+            dataset=dataset,
+            dataset_split="train",
+            save_dir=save_metrics_dir,
+        )
+    else:
+        metrics = None
+        y_pred = None
+
+    output_dict: DatasetPredictOutput = {
+        "output": output,
+        "predictions": y_pred,
+        "labels": y,
+        "scores": scores,
+        "data": X_true,
+        "thresholds": thresholds,
+        "metrics": metrics,
+    }
+    return output_dict
 
 
 def predict(
@@ -145,48 +209,19 @@ def predict(
 
     window_size = model_params["window_size"]
 
-    # Create test dataloader
-    train_loader = get_data_loader(
-        X=X_train,
-        edge_index=edge_index,
-        y=y_train,
-        window_size=model_params["window_size"],
-        clean=CleanMethods.NONE,
-        batch_size=batch_size,
-        n_workers=n_workers,
-        shuffle=False,
-    )
-
-    val_loader = get_data_loader(
-        X=X_val,
-        edge_index=edge_index,
-        y=y_val,
-        window_size=model_params["window_size"],
-        clean=CleanMethods.NONE,
-        batch_size=batch_size,
-        n_workers=n_workers,
-        shuffle=False,
-    )
-    test_loader = get_data_loader(
-        X=X_test,
-        edge_index=edge_index,
-        y=y_test,
-        window_size=window_size,
-        clean=CleanMethods.NONE,
-        batch_size=batch_size,
-        n_workers=n_workers,
-        shuffle=False,
-    )
-    X_train = X_train[window_size:]
-    X_val = X_val[window_size:]
-    X_test = X_test[window_size:]
-    y_train = y_train[window_size:]
-    y_val = y_val[window_size:]
-    y_test = y_test[window_size:]
+    # If there's no anomalies in the train set, use the val set instead
+    if (
+        not torch.any(y_train == 1)
+        and params["predictor_params"]["dataset_for_threshold"] == "train"
+    ):
+        print(
+            "No anomalies in train set, cannot calculate threshold. "
+            "Using val set instead."
+        )
+        params["predictor_params"]["dataset_for_threshold"] = "val"
 
     # Create and load model
     _, model_pl_module = get_model_and_module(model)
-
     model_params["edge_index"] = [edge_index]
     model_params["n_features"] = X_train.shape[1]
     model_params["out_dim"] = X_train.shape[1]
@@ -205,125 +240,44 @@ def predict(
         checkpoint_path,
         map_location=device,
     )
-
     lightning_module.eval()
 
-    # Generate predictions and calculate metrics
-    train_scores, train_output = run_model(
-        model=lightning_module,
-        loader=train_loader,
-        device=device,
-        X_true=X_train,
-        post_process=params["predictor_params"]["post_process_scores"],
-        window_size_smooth=params["predictor_params"]["window_size_smooth"],
-    )
-    val_scores, val_output = run_model(
-        model=lightning_module,
-        loader=val_loader,
-        device=device,
-        X_true=X_val,
-        post_process=params["predictor_params"]["post_process_scores"],
-        window_size_smooth=params["predictor_params"]["window_size_smooth"],
-    )
-    test_scores, test_output = run_model(
-        model=lightning_module,
-        loader=test_loader,
-        device=device,
-        X_true=X_test,
-        post_process=params["predictor_params"]["post_process_scores"],
-        window_size_smooth=params["predictor_params"]["window_size_smooth"],
-    )
+    # Process each dataset split
+    dataset_arguments = {
+        "train": {"X_true": X_train, "y": y_train},
+        "val": {"X_true": X_val, "y": y_val},
+        "test": {"X_true": X_test, "y": y_test},
+    }
 
-    # If there's no anomalies in the train set, use the val set instead
-    if (
-        not torch.any(y_train == 1)
-        and params["predictor_params"]["dataset_for_threshold"] == "train"
-    ):
-        print(
-            "No anomalies in train set, cannot calculate threshold. "
-            "Using val set instead."
-        )
-        params["predictor_params"]["dataset_for_threshold"] = "val"
-
-    threshold = get_threshold(
-        dataset=dataset,
-        scores=(
-            val_scores
-            if params["predictor_params"]["dataset_for_threshold"] == "val"
-            else train_scores  # type: ignore
-        ),
-        labels=(
-            y_val
-            if params["predictor_params"]["dataset_for_threshold"] == "val"
-            else y_train
-        ),
-        n_thresholds=params["predictor_params"]["n_thresholds"],
-    )
-
-    if torch.any(y_train == 1):
-        train_metrics, y_train_pred = calculate_metrics(
-            scores=train_scores,
-            threshold=threshold,
-            y=y_train,
-            dataset=dataset,
-            dataset_split="train",
-            save_dir=checkpoint_path.parent,
-        )
+    if params["predictor_params"]["dataset_for_threshold"] == "train":
+        datasets_to_process = ["train", "val", "test"]
     else:
-        train_metrics = None
-        y_train_pred = None
+        datasets_to_process = ["val", "train", "test"]
+    thresholds = None
+    return_dict = {}
 
-    val_metrics, y_val_pred = calculate_metrics(
-        scores=val_scores,
-        threshold=threshold,
-        y=y_val,
-        dataset=dataset,
-        dataset_split="val",
-        save_dir=checkpoint_path.parent,
-    )
-    test_metrics, y_test_pred = calculate_metrics(
-        scores=test_scores,
-        threshold=threshold,
-        y=y_test,
-        dataset=dataset,
-        dataset_split="test",
-        save_dir=checkpoint_path.parent,
-    )
+    for dataset_split in datasets_to_process:
+        output_dict = process_dataset(
+            model=lightning_module,
+            X_true=dataset_arguments[dataset_split]["X_true"],
+            y=dataset_arguments[dataset_split]["y"],
+            thresholds=thresholds,
+            device=device,
+            dataset=dataset,
+            save_metrics_dir=checkpoint_path.parent,
+            n_thresholds=params["predictor_params"]["n_thresholds"],
+            window_size_smooth=params["predictor_params"]["window_size_smooth"],
+            post_process=params["predictor_params"]["post_process_scores"],
+            edge_index=edge_index,
+            window_size=window_size,
+            batch_size=batch_size,
+            n_workers=n_workers,
+        )
+        if thresholds is None:
+            thresholds = output_dict["thresholds"]
+        return_dict[dataset_split] = output_dict
 
-    train_output_dict: DatasetPredictOutput = {
-        "output": train_output,
-        "predictions": y_train_pred,
-        "labels": y_train,
-        "scores": train_scores,
-        "data": X_train,
-        "thresholds": threshold,
-        "metrics": train_metrics,
-    }
-    val_output_dict: DatasetPredictOutput = {
-        "output": val_output,
-        "predictions": y_val_pred,
-        "labels": y_val,
-        "scores": val_scores,
-        "data": X_val,
-        "thresholds": threshold,
-        "metrics": val_metrics,
-    }
-    test_output_dict: DatasetPredictOutput = {
-        "output": test_output,
-        "predictions": y_test_pred,
-        "labels": y_test,
-        "scores": test_scores,
-        "data": X_test,
-        "thresholds": threshold,
-        "metrics": test_metrics,
-    }
-
-    return_dict: PredictOutput = {
-        "train": train_output_dict,
-        "val": val_output_dict,
-        "test": test_output_dict,
-    }
-
+    return_dict = cast(PredictOutput, return_dict)
     return return_dict
 
 
