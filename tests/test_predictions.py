@@ -1,11 +1,8 @@
 import pytest
 
 from gragod.training import load_params, set_seeds
-from gragod.types import Datasets, ParamFileTypes
-from models.gcn.predict import main as predict_gcn
-from models.gdn.predict import main as predict_gdn
-from models.gru.predict import main as predict_gru
-from models.mtad_gat.predict import main as predict_mtad_gat
+from gragod.types import Datasets, Models, ParamFileTypes
+from models.predict import predict
 
 
 @pytest.mark.parallel
@@ -22,8 +19,9 @@ def test_gcn_predictions():
     set_seeds(42)
 
     # Run predictions for GCN model
-    result = predict_gcn(  # noqa: F841
-        dataset_name=dataset.value,
+    result = predict(  # noqa: F841
+        model=Models.GCN,
+        dataset=dataset,
         model_params=gcn_params["model_params"],
         params=gcn_params,
         **gcn_params["train_params"],
@@ -48,8 +46,9 @@ def test_gdn_predictions():
     set_seeds(42)
 
     # Run predictions for GDN model
-    result = predict_gdn(  # noqa: F841
-        dataset_name=dataset.value,
+    result = predict(  # noqa: F841
+        model=Models.GDN,
+        dataset=dataset,
         model_params=gdn_params["model_params"],
         params=gdn_params,
         **gdn_params["train_params"],
@@ -76,8 +75,9 @@ def test_mtad_gat_predictions():
     set_seeds(42)
 
     # Run predictions for MTAD-GAT model
-    result = predict_mtad_gat(
-        dataset_name=dataset.value,
+    result = predict(
+        model=Models.MTAD_GAT,
+        dataset=dataset,
         model_params=mtad_gat_params["model_params"],
         params=mtad_gat_params,
         **mtad_gat_params["train_params"],
@@ -102,8 +102,9 @@ def test_gru_predictions():
     set_seeds(42)
 
     # Run predictions for GRU model
-    result = predict_gru(  # noqa: F841
-        dataset_name=dataset.value,
+    result = predict(  # noqa: F841
+        model=Models.GRU,
+        dataset=dataset,
         **gru_params["train_params"],
         model_params=gru_params["model_params"],
         params=gru_params,
