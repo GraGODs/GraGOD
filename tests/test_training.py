@@ -25,7 +25,7 @@ def test_gcn_training():
     # Run 1 epoch of training for GCN model
     train(
         model=Models.GCN,
-        dataset_name=dataset.value,
+        dataset=dataset,
         **gcn_params["train_params"],
         model_params=gcn_params["model_params"],
         params=gcn_params,
@@ -52,7 +52,7 @@ def test_gdn_training():
     # Run 1 epoch of training for GDN model
     train(
         model=Models.GDN,
-        dataset_name=dataset.value,
+        dataset=dataset,
         **gdn_params["train_params"],
         model_params=gdn_params["model_params"],
         params=gdn_params,
@@ -80,7 +80,7 @@ def test_mtad_gat_training():
     # Run 1 epoch of training for MTAD-GAT model
     train(
         model=Models.MTAD_GAT,
-        dataset_name=dataset.value,
+        dataset=dataset,
         **mtad_gat_params["train_params"],
         model_params=mtad_gat_params["model_params"],
         params=mtad_gat_params,
@@ -107,7 +107,7 @@ def test_gru_training():
     # Run 1 epoch of training for GRU model
     train(
         model=Models.GRU,
-        dataset_name=dataset.value,
+        dataset=dataset,
         **gru_params["train_params"],
         model_params=gru_params["model_params"],
         params=gru_params,
