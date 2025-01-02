@@ -1,6 +1,6 @@
 import argparse
 from pathlib import Path
-from typing import Literal, TypedDict, cast
+from typing import TypedDict, cast
 
 import pytorch_lightning as pl
 import torch
@@ -58,7 +58,7 @@ def run_model(
         predict_output=output, X_true=X_true, **kwargs
     )
 
-    output = model.postprocess_predict(output)
+    output = model.post_process_predictions(output)
 
     if post_process:
         print(f"Post processing scores with window size {window_size_smooth}")
@@ -72,7 +72,7 @@ def calculate_metrics(
     threshold: torch.Tensor,
     y: torch.Tensor,
     dataset: Datasets,
-    dataset_split: Literal["train", "val", "test"],
+    dataset_split: str,
     save_dir: Path,
 ):
     y_pred = (scores > threshold).float()
@@ -96,12 +96,11 @@ def process_dataset(
     dataset: Datasets,
     edge_index: torch.Tensor,
     save_metrics_dir: Path,
-    n_thresholds: int = 100,
-    window_size_smooth: int = 5,
-    post_process: bool = True,
+    dataset_split: str,
     window_size: int = 5,
     batch_size: int = 264,
     n_workers: int = 0,
+    predict_params: dict = {},
 ):
     # Create test dataloader
     loader = get_data_loader(
@@ -125,8 +124,7 @@ def process_dataset(
         loader=loader,
         device=device,
         X_true=X_true,
-        post_process=post_process,
-        window_size_smooth=window_size_smooth,
+        **predict_params,
     )
 
     if thresholds is None:
@@ -134,7 +132,7 @@ def process_dataset(
             dataset=dataset,
             scores=scores,
             labels=y,
-            n_thresholds=n_thresholds,
+            n_thresholds=predict_params["n_thresholds"],
         )
 
     # Calculate metrics
@@ -144,7 +142,7 @@ def process_dataset(
             threshold=thresholds,
             y=y,
             dataset=dataset,
-            dataset_split="train",
+            dataset_split=dataset_split,
             save_dir=save_metrics_dir,
         )
     else:
@@ -265,13 +263,12 @@ def predict(
             device=device,
             dataset=dataset,
             save_metrics_dir=checkpoint_path.parent,
-            n_thresholds=params["predictor_params"]["n_thresholds"],
-            window_size_smooth=params["predictor_params"]["window_size_smooth"],
-            post_process=params["predictor_params"]["post_process_scores"],
+            dataset_split=dataset_split,
             edge_index=edge_index,
             window_size=window_size,
             batch_size=batch_size,
             n_workers=n_workers,
+            predict_params=params["predictor_params"],
         )
         if thresholds is None:
             thresholds = output_dict["thresholds"]
@@ -333,6 +330,12 @@ if __name__ == "__main__":
 
     if args.params_file is None:
         args.params_file = f"models/{args.model.value}/params.yaml"
+
+    if args.ckpt_path is not None and not args.ckpt_path.endswith(".ckpt"):
+        raise ValueError(
+            "Checkpoint path must end with .ckpt, got "
+            f"{args.ckpt_path} with extension {Path(args.ckpt_path).suffix}"
+        )
 
     params = load_params(args.params_file, file_type=ParamFileTypes.YAML)
 
