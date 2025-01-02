@@ -47,7 +47,7 @@ def train(
     early_stop_patience: int = 20,
     early_stop_delta: float = 0.0001,
     save_top_k: int = 1,
-    ckpt_path: Optional[str] = None,
+    ckpt_path_resume: Optional[str] = None,
     down_len: Optional[int] = None,
     target_dims: Optional[int] = None,
     horizon: int = 1,
@@ -80,7 +80,7 @@ def train(
         early_stop_patience: Patience for early stopping
         early_stop_delta: Minimum change for early stopping
         save_top_k: Number of best models to save
-        ckpt_path: Path to checkpoint to load
+        ckpt_path_resume: Path to checkpoint to load
         down_len: Length to downsample to
         target_dims: Target dimensions to predict
         horizon: Prediction horizon
@@ -181,8 +181,8 @@ def train(
         betas=betas,
     )
 
-    if ckpt_path:
-        trainer.load(ckpt_path)
+    if ckpt_path_resume:
+        trainer.load(ckpt_path_resume)
     model_params["edge_index"] = edge_index.tolist()
 
     args_summary = {
@@ -191,7 +191,6 @@ def train(
         "train_params": params["train_params"],
         "predictor_params": params["predictor_params"],
     }
-    print(args_summary)
 
     # Save args_summary to a file
     with open(os.path.join(log_dir, "args_summary.json"), "w") as f:

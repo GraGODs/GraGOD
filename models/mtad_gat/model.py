@@ -223,7 +223,7 @@ class MTAD_GAT_PLModule(PLBaseModule):
 
         return forecasts, reconstructions
 
-    def postprocess_predict(self, predict_output):
+    def post_process_predictions(self, predict_output):
         forecasts, reconstructions = zip(*predict_output)
         forecasts = torch.cat(forecasts)
         reconstructions = torch.cat(reconstructions)[:, -1, :]

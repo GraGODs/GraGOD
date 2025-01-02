@@ -1,3 +1,5 @@
+from typing import Literal
+
 import torch
 import torch.utils.data
 import torch.utils.data.dataloader
@@ -74,26 +76,6 @@ class GCN(torch.nn.Module):
         out = out.reshape(batch_size, num_nodes)
 
         return out, h
-
-    def detect_anomalies(
-        self, X: torch.Tensor, predictions: torch.Tensor, threshold: float = 0.01
-    ):
-        """Detect anomalies in the data.
-
-        An anomaly is classified as such if the absolute difference between the
-        prediction and the actual value is greater than the threshold.
-
-        Args:
-            X: Input tensor of shape (data_length, num_nodes)
-            predictions: Predictions tensor of shape (data_length, num_nodes)
-            threshold: Threshold for the anomaly score
-
-        Returns:
-            Anomaly scores tensor of shape (data_length, num_nodes)
-        """
-        diff = torch.abs(X - predictions)
-        anomalies = diff > threshold
-        return anomalies
 
 
 class GCN_PLModule(PLBaseModule):
@@ -173,3 +155,24 @@ class GCN_PLModule(PLBaseModule):
         x, _, _, edge_index = batch
         predictions, _ = self(x, edge_index)
         return predictions
+
+    def post_process_predictions(self, predictions):
+        """Post-process the predictions."""
+        predictions = torch.cat(predictions)
+        return predictions
+
+    def calculate_anomaly_score(
+        self,
+        predict_output: torch.Tensor,
+        X_true: torch.Tensor,
+        score_type: Literal["abs", "sqr"],
+        **kwargs,
+    ):
+        """Calculate the anomaly score."""
+        predictions = self.post_process_predictions(predict_output)
+        if score_type == "abs":
+            return torch.abs(predictions - X_true)
+        elif score_type == "sqr":
+            return torch.sqrt((predictions - X_true) ** 2)
+        else:
+            raise ValueError(f"Invalid score type: {score_type}")
