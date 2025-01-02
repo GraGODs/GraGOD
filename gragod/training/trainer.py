@@ -91,7 +91,7 @@ class PLBaseModule(pl.LightningModule, ABC):
         pass
 
     @abstractmethod
-    def postprocess_predict(self, *args, **kwargs) -> Any:
+    def post_process_predictions(self, *args, **kwargs) -> Any:
         pass
 
     @abstractmethod

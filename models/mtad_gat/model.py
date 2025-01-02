@@ -248,7 +248,7 @@ class MTAD_GAT_PLModule(PLBaseModule):
         Returns:
             anomaly score
         """
-        forecasts, reconstructions = self.postprocess_predict(predict_output)
+        forecasts, reconstructions = self.post_process_predictions(predict_output)
 
         forecast_scores = torch.sqrt((forecasts - X_true) ** 2)
         recon_scores = torch.sqrt((reconstructions - X_true) ** 2)
