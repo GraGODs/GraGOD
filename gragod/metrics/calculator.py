@@ -1,7 +1,6 @@
 import json
 import os
 from pathlib import Path
-from typing import Literal
 
 import numpy as np
 import torch
@@ -454,10 +453,10 @@ def get_metrics_and_save(
     labels: torch.Tensor,
     scores: torch.Tensor,
     save_dir: Path,
-    dataset_split: Literal["train", "val", "test"],
+    dataset_split: str,
 ):
     metrics = get_metrics(dataset, predictions, labels, scores)
-    print_all_metrics(metrics, f"------- {dataset_split} -------")
+    print_all_metrics(metrics, f"------- {dataset_split.capitalize()} -------")
     json.dump(
         metrics,
         open(
