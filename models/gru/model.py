@@ -136,3 +136,13 @@ class GRU_PLModule(PLBaseModule):
         x = batch[0] if isinstance(batch, (list, tuple)) else batch
         predictions = self(x)
         return predictions
+
+    def post_process_predictions(self, predictions):
+        """Post-process the predictions."""
+        predictions = torch.cat(predictions)
+        return predictions
+
+    def calculate_anomaly_score(self, predict_output, X_true, **kwargs):
+        """Calculate the anomaly score."""
+        predictions = self.post_process_predictions(predict_output)
+        return torch.abs(predictions - X_true)
