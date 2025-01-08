@@ -75,3 +75,15 @@ def jit_compile_model(input_example: torch.Tensor, model, save_dir: PathType):
 
 def pytest_is_running():
     return any(arg.startswith("pytest") for arg in sys.argv)
+
+
+def set_device() -> str:
+    if torch.cuda.is_available():
+        device = "gpu"
+    elif torch.backends.mps.is_available():
+        device = "mps"
+    else:
+        print("No GPU or MPS available, training on CPU")
+        device = "cpu"
+
+    return device

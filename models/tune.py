@@ -167,17 +167,18 @@ if __name__ == "__main__":
     parser.add_argument(
         "--model",
         type=Models,
-        help="Model to tune",
-    )  # one of gru, gcn, gdn, mtad_gat
+        help=f"Model to tune [{', '.join(model.value for model in Models)}]",
+    )
     parser.add_argument(
         "--dataset",
         type=Datasets,
-        help="Dataset to use",
+        help=f"Dataset to use [{', '.join(dataset.value for dataset in Datasets)}]",
     )
     parser.add_argument(
         "--params_file",
         type=str,
         default=None,
+        help="Path to parameter file",
     )
     args = parser.parse_args()
 

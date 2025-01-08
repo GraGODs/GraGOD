@@ -1,12 +1,9 @@
-dataset: "telco"
-
 train_params:
   shuffle: true
   model_name: "gdn"
   batch_size: 32
   n_epochs: 3
   val_size: 0.1
-  device: "cpu"
   init_lr: 0.001
   clean: "drop"
   log_dir: "output"
@@ -42,7 +39,6 @@ env_params:
   save_path: "msl"
 
 predictor_params:
-  dataset: "telco"
   ckpt_folder: "output/gdn/version_0"
   n_thresholds: 1000
   window_size_smooth: 5

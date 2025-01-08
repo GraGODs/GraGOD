@@ -16,7 +16,8 @@ from gragod.models import get_model_and_module
 from gragod.training import load_params, load_training_data, set_seeds
 from gragod.training.callbacks import get_training_callbacks
 from gragod.training.trainer import TrainerPL
-from gragod.types import Datasets, Models, cast_dataset
+from gragod.types import Datasets, Models
+from gragod.utils import set_device
 
 RANDOM_SEED = 42
 
@@ -35,7 +36,6 @@ def train(
     clean: CleanMethods,
     interpolate_method: Optional[InterPolationMethods],
     shuffle: bool,
-    device: str,
     n_workers: int,
     log_dir: str,
     log_every_n_steps: int,
@@ -68,7 +68,6 @@ def train(
         clean: Data cleaning method
         interpolate_method: Method for interpolating missing values
         shuffle: Whether to shuffle training data
-        device: Device to train on
         n_workers: Number of data loading workers
         log_dir: Directory for logs
         log_every_n_steps: How often to log
@@ -88,6 +87,8 @@ def train(
     Returns:
         Trained model trainer
     """
+    device = set_device()
+
     dataset_config = get_dataset_config(dataset=dataset)
 
     # Load data
@@ -202,7 +203,7 @@ def train(
     return trainer
 
 
-def main(model: Models, params_file: str) -> None:
+def main(model: Models, dataset: Datasets, params_file: str) -> None:
     """Main training function.
 
     Args:
@@ -214,7 +215,7 @@ def main(model: Models, params_file: str) -> None:
 
     train(
         model=model,
-        dataset=cast_dataset(params["dataset"]),
+        dataset=dataset,
         **params["train_params"],
         model_params=params["model_params"],
         params=params,
@@ -226,16 +227,23 @@ if __name__ == "__main__":
     parser.add_argument(
         "--model",
         type=Models,
-        help=f"Model to train ({', '.join(model.value for model in Models)})",
+        help=f"Model to train [{', '.join(model.value for model in Models)}]",
+    )
+    parser.add_argument(
+        "--dataset",
+        type=Datasets,
+        help=f"Dataset to train on "
+        f"[{', '.join(dataset.value for dataset in Datasets)}]",
     )
     parser.add_argument(
         "--params_file",
         type=str,
         default=None,
+        help="Path to parameter file",
     )
     args = parser.parse_args()
 
     if args.params_file is None:
         args.params_file = f"models/{args.model.value}/params.yaml"
 
-    main(args.model, args.params_file)
+    main(args.model, args.dataset, args.params_file)

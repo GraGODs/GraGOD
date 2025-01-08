@@ -14,7 +14,7 @@ from gragod.metrics.calculator import get_metrics_and_save
 from gragod.models import get_model_and_module
 from gragod.predictions.prediction import get_threshold, post_process_scores
 from gragod.training import load_params, load_training_data, set_seeds
-from gragod.utils import load_checkpoint_path
+from gragod.utils import load_checkpoint_path, set_device
 
 
 class DatasetPredictOutput(TypedDict):
@@ -179,6 +179,7 @@ def predict(
     Main function to load data, model and generate predictions.
     Returns a dictionary containing evaluation metrics.
     """
+    device = set_device()
     dataset_config = get_dataset_config(dataset=dataset)
 
     # Load data
@@ -309,22 +310,24 @@ if __name__ == "__main__":
     parser.add_argument(
         "--model",
         type=Models,
-        help="Model to train (gru, gcn, gdn, mtad_gat)",
+        help=f"Model to train [{', '.join(model.value for model in Models)}]",
     )
     parser.add_argument(
         "--dataset",
         type=Datasets,
-        help="Dataset to predict",
+        help=f"Dataset to predict [{', '.join(dataset.value for dataset in Datasets)}]",
     )
     parser.add_argument(
         "--params_file",
         type=str,
         default=None,
+        help="Path to parameter file",
     )
     parser.add_argument(
         "--ckpt_path",
         type=str,
         default=None,
+        help="Path to checkpoint file",
     )
     args = parser.parse_args()
 
