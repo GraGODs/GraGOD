@@ -1,5 +1,3 @@
-dataset: "swat"
-
 env_params:
   random_seed: 42
 
@@ -14,10 +12,9 @@ train_params:
   batch_size: 128
   n_workers: 0
   init_lr: 0.001
-  n_epochs: 30
-  device: "cuda"
+  n_epochs: 2
   log_every_n_steps: 1
-  ckpt_path: null
+  ckpt_path_resume: null
   weight_decay: 0.00001
   eps: 0.00000001
   betas: [0.9, 0.999]
@@ -30,12 +27,12 @@ model_params:
   K: 3
 
 predictor_params:
-  dataset: "telco"
-  ckpt_folder: "output/gcn/version_0"
+  ckpt_folder: "output/gcn/version_1"
   n_thresholds: 100
   window_size_smooth: 5
   post_process_scores: true
   score_type: "abs"
+  dataset_for_threshold: "train"
 
 optimization_params:
   study_name: "gcn_optimization"

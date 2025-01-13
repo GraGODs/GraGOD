@@ -1,8 +1,9 @@
 import argparse
+import importlib
 import os
 from pathlib import Path
 from time import time
-from typing import Callable, Dict, Tuple
+from typing import Callable, Dict
 
 import optuna
 import torch
@@ -10,15 +11,18 @@ import yaml
 
 from gragod import ParamFileTypes
 from gragod.training import load_params, set_seeds
-from gragod.types import Models, cast_model
+from gragod.types import Datasets, Models
+from models.predict import predict
 from models.train import train
 
 RANDOM_SEED = 42
 
+OPTIMIZATION_SPLIT = {Datasets.TELCO: "train", Datasets.SWAT: "val"}
+
 
 def load_model_functions(
     model_name: Models,
-) -> Tuple[Callable, Callable]:
+) -> Callable:
     """Load training, prediction and parameter tuning functions for a model.
 
     Args:
@@ -27,31 +31,16 @@ def load_model_functions(
     Returns:
         Tuple containing training, prediction and parameter tuning functions
     """
-    if model_name == Models.GRU:
-        from models.gru.predict import main as predict_gru
-        from models.gru.tune_params import get_tune_model_params
 
-        return predict_gru, get_tune_model_params
-    elif model_name == Models.GCN:
-        from models.gcn.predict import main as predict_gcn
-        from models.gcn.tune_params import get_tune_model_params
+    module = importlib.import_module(f"models.{model_name.value}.tune_params")
+    get_tune_model_params = getattr(module, "get_tune_model_params")
 
-        return predict_gcn, get_tune_model_params
-    elif model_name == Models.GDN:
-        from models.gdn.predict import main as predict_gdn
-        from models.gdn.tune_params import get_tune_model_params
-
-        return predict_gdn, get_tune_model_params
-    elif model_name == Models.MTAD_GAT:
-        from models.mtad_gat.predict import main as predict_mtad_gat
-        from models.mtad_gat.tune_params import get_tune_model_params
-
-        return predict_mtad_gat, get_tune_model_params
+    return get_tune_model_params
 
 
 def objective(
     model_name: Models,
-    predict_func: Callable,
+    dataset: Datasets,
     get_tune_params: Callable,
     trial: optuna.Trial,
     params: Dict,
@@ -75,7 +64,7 @@ def objective(
 
     trainer = train(
         model=model_name,
-        dataset_name=params["dataset"],
+        dataset=dataset,
         **params["train_params"],
         model_params=model_params,
         params=params,
@@ -87,13 +76,15 @@ def objective(
 
     params["predictor_params"]["ckpt_folder"] = trainer.logger.log_dir
 
-    predictions_dict = predict_func(
-        dataset_name=params["dataset"],
+    predictions_dict = predict(
+        model=model_name,
+        dataset=dataset,
         **params["train_params"],
         model_params=model_params,
         params=params,
         ckpt_path=ckpt_path,
     )
+
     # Log metrics to tensorboard
     for split in ["train", "val", "test"]:
         if split in predictions_dict.keys():
@@ -110,11 +101,13 @@ def objective(
     print(f"Trial {trial.number} completed in {end_time - start_time:.2f} seconds")
 
     metric = params["optimization_params"]["metric"]
-    return predictions_dict["val"]["metrics"][metric]
+
+    return predictions_dict[OPTIMIZATION_SPLIT[dataset]]["metrics"][metric]
 
 
 def main(
     model: Models,
+    dataset: Datasets,
     params_file: str,
 ) -> None:
     """Main function to run hyperparameter optimization.
@@ -143,13 +136,13 @@ def main(
         sampler=optuna.samplers.TPESampler(seed=RANDOM_SEED),
     )
 
-    predict_func, get_tune_params = load_model_functions(model)
+    get_tune_params = load_model_functions(model)
 
     # Run optimization
     study.optimize(
         lambda trial: objective(
             model_name=model,
-            predict_func=predict_func,
+            dataset=dataset,
             get_tune_params=get_tune_params,
             trial=trial,
             params=params,
@@ -173,19 +166,28 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--model",
-        type=str,
-        help="Model to tune",
-    )  # one of gru, gcn, gdn, mtad_gat
+        type=Models,
+        help=f"Model to tune [{', '.join(model.value for model in Models)}]",
+    )
+    parser.add_argument(
+        "--dataset",
+        type=Datasets,
+        help=f"Dataset to use [{', '.join(dataset.value for dataset in Datasets)}]",
+    )
     parser.add_argument(
         "--params_file",
         type=str,
         default=None,
+        help="Path to parameter file",
     )
     args = parser.parse_args()
 
     if args.params_file is None:
-        args.params_file = f"models/{args.model}/params.yaml"
+        args.params_file = f"models/{args.model.value}/params.yaml"
+    if args.dataset is None:
+        raise ValueError("Dataset is required")
+    if args.model is None:
+        raise ValueError("Model is required")
 
     # Cast the model string to enum
-    model = cast_model(args.model)
-    main(model, args.params_file)
+    main(args.model, args.dataset, args.params_file)

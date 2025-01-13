@@ -44,7 +44,7 @@ def get_training_callbacks(
     checkpoint = ModelCheckpoint(
         monitor=monitor,
         dirpath=log_dir,
-        filename=model_name,
+        filename="best",
         save_top_k=save_top_k,
         mode=monitor_mode,
     )

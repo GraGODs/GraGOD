@@ -1,15 +1,12 @@
-dataset: "telco"
-
 train_params:
   shuffle: true
   model_name: "gdn"
   batch_size: 32
   n_epochs: 3
   val_size: 0.1
-  device: "cuda"
   init_lr: 0.001
   clean: "drop"
-  log_dir: "temp"
+  log_dir: "output"
   n_workers: 0
   test_size: 0.1
   log_every_n_steps: 1
@@ -42,12 +39,12 @@ env_params:
   save_path: "msl"
 
 predictor_params:
-  dataset: "swat"
-  ckpt_folder: "output/gdn/version_8"
+  ckpt_folder: "output/gdn/version_0"
   n_thresholds: 1000
   window_size_smooth: 5
   post_process_scores: true
   score_type: "abs"
+  dataset_for_threshold: "train"
 
 optimization_params:
   study_name: "gdn_optimization"

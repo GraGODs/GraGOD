@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from typing import Any
 
 import pytorch_lightning as pl
@@ -14,7 +15,7 @@ from gragod import PathType
 # - Add SWA
 
 
-class PLBaseModule(pl.LightningModule):
+class PLBaseModule(pl.LightningModule, ABC):
     """
     Base class for PyTorch Lightning modules.
 
@@ -59,7 +60,43 @@ class PLBaseModule(pl.LightningModule):
                 f"Criterion: {criterion}"
             )
 
-        self.save_hyperparameters(ignore=["model", "criterion"])
+        self.save_hyperparameters()
+
+    @abstractmethod
+    def _register_best_metrics(self):
+        pass
+
+    @abstractmethod
+    def forward(self, *args, **kwargs) -> Any:
+        pass
+
+    @abstractmethod
+    def call_logger(self, *args, **kwargs) -> Any:
+        pass
+
+    @abstractmethod
+    def shared_step(self, *args, **kwargs) -> Any:
+        pass
+
+    @abstractmethod
+    def training_step(self, *args, **kwargs) -> Any:
+        pass
+
+    @abstractmethod
+    def validation_step(self, *args, **kwargs) -> Any:
+        pass
+
+    @abstractmethod
+    def predict_step(self, *args, **kwargs) -> Any:
+        pass
+
+    @abstractmethod
+    def post_process_predictions(self, *args, **kwargs) -> Any:
+        pass
+
+    @abstractmethod
+    def calculate_anomaly_score(self, *args, **kwargs) -> Any:
+        pass
 
     def on_train_epoch_start(self):
         if (

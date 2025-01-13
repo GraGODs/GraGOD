@@ -1,8 +1,10 @@
 import logging
 import os
 import sys
+from pathlib import Path
 
 import torch
+from colorama import Fore
 
 from gragod.types import PathType
 
@@ -21,6 +23,48 @@ def get_logger(logger_name: str | None = None):
     return logger
 
 
+def load_checkpoint_path(checkpoint_folder: str, experiment_name: str) -> Path:
+    """
+    Load the checkpoint path from the checkpoint folder.
+    If the checkpoint folder ends with ".ckpt", it is used as the checkpoint path.
+    Otherwise, the checkpoint path is the best.ckpt file in the checkpoint folder.
+
+    If the checkpoint path does not exist, it tries to load the checkpoint from the
+    checkpoint folder with the experiment name.
+
+    Args:
+        checkpoint_folder: The folder containing the checkpoint.
+        experiment_name: The name of the experiment.
+
+    Returns:
+        The checkpoint path.
+    """
+    checkpoint_path = os.path.join(checkpoint_folder, "best.ckpt")
+
+    if not os.path.exists(checkpoint_path):
+        checkpoint_path_candidate = os.path.join(
+            checkpoint_folder,
+            f"{experiment_name}.ckpt",
+        )
+        print(
+            Fore.YELLOW + f"Checkpoint not found at {checkpoint_path}. "
+            f"Trying with {checkpoint_path_candidate}" + Fore.RESET
+        )
+
+        if not os.path.exists(checkpoint_path_candidate):
+            print(
+                Fore.YELLOW
+                + f"Tried with {checkpoint_path_candidate}, but it does not exist."
+                + Fore.RESET
+            )
+            raise ValueError(
+                f"Checkpoint not found at {checkpoint_path} or"
+                f"{checkpoint_path_candidate}"
+            )
+
+    return Path(checkpoint_path)
+
+
 def jit_compile_model(input_example: torch.Tensor, model, save_dir: PathType):
     with torch.jit.optimized_execution(True):
         traced_model = torch.jit.trace(model, input_example)
@@ -31,3 +75,15 @@ def jit_compile_model(input_example: torch.Tensor, model, save_dir: PathType):
 
 def pytest_is_running():
     return any(arg.startswith("pytest") for arg in sys.argv)
+
+
+def set_device() -> str:
+    if torch.cuda.is_available():
+        device = "gpu"
+    elif torch.backends.mps.is_available():
+        device = "mps"
+    else:
+        print("No GPU or MPS available, training on CPU")
+        device = "cpu"
+
+    return device

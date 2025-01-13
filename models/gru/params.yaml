@@ -1,21 +1,18 @@
-dataset: "telco"
-
 model_params:
-  window_size: 256
-  hidden_size: 256
-  n_layers: 9
+  window_size: 16
+  hidden_size: 64
+  n_layers: 1
   bidirectional: true
   rnn_dropout: 0.3
   fc_dropout: 0.3
 
 train_params:
   model_name: "gru"
-  n_epochs: 200
-  batch_size: 1024
+  n_epochs: 2
+  batch_size: 256
   init_lr: 0.001
   target_dims: null
-  device: "cuda"
-  n_workers: 1
+  n_workers: 0
   log_dir: "output"
   log_every_n_steps: 1
   test_size: 0.1
@@ -29,13 +26,12 @@ train_params:
   horizon: 1
 
 predictor_params:
-  dataset: "telco"
-  n_thresholds: 1000
-  ckpt_folder: "output/gru/version_1/"
+  n_thresholds: 100
+  ckpt_folder: "output/gru/version_0/"
   window_size_smooth: 5
   post_process_scores: true
   score_type: "mse"
-  ckpt_folder: "output/gru/version_0"
+  dataset_for_threshold: "train"
 
 optimization_params:
   study_name: "gru_optimization"

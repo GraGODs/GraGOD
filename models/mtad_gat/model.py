@@ -199,7 +199,7 @@ class MTAD_GAT_PLModule(PLBaseModule):
         self.call_logger(loss, recon_loss, forecast_loss, "val")
         return loss
 
-    def predict_step(self, batch, batch_idx):
+    def predict_step(self, batch, batch_idx) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Prediction step for the model.
 
@@ -211,5 +211,47 @@ class MTAD_GAT_PLModule(PLBaseModule):
             tuple: (predictions, reconstructions)
         """
         x = batch[0] if isinstance(batch, (list, tuple)) else batch
-        predictions, reconstructions = self(x)
-        return predictions, reconstructions
+        forecasts, reconstructions = self(x)
+        if self.target_dims is not None:
+            forecasts = forecasts[..., self.target_dims].squeeze(-1)
+            reconstructions = reconstructions[..., self.target_dims].squeeze(-1)
+
+        if forecasts.ndim == 3:
+            forecasts = forecasts.squeeze(1)
+        if reconstructions.ndim == 3:
+            reconstructions = reconstructions.squeeze(1)
+
+        return forecasts, reconstructions
+
+    def post_process_predictions(self, predict_output):
+        forecasts, reconstructions = zip(*predict_output)
+        forecasts = torch.cat(forecasts)
+        reconstructions = torch.cat(reconstructions)[:, -1, :]
+
+        return forecasts, reconstructions
+
+    def calculate_anomaly_score(
+        self,
+        predict_output,
+        X_true: torch.Tensor,
+        epsilon: float = 0.8,
+        **kwargs,
+    ) -> torch.Tensor:
+        """
+        Calculate anomaly score for the model.
+
+        Args:
+            output: dictionary of predictions and reconstructions
+            x: true values
+            epsilon: epsilon value for the score calculation
+
+        Returns:
+            anomaly score
+        """
+        forecasts, reconstructions = self.post_process_predictions(predict_output)
+
+        forecast_scores = (forecasts - X_true) ** 2
+        recon_scores = (reconstructions - X_true) ** 2
+        score = (forecast_scores + epsilon * recon_scores) / (1 + epsilon)
+
+        return score
