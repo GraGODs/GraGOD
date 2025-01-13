@@ -32,7 +32,7 @@ predictor_params:
   window_size_smooth: 5
   post_process_scores: true
   score_type: "abs"
-  dataset_for_threshold: "train "
+  dataset_for_threshold: "train"
 
 optimization_params:
   study_name: "gcn_optimization"

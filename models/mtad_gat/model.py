@@ -250,8 +250,8 @@ class MTAD_GAT_PLModule(PLBaseModule):
         """
         forecasts, reconstructions = self.post_process_predictions(predict_output)
 
-        forecast_scores = torch.sqrt((forecasts - X_true) ** 2)
-        recon_scores = torch.sqrt((reconstructions - X_true) ** 2)
+        forecast_scores = (forecasts - X_true) ** 2
+        recon_scores = (reconstructions - X_true) ** 2
         score = (forecast_scores + epsilon * recon_scores) / (1 + epsilon)
 
         return score

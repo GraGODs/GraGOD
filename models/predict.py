@@ -1,10 +1,9 @@
 import argparse
 from pathlib import Path
-from typing import TypedDict, cast
+from typing import Any, cast
 
 import pytorch_lightning as pl
 import torch
-from pytorch_lightning.utilities.types import _PREDICT_OUTPUT
 from torch.utils.data import DataLoader
 
 from datasets.config import get_dataset_config
@@ -15,23 +14,7 @@ from gragod.models import get_model_and_module
 from gragod.predictions.prediction import get_threshold, post_process_scores
 from gragod.training import load_params, load_training_data, set_seeds
 from gragod.utils import load_checkpoint_path, set_device
-
-
-class DatasetPredictOutput(TypedDict):
-    output: _PREDICT_OUTPUT
-    predictions: torch.Tensor | None
-    labels: torch.Tensor
-    scores: torch.Tensor
-    data: torch.Tensor
-    thresholds: torch.Tensor
-    metrics: dict | None
-
-
-class PredictOutput(TypedDict):
-    train: DatasetPredictOutput
-    val: DatasetPredictOutput
-    test: DatasetPredictOutput
-
+from models.types import DatasetPredictOutput, PredictOutput
 
 RANDOM_SEED = 42
 
@@ -44,7 +27,7 @@ def run_model(
     post_process: bool = True,
     window_size_smooth: int = 5,
     **kwargs,
-) -> tuple[torch.Tensor, _PREDICT_OUTPUT]:
+) -> tuple[torch.Tensor, Any]:
     """
     Generate predictions and calculate anomaly scores.
     Returns the anomaly predictions and evaluation metrics.
