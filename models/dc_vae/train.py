@@ -119,7 +119,7 @@ def main(
     callback_dict = get_training_callbacks(
         log_dir=logger.log_dir,
         model_name=model_name,
-        monitor="Loss/train",
+        monitor="KL_loss/train",
         early_stop_patience=20,
         early_stop_delta=0.0001,
     )
