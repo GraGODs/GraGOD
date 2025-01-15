@@ -14,7 +14,7 @@ from gragod.models import get_model_and_module
 from gragod.predictions.prediction import get_threshold, post_process_scores
 from gragod.training import load_params, load_training_data, set_seeds
 from gragod.utils import load_checkpoint_path, set_device
-from models.types import DatasetPredictOutput, PredictOutput
+from models.schemas import DatasetPredictOutput, PredictOutput
 
 RANDOM_SEED = 42
 
