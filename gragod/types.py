@@ -38,6 +38,7 @@ class Models(Enum):
     GCN = "gcn"
     GDN = "gdn"
     MTAD_GAT = "mtad_gat"
+    DC_VAE = "dc_vae"
 
 
 def cast_model(model: str) -> Models:

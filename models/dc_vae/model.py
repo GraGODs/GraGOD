@@ -182,14 +182,15 @@ class Decoder(nn.Module):
 class DCVAE(nn.Module):
     def __init__(
         self,
-        input_dim,
+        n_features,
         hidden_dims=[32, 16, 1],
         kernel_size=2,
         dilations=[1, 8, 16],
         latent_dim=1,
+        **kwargs,
     ):
         super().__init__()
-
+        input_dim = n_features
         self.encoder = Encoder(
             input_dim=input_dim,
             hidden_dims=hidden_dims,
@@ -302,3 +303,14 @@ class DCVAE_PLModule(PLBaseModule):
         x = batch[0] if isinstance(batch, (list, tuple)) else batch
         x_mean, x_log_var, z_mean, z_log_var = self(x)
         return x_mean, x_log_var
+
+    def post_process_predictions(self, predict_output):
+        x_mean, x_log_var = zip(*predict_output)
+        x_mean = torch.cat(x_mean)
+        x_log_var = torch.cat(x_log_var)
+        return x_mean, x_log_var
+
+    def calculate_anomaly_score(self, predict_output, X_true: torch.Tensor, **kwargs):
+        x_mean, x_log_var = self.post_process_predictions(predict_output)
+        score = (x_mean - X_true) ** 2
+        return score
