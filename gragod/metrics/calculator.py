@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 import torch
 from prts import ts_precision, ts_recall
-from timeeval.metrics.vus_metrics import RangeRocVUS
+from timeeval.metrics.vus_metrics import RangePrVUS, RangeRocVUS
 
 from gragod.metrics.models import MetricsResult, SystemMetricsResult
 from gragod.metrics.visualization import print_all_metrics
@@ -391,6 +391,79 @@ class MetricsCalculator:
             metric_system=float(system_vus_roc),
         )
 
+    def calculate_vus_pr(
+        self,
+        max_buffer_size: int | None = None,
+        max_th_samples: int = N_TH_SAMPLES_DEFAULT,
+    ) -> MetricsResult | SystemMetricsResult:
+        """
+        Calculate VUS-PR metrics.
+        Based on https://www.paparrizos.org/papers/PaparrizosVLDB22b.pdf.
+
+        Args:
+            max_buffer_size: Maximum size of the buffer region around an anomaly.
+                We iterate over all buffer sizes from 0 to ``max_buffer_size`` to
+                create the surface.
+            max_th_samples: Calculating precision and recall for many thresholds is
+                quite slow. We, therefore, uniformly sample thresholds from the
+                available score space. This parameter controls the maximum number of
+                thresholds; too low numbers degrade the metrics' quality.
+
+        Returns:
+            MetricsResult | SystemMetricsResult: VUS-PR metrics.
+        """
+        if max_buffer_size is None:
+            max_buffer_size = MAX_BUFFER_SIZE_DEFAULT[self.dataset]
+
+        system_labels_float64 = np.array(self.system_labels, dtype=np.float64)
+        system_scores_float64 = np.array(self.system_scores, dtype=np.float64)
+
+        vus_pr = RangePrVUS(
+            max_buffer_size=max_buffer_size,
+            compatibility_mode=True,
+            max_samples=max_th_samples,
+        )
+
+        system_vus_pr = (
+            vus_pr(
+                y_true=system_labels_float64,
+                y_score=system_scores_float64,
+            )
+            if torch.sum(self.system_labels) > 0
+            else 0
+        )
+
+        if self.calculate_only_system_metrics:
+            return SystemMetricsResult(metric_system=float(system_vus_pr))
+
+        scores_float64 = np.array(self.scores, dtype=np.float64)
+        labels_float64 = np.array(self.labels, dtype=np.float64)
+
+        per_class_vus_pr = [
+            (
+                vus_pr(
+                    y_true=labels_float64[:, i],
+                    y_score=scores_float64[:, i],
+                )
+                if not (
+                    np.allclose(np.unique(labels_float64[:, i]), np.array([0]))
+                    or np.allclose(np.unique(scores_float64[:, i]), np.array([0]))
+                )
+                else 0
+            )
+            for i in range(labels_float64.shape[1])
+        ]
+        mean_vus_pr = torch.mean(torch.tensor(per_class_vus_pr))
+
+        global_vus_pr = None
+
+        return MetricsResult(
+            metric_global=global_vus_pr,
+            metric_mean=float(mean_vus_pr),
+            metric_per_class=torch.tensor(per_class_vus_pr),
+            metric_system=float(system_vus_pr),
+        )
+
     def get_all_metrics(self, alpha: float = 1.0) -> dict[str, torch.Tensor]:
         """
         Calculate all metrics and return as dictionary.
@@ -410,6 +483,7 @@ class MetricsCalculator:
             range_based_precision, range_based_recall
         )
         vus_roc = self.calculate_vus_roc()
+        vus_pr = self.calculate_vus_pr()
 
         return {
             **precision.model_dump("precision"),
@@ -419,6 +493,7 @@ class MetricsCalculator:
             **range_based_recall.model_dump("range_based_recall"),
             **range_based_f1.model_dump("range_based_f1"),
             **vus_roc.model_dump("vus_roc"),
+            **vus_pr.model_dump("vus_pr"),
         }
 
 
