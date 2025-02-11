@@ -70,9 +70,7 @@ def objective(
         params=params,
     )
 
-    ckpt_path = os.path.join(
-        trainer.logger.log_dir, params["train_params"]["model_name"] + ".ckpt"
-    )
+    ckpt_path = os.path.join(trainer.logger.log_dir, "best" + ".ckpt")
 
     params["predictor_params"]["ckpt_folder"] = trainer.logger.log_dir
 
@@ -88,11 +86,17 @@ def objective(
     # Log metrics to tensorboard
     for split in ["train", "val", "test"]:
         if split in predictions_dict.keys():
-            for metric_name, metric_value in predictions_dict[split]["metrics"].items():
-                if isinstance(metric_value, (int, float)):
-                    trainer.logger.experiment.add_scalar(
-                        f"{split}_metrics/{metric_name}", metric_value, trial.number
-                    )
+            if (
+                "metrics" in predictions_dict[split]
+                and predictions_dict[split]["metrics"] is not None
+            ):
+                for metric_name, metric_value in predictions_dict[split][
+                    "metrics"
+                ].items():
+                    if isinstance(metric_value, (int, float)):
+                        trainer.logger.experiment.add_scalar(
+                            f"{split}_metrics/{metric_name}", metric_value, trial.number
+                        )
     # Deallocate memory
     del trainer
     torch.cuda.empty_cache()
