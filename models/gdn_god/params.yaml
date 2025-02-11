@@ -1,6 +1,6 @@
 train_params:
   shuffle: true
-  model_name: "gdn"
+  model_name: "gdn_god"
   batch_size: 256
   n_epochs: 50
   val_size: 0.1
@@ -22,13 +22,13 @@ train_params:
   down_len: 10
 
 model_params:
-  window_size: 5
-  embed_dim: 64
-  out_layer_num: 1
-  out_layer_inter_dim: 64
-  topk: 15
-  heads: 1
-  dropout: 0.2
+  window_size: 255
+  embed_dim: 128
+  out_layer_num: 6
+  out_layer_inter_dim: 448
+  topk: 39
+  heads: 2
+  dropout: 0.4
   negative_slope: 0.2
   learn_graph: true
 
@@ -40,7 +40,7 @@ env_params:
   save_path: "msl"
 
 predictor_params:
-  ckpt_folder: "output/gdn/version_0"
+  ckpt_folder: "output/gdn_god/version_1"
   n_thresholds: 1000
   window_size_smooth: 5
   post_process_scores: true
@@ -48,6 +48,6 @@ predictor_params:
   dataset_for_threshold: "train"
 
 optimization_params:
-  study_name: "gdn_optimization"
+  study_name: "gdn_god_optimization"
   n_trials: 100
   metric: "vus_roc_system"

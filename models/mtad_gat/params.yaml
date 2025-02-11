@@ -1,21 +1,21 @@
 model_params:
-  window_size: 16
+  window_size: 25
   kernel_size: 7
-  use_gatv2: true
+  use_gatv2: false
   feat_gat_embed_dim: null
   time_gat_embed_dim: null
-  gru_n_layers: 1
-  gru_hid_dim: 300
-  forecast_n_layers: 3
-  forecast_hid_dim: 300
-  recon_n_layers: 1
-  recon_hid_dim: 300
-  dropout: 0.3
-  alpha: 0.2
+  gru_n_layers: 5
+  gru_hid_dim: 32
+  forecast_n_layers: 5
+  forecast_hid_dim: 32
+  recon_n_layers: 5
+  recon_hid_dim: 32
+  dropout: 0.1
+  alpha: 0.02
 
 train_params:
   model_name: "mtad_gat"
-  n_epochs: 2
+  n_epochs: 50
   batch_size: 264
   init_lr: 0.001
   target_dims: null

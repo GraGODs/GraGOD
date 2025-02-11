@@ -37,6 +37,7 @@ class Models(Enum):
     GRU = "gru"
     GCN = "gcn"
     GDN = "gdn"
+    GDNGOD = "gdn_god"
     MTAD_GAT = "mtad_gat"
 
 

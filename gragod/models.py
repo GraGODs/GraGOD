@@ -25,6 +25,10 @@ def get_model_and_module(model: Models) -> tuple[type[Module], type[PLBaseModule
         from models.gdn.model import GDN, GDN_PLModule
 
         return GDN, GDN_PLModule
+    elif model == Models.GDNGOD:
+        from models.gdn_god.model import GDNGOD, GDNGOD_PLModule
+
+        return GDNGOD, GDNGOD_PLModule
     elif model == Models.MTAD_GAT:
         from models.mtad_gat.model import MTAD_GAT, MTAD_GAT_PLModule
 
