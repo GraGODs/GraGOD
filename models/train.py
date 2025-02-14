@@ -3,7 +3,6 @@ import json
 import os
 from typing import Any, Dict, Literal, Optional, Tuple, cast
 
-import torch
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
 from torch import nn
@@ -184,7 +183,6 @@ def train(
 
     if ckpt_path_resume:
         trainer.load(ckpt_path_resume)
-    model_params["edge_index"] = edge_index.tolist()
 
     args_summary = {
         "dataset": dataset.value,
@@ -192,13 +190,13 @@ def train(
         "train_params": params["train_params"],
         "predictor_params": params["predictor_params"],
     }
+    trainer.fit(train_loader, val_loader, args_summary=args_summary)
 
     # Save args_summary to a file
-    with open(os.path.join(log_dir, "args_summary.json"), "w") as f:
-        json.dump(args_summary, f)
+    model_params["edge_index"] = edge_index.tolist()  # Tensor is not JSON serializable
 
-    model_params["edge_index"] = torch.tensor(model_params["edge_index"]).to(device)
-    trainer.fit(train_loader, val_loader, args_summary=args_summary)
+    with open(os.path.join(logger.log_dir, "args_summary.json"), "w") as f:
+        json.dump(args_summary, f)
 
     return trainer
 
