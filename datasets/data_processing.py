@@ -42,6 +42,7 @@ def interpolate_data(
     """
 
     method_str = (method or InterPolationMethods.LINEAR).value
+    print(f"Interpolating data with method: {method_str}")
     df = pd.DataFrame(data)
 
     df.interpolate(method=method_str, inplace=True, order=3)
@@ -72,6 +73,29 @@ def normalize_data(data, scaler=None) -> Tuple[np.ndarray, BaseEstimator]:
     return data, scaler
 
 
+def widen_labels(labels: np.ndarray, window_size: int = 2) -> np.ndarray:
+    """
+    Apply a rolling window to make the labels wider.
+    Args:
+        labels: The labels DataFrame to widen.
+        window_size: The size of the window to apply.
+    Returns:
+        The widened labels DataFrame.
+    """
+    labels_df = pd.DataFrame(labels)
+    labels_buffer = labels_df.copy()
+    for col in labels_df.columns:
+        if labels_df[col].sum() > 0:
+            labels_buffer.loc[:, col] = (
+                labels_df.loc[:, col]
+                .rolling(2 * window_size + 1, center=True, min_periods=1)
+                .sum()
+                > 0
+            ).astype(int)
+
+    return labels_buffer.to_numpy()
+
+
 def preprocess_df(
     data_df: pd.DataFrame,
     labels_df: pd.DataFrame | None = None,
@@ -79,6 +103,9 @@ def preprocess_df(
     clean: bool = False,
     scaler=None,
     interpolate_method: InterPolationMethods | None = None,
+    max_std: float | None = None,
+    labels_widening: bool = True,
+    cutoff_value: float | None = None,
 ) -> Tuple[torch.Tensor, torch.Tensor | None, BaseEstimator | None]:
     """
     Preprocess the given data DataFrame.
@@ -91,8 +118,49 @@ def preprocess_df(
     Returns:
         The preprocessed data and labels DataFrames.
     """
-    data = convert_df_to_tensor(data_df)
-    labels = convert_df_to_tensor(labels_df) if labels_df is not None else None
+    # TODO: Improve this code, it's a mess
+
+    data_df_copy = data_df.copy()
+    labels_df_copy = labels_df.copy() if labels_df is not None else None
+
+    if cutoff_value is not None:
+        data_df_copy = data_df_copy.clip(upper=cutoff_value)
+
+    data = interpolate_data(
+        convert_df_to_tensor(data_df_copy), method=interpolate_method
+    )
+    labels = (
+        interpolate_data(
+            convert_df_to_tensor(labels_df_copy), method=interpolate_method
+        )
+        if labels_df_copy is not None
+        else None
+    )
+    print(f"Labels unique values: {np.unique(labels)}")
+
+    data_df_copy = pd.DataFrame(data)
+    labels_df_copy = pd.DataFrame(labels)
+
+    print(f"Labels df unique values: {np.unique(labels_df_copy)}")
+
+    # Remove outliers
+    if max_std is not None and max_std > 0.0:
+        print(f"Using max_std: {max_std}")
+        mean = data_df_copy.mean()
+        std = data_df_copy.std()
+        z_scores = (data_df_copy - mean) / std
+        abs_z_scores = np.abs(z_scores)
+        filtered_entries = abs_z_scores > max_std
+        data_df_copy = data_df_copy.mask(filtered_entries)
+
+        # Fill masked values with a cutoff value
+        cutoff_value = mean + max_std * std
+        data_df_copy = data_df_copy.fillna(cutoff_value)
+
+    data = convert_df_to_tensor(data_df_copy)
+    labels = (
+        convert_df_to_tensor(labels_df_copy) if labels_df_copy is not None else None
+    )
 
     if normalize:
         data, scaler = normalize_data(data, scaler)
@@ -104,8 +172,13 @@ def preprocess_df(
             mask = labels == 1.0
             data[mask] = np.nan
 
-        data = interpolate_data(data, method=interpolate_method)
-        print("Data cleaned!")
+    if labels_widening and labels is not None:
+        print("Widening labels")
+        labels = widen_labels(labels)
+    else:
+        print("Not widening labels")
+
+    print("Data cleaned!")
 
     data = torch.tensor(data).to(torch.float32)
     labels = torch.tensor(labels).to(torch.float32) if labels is not None else None

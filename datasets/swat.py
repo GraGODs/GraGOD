@@ -86,19 +86,26 @@ def load_swat_training_data(
     scaler=None,
     interpolate_method: InterPolationMethods | None = None,
     down_len: int | None = None,
+    max_std: float | None = None,
+    labels_widening: bool = True,
+    cutoff_value: float | None = None,
 ) -> Tuple[torch.Tensor, ...]:
     """
-    Loads the training dataset from the given path and returns a pandas DataFrame.
+    Load the data for the telco dataset, splitted into train, val and test.
     Args:
-        path_to_dataset: Path to the dataset files.
+        base_path: The path where the datasets are stored.
         normalize: Whether to normalize the data. Default is False.
         clean: Whether to clean the data. Default is False.
         scaler: The scaler to use for normalization.
         interpolate_method: The method to use for interpolation.
         down_len: The length of the downsample window.
                 If None, no downsampling is performed.
+        max_std: Maximum standard deviation for data cleaning. Default is 0.0.
+        labels_widening: Whether to widen the labels. Default is True.
+        cutoff_value: The cutoff value for data cleaning. Default is 30.0.
     Returns:
-        A pandas DataFrame containing the training dataset.
+        Tuple of training data, training labels, validation data, validation labels,
+        and test data.
     """
     (
         df_train,
@@ -115,6 +122,9 @@ def load_swat_training_data(
         clean=clean,
         scaler=scaler,
         interpolate_method=interpolate_method,
+        max_std=max_std,
+        labels_widening=labels_widening,
+        cutoff_value=cutoff_value,
     )
     X_val, X_val_labels, _ = preprocess_df(
         data_df=df_val,
@@ -123,6 +133,9 @@ def load_swat_training_data(
         clean=clean,
         scaler=scaler,
         interpolate_method=interpolate_method,
+        max_std=max_std,
+        labels_widening=labels_widening,
+        cutoff_value=cutoff_value,
     )
     X_test, X_test_labels, _ = preprocess_df(
         data_df=df_test,
@@ -131,6 +144,9 @@ def load_swat_training_data(
         clean=False,
         scaler=scaler,
         interpolate_method=interpolate_method,
+        max_std=max_std,
+        labels_widening=labels_widening,
+        cutoff_value=cutoff_value,
     )
 
     if X_train_labels is None or X_test_labels is None or X_val_labels is None:

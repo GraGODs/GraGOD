@@ -59,6 +59,7 @@ def calculate_metrics(
     save_dir: Path,
 ):
     y_pred = (scores > threshold).float()
+
     metrics = get_metrics_and_save(
         dataset=dataset,
         predictions=y_pred,
@@ -156,12 +157,16 @@ def predict(
     val_size: float = 0.1,
     params: dict = {},
     down_len: int | None = None,
+    max_std: float | None = None,
+    labels_widening: bool = True,
+    cutoff_value: float | None = None,
     **kwargs,
 ) -> PredictOutput:
     """
     Main function to load data, model and generate predictions.
     Returns a dictionary containing evaluation metrics.
     """
+    torch.set_float32_matmul_precision("high")
     device = set_device()
     dataset_config = get_dataset_config(dataset=dataset)
 
@@ -180,13 +185,10 @@ def predict(
         normalize=dataset_config.normalize,
         clean=False,
         down_len=down_len,
+        max_std=max_std,
+        labels_widening=labels_widening,
+        cutoff_value=cutoff_value,
     )
-
-    print(
-        f"Initial data shapes: "
-        f"Train: {X_train.shape}, Val: {X_val.shape}, Test: {X_test.shape}"
-    )
-
     edge_index = get_edge_index(X_train, device)
 
     window_size = model_params["window_size"]
