@@ -16,7 +16,9 @@ def hello(name: str):
 
 
 @app.command()
-def show_metrics(metric_path: str, per_class: bool = False):
+def show_metrics(
+    metric_path: str, per_class: bool = False, dataset_split: str = "train"
+):
     from pathlib import Path
 
     from gragod.metrics.visualization import (
@@ -36,7 +38,11 @@ def show_metrics(metric_path: str, per_class: bool = False):
     else:
         # Handle directory case
         metric_files = []
-        for pattern in ["**/metric.json", "**/metrics_train.json"]:
+        for pattern in [
+            "**/metric.json",
+            f"**/metrics_{dataset_split}.json",
+            f"**/{dataset_split}_metrics.json",
+        ]:
             metric_files.extend(path.glob(pattern))
 
         if not metric_files:
