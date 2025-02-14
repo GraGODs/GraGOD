@@ -158,7 +158,7 @@ def predict(
     params: dict = {},
     down_len: int | None = None,
     max_std: float | None = None,
-    labels_widening: bool = True,
+    labels_widening: bool = False,
     cutoff_value: float | None = None,
     **kwargs,
 ) -> PredictOutput:

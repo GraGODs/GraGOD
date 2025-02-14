@@ -54,7 +54,7 @@ def load_training_data(
     interpolate_method: InterPolationMethods | None = None,
     down_len: int | None = None,
     max_std: float | None = None,
-    labels_widening: bool = True,
+    labels_widening: bool = False,
     cutoff_value: float | None = None,
 ):
     """

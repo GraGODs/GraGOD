@@ -104,7 +104,7 @@ def preprocess_df(
     scaler=None,
     interpolate_method: InterPolationMethods | None = None,
     max_std: float | None = None,
-    labels_widening: bool = True,
+    labels_widening: bool = False,
     cutoff_value: float | None = None,
 ) -> Tuple[torch.Tensor, torch.Tensor | None, BaseEstimator | None]:
     """
@@ -136,12 +136,9 @@ def preprocess_df(
         if labels_df_copy is not None
         else None
     )
-    print(f"Labels unique values: {np.unique(labels)}")
 
     data_df_copy = pd.DataFrame(data)
     labels_df_copy = pd.DataFrame(labels)
-
-    print(f"Labels df unique values: {np.unique(labels_df_copy)}")
 
     # Remove outliers
     if max_std is not None and max_std > 0.0:
@@ -175,8 +172,6 @@ def preprocess_df(
     if labels_widening and labels is not None:
         print("Widening labels")
         labels = widen_labels(labels)
-    else:
-        print("Not widening labels")
 
     print("Data cleaned!")
 
