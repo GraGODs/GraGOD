@@ -144,10 +144,17 @@ data
 # Checkpoints
 *.ckpt
 
+# Datasets files
 datasets_files/
 
+# Saved models
 saved_models/
-saved_model/
+saved_*/
 results/
 output/
 lightning_logs/
+benchmarks/
+
+*.jpeg
+*.jpg
+*.png
