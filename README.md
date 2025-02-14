@@ -1,9 +1,15 @@
-# GraGOD
+<div align="center">
 
-<img width="700" alt="Screenshot 2025-02-14 at 2 04 48 PM" src="https://github.com/user-attachments/assets/80aafe71-3db6-4aac-9829-fd95f773caf1" />
+# 🚀 GraGOD
 
+<img width="300" alt="GraGOD Logo" src="https://github.com/user-attachments/assets/80aafe71-3db6-4aac-9829-fd95f773caf1" />
 
-Anomaly detection with GNNs.
+### 🔍 **Anomaly Detection with Graph Neural Networks (GNNs)**  
+*A modern approach to time-series anomaly detection using GNN techniques.*
+
+---
+
+</div>
 
 ## Running the project
 
