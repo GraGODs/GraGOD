@@ -28,7 +28,7 @@ def get_threshold_per_class(
     scores: torch.Tensor,
     labels: torch.Tensor,
     n_thresholds: int,
-    range_based: bool = False,
+    range_based: bool = True,
 ) -> torch.Tensor:
     """
     Gets the threshold for the scores for each time series.
