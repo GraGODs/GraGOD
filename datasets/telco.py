@@ -86,6 +86,15 @@ def load_telco_training_data(
         df_test_labels,
     ) = load_telco_df(base_path=base_path)
 
+    # Drop timestamps from the dataframes (TODO: Add this to dataset config)
+    columns_to_drop = ["time"]
+    df_train.drop(columns=columns_to_drop, inplace=True)
+    df_train_labels.drop(columns=columns_to_drop, inplace=True)
+    df_val.drop(columns=columns_to_drop, inplace=True)
+    df_val_labels.drop(columns=columns_to_drop, inplace=True)
+    df_test.drop(columns=columns_to_drop, inplace=True)
+    df_test_labels.drop(columns=columns_to_drop, inplace=True)
+
     X_train, X_train_labels, scaler = preprocess_df(
         data_df=df_train,
         labels_df=df_train_labels,

@@ -19,7 +19,7 @@ class SWATPaths(Paths):
 
 @dataclass
 class TELCOPaths(Paths):
-    base_path: str = "datasets_files/telco"
+    base_path: str = "datasets_files/telco_v1"
 
 
 @dataclass
@@ -36,7 +36,7 @@ class SWATConfig(DatasetConfig):
 
 @dataclass
 class TELCOConfig(DatasetConfig):
-    normalize: bool = False
+    normalize: bool = True
     paths: Type[Paths] = TELCOPaths
 
 

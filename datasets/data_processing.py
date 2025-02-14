@@ -23,7 +23,7 @@ def convert_df_to_tensor(df: pd.DataFrame) -> np.ndarray:
     if df.shape[1] == 1:
         X = np.array(df.values[:, 0])
     else:
-        X = np.array(df.values[:, 1:])
+        X = np.array(df.values[:, :])
     X = np.vstack(X).astype(float)  # type:ignore
 
     return X
