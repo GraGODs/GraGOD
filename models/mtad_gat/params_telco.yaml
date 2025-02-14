@@ -1,0 +1,50 @@
+model_params:
+  window_size: 55
+  kernel_size: 7
+  use_gatv2: false
+  feat_gat_embed_dim: null
+  time_gat_embed_dim: null
+  gru_n_layers: 3
+  gru_hid_dim: 32
+  forecast_n_layers: 3
+  forecast_hid_dim: 32
+  recon_n_layers: 3
+  recon_hid_dim: 32
+  dropout: 0.2
+  alpha: 0.02
+
+train_params:
+  model_name: "mtad_gat"
+  log_dir: "benchmarks"
+  n_epochs: 200
+  batch_size: 512
+  init_lr: 0.001
+  target_dims: null
+  n_workers: 0
+  log_every_n_steps: 1
+  shuffle: true
+  clean: "drop"
+  interpolate_method: null
+  weight_decay: 0.00001
+  eps: 0.00000001
+  betas: [0.9, 0.999]
+  horizon: 1
+  down_len: 1  
+  max_std: 7.0
+  monitor: "Loss/val"
+  monitor_mode: "min"
+  early_stop_patience: 10
+  early_stop_delta: 0.001
+
+predictor_params:
+  post_process_scores: true
+  n_thresholds: 100
+  window_size_smooth: 5
+  dataset_for_threshold: "train"
+  range_based: true
+  
+  score_type: "mse"
+  ckpt_folder: "output/mtad_gat/version_2"
+ 
+  epsilon: 0.8
+  target_dims: null
