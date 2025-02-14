@@ -159,6 +159,7 @@ class GCN_PLModule(PLBaseModule):
     def post_process_predictions(self, predictions):
         """Post-process the predictions."""
         predictions = torch.cat(predictions)
+        predictions = predictions[:-1, :]
         return predictions
 
     def calculate_anomaly_score(
@@ -170,6 +171,7 @@ class GCN_PLModule(PLBaseModule):
     ):
         """Calculate the anomaly score."""
         predictions = self.post_process_predictions(predict_output)
+        X_true = X_true[:-1, :]
         if score_type == "abs":
             return torch.abs(predictions - X_true)
         elif score_type == "sqr":

@@ -111,11 +111,8 @@ def process_dataset(
         **predict_params,
     )
 
-    # scores = scores[1:]
+    # Discard last datapoint since it can't be used on recon
     y = y[:-1]
-
-    print(f"SHAPE scores: {scores.shape}")
-    print(f"SHAPE y: {y.shape}")
 
     if thresholds is None:
         thresholds = get_threshold(

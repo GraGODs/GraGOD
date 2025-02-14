@@ -228,6 +228,9 @@ class MTAD_GAT_PLModule(PLBaseModule):
         forecasts = torch.cat(forecasts)
         reconstructions = torch.cat(reconstructions)[:, -1, :]
 
+        forecasts = forecasts[:-1, :]
+        reconstructions = reconstructions[:-1, :]
+
         return forecasts, reconstructions
 
     def calculate_anomaly_score(
@@ -249,6 +252,7 @@ class MTAD_GAT_PLModule(PLBaseModule):
             anomaly score
         """
         forecasts, reconstructions = self.post_process_predictions(predict_output)
+        X_true = X_true[:-1, :]
 
         forecast_scores = (forecasts - X_true) ** 2
         recon_scores = (reconstructions - X_true) ** 2
