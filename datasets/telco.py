@@ -5,7 +5,7 @@ import pandas as pd
 import torch
 
 from datasets.config import TELCOPaths
-from datasets.data_processing import InterPolationMethods, preprocess_df
+from datasets.data_processing import InterPolationMethods, downsample, preprocess_df
 
 
 def load_telco_df(
@@ -66,6 +66,10 @@ def load_telco_training_data(
     clean: bool = False,
     scaler=None,
     interpolate_method: InterPolationMethods | None = None,
+    down_len: int | None = None,
+    max_std: float | None = None,
+    labels_widening: bool = True,
+    cutoff_value: float | None = None,
 ) -> Tuple[torch.Tensor, ...]:
     """
     Load the data for the telco dataset, splitted into train, val and test.
@@ -73,6 +77,13 @@ def load_telco_training_data(
         base_path: The path where the datasets are stored.
         normalize: Whether to normalize the data. Default is False.
         clean: Whether to clean the data. Default is False.
+        scaler: The scaler to use for normalization.
+        interpolate_method: The method to use for interpolation.
+        down_len: The length of the downsample window.
+                If None, no downsampling is performed.
+        max_std: Maximum standard deviation for data cleaning. Default is 0.0.
+        labels_widening: Whether to widen the labels. Default is True.
+        cutoff_value: The cutoff value for data cleaning. Default is 30.0.
     Returns:
         Tuple of training data, training labels, validation data, validation labels,
         and test data.
@@ -102,6 +113,9 @@ def load_telco_training_data(
         clean=clean,
         scaler=scaler,
         interpolate_method=interpolate_method,
+        max_std=max_std,
+        labels_widening=labels_widening,
+        cutoff_value=cutoff_value,
     )
     X_val, X_val_labels, _ = preprocess_df(
         data_df=df_val,
@@ -110,6 +124,9 @@ def load_telco_training_data(
         clean=clean,
         scaler=scaler,
         interpolate_method=interpolate_method,
+        max_std=max_std,
+        labels_widening=labels_widening,
+        cutoff_value=cutoff_value,
     )
     X_test, X_test_labels, _ = preprocess_df(
         data_df=df_test,
@@ -118,10 +135,22 @@ def load_telco_training_data(
         clean=False,
         scaler=scaler,
         interpolate_method=interpolate_method,
+        max_std=max_std,
+        labels_widening=labels_widening,
+        cutoff_value=cutoff_value,
     )
 
     if X_train_labels is None or X_test_labels is None or X_val_labels is None:
         raise ValueError("Telco labels are not being loaded.")
+
+    if down_len is not None:
+        if down_len < 1:
+            raise ValueError("Downsample length must be greater than 0")
+
+        print(f"Downsampling data by {down_len}")
+        X_train, X_train_labels = downsample(X_train, X_train_labels, down_len)
+        X_val, X_val_labels = downsample(X_val, X_val_labels, down_len)
+        X_test, X_test_labels = downsample(X_test, X_test_labels, down_len)
 
     return (
         X_train,

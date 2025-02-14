@@ -53,6 +53,9 @@ def load_training_data(
     clean: bool = False,
     interpolate_method: InterPolationMethods | None = None,
     down_len: int | None = None,
+    max_std: float | None = None,
+    labels_widening: bool = False,
+    cutoff_value: float | None = None,
 ):
     """
     Load the training data for the given dataset.
@@ -65,6 +68,9 @@ def load_training_data(
         interpolate_method: The method to use to interpolate the missing values.
         down_len: The length of the downsample window.
                 If None, no downsampling is performed.
+        max_std: Maximum standard deviation for data cleaning
+        labels_widening: Whether to widen the labels.
+        cutoff_value: The cutoff value for data cleaning.
     Returns:
         The training, validation and test data as torch tensors.
     """
@@ -97,6 +103,9 @@ def load_training_data(
             clean=clean,
             interpolate_method=interpolate_method,
             down_len=down_len,
+            max_std=max_std,
+            labels_widening=labels_widening,
+            cutoff_value=cutoff_value,
         )
     elif dataset == Datasets.TELCO:
         logger.warning(
@@ -105,7 +114,13 @@ def load_training_data(
         )
 
         return load_telco_training_data(
-            normalize=normalize, clean=clean, interpolate_method=interpolate_method
+            normalize=normalize,
+            clean=clean,
+            interpolate_method=interpolate_method,
+            down_len=down_len,
+            max_std=max_std,
+            labels_widening=labels_widening,
+            cutoff_value=cutoff_value,
         )
 
     else:

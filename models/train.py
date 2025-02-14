@@ -30,8 +30,6 @@ def train(
     batch_size: int,
     n_epochs: int,
     init_lr: float,
-    test_size: float,
-    val_size: float,
     clean: CleanMethods,
     interpolate_method: Optional[InterPolationMethods],
     shuffle: bool,
@@ -41,6 +39,8 @@ def train(
     weight_decay: float,
     eps: float,
     betas: Tuple[float, float],
+    test_size: float = 0.2,
+    val_size: float = 0.1,
     monitor: str = "Loss/val",
     monitor_mode: Literal["min", "max"] = "min",
     early_stop_patience: int = 20,
@@ -50,6 +50,9 @@ def train(
     down_len: Optional[int] = None,
     target_dims: Optional[int] = None,
     horizon: int = 1,
+    max_std: float | None = None,
+    labels_widening: bool = False,
+    cutoff_value: float | None = None,
 ) -> TrainerPL:
     """Train a model on a dataset.
 
@@ -82,7 +85,9 @@ def train(
         down_len: Length to downsample to
         target_dims: Target dimensions to predict
         horizon: Prediction horizon
-
+        max_std: Maximum standard deviation for data cleaning
+        labels_widening: Whether to widen the labels
+        cutoff_value: The cutoff value for data cleaning
     Returns:
         Trained model trainer
     """
@@ -99,6 +104,9 @@ def train(
         clean=clean == CleanMethods.INTERPOLATE.value,
         interpolate_method=interpolate_method,
         down_len=down_len,
+        max_std=max_std,
+        labels_widening=labels_widening,
+        cutoff_value=cutoff_value,
     )
 
     print(f"Initial data shapes: Train: {X_train.shape}, Val: {X_val.shape}")
