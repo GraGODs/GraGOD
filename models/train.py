@@ -9,7 +9,8 @@ from torch import nn
 from torch.nn import Module
 
 from datasets.config import get_dataset_config
-from datasets.dataset import get_data_loader, get_edge_index
+from datasets.dataset import get_data_loader
+from datasets.graph import get_edge_index
 from gragod import CleanMethods, InterPolationMethods, ParamFileTypes
 from gragod.models import get_model_and_module
 from gragod.training import load_params, load_training_data, set_seeds

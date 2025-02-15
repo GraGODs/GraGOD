@@ -7,7 +7,8 @@ import torch
 from torch.utils.data import DataLoader
 
 from datasets.config import get_dataset_config
-from datasets.dataset import get_data_loader, get_edge_index
+from datasets.dataset import get_data_loader
+from datasets.graph import get_edge_index
 from gragod import CleanMethods, Datasets, Models, ParamFileTypes
 from gragod.metrics.calculator import get_metrics_and_save
 from gragod.models import get_model_and_module
