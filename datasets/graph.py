@@ -19,6 +19,7 @@ def get_edge_index(
     if path:
         try:
             edge_index = torch.load(path)
+            print(f"Loaded edge index from {path}")
             return edge_index
         except FileNotFoundError:
             print(f"Edge index file not found at {path}")

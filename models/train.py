@@ -112,7 +112,9 @@ def train(
 
     print(f"Initial data shapes: Train: {X_train.shape}, Val: {X_val.shape}")
 
-    edge_index = get_edge_index(X_train, device)
+    edge_index = get_edge_index(
+        X_train, device, model_params.get("edge_index_path", None)
+    )
 
     train_loader = get_data_loader(
         X=X_train,

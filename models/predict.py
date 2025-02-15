@@ -195,7 +195,9 @@ def predict(
         labels_widening=labels_widening,
         cutoff_value=cutoff_value,
     )
-    edge_index = get_edge_index(X_train, device)
+    edge_index = get_edge_index(
+        X_train, device, model_params.get("edge_index_path", None)
+    )
 
     window_size = model_params["window_size"]
 
