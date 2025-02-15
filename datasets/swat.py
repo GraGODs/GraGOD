@@ -178,3 +178,47 @@ def load_swat_training_data(
         X_test, X_test_labels = downsample(X_test, X_test_labels, down_len)
 
     return X_train, X_val, X_test, X_train_labels, X_val_labels, X_test_labels
+
+
+def build_swat_edge_index(
+    X: torch.Tensor, device: str, path: str = SWATPaths.edge_index_path
+) -> torch.Tensor:
+    """
+    Build the edge index based on the topological structure of SWaT system.
+
+    The function looks for pairs of node names that are identical
+    except for their last character, and creates edges between their
+    corresponding indices in the graph.
+
+    This way, sensors that measure similar signals in similar steps
+    are connected together.
+
+    Args:
+        X: Input tensor containing the node features (not used in edge construction)
+        device: Device to place the resulting edge_index tensor on ('cpu' or 'cuda')
+
+    Returns:
+        torch.Tensor: A tensor of shape [2, num_edges] containing the edge indices.
+    """
+    df, _ = load_swat_df_val(path_to_dataset="../datasets_files/swat")
+    node_names = df.columns.tolist()
+
+    edges = []
+    for i, name1 in enumerate(node_names):
+        for j, name2 in enumerate(node_names):
+            if i != j:
+                stripped_name1 = name1.strip()
+                stripped_name2 = name2.strip()
+
+                # Check if names are identical except for last character
+                if (
+                    len(stripped_name1) == len(stripped_name2)
+                    and stripped_name1[:-1] == stripped_name2[:-1]
+                ):
+                    edges.append([i, j])
+
+    edge_index = torch.tensor(edges, dtype=torch.long).t().to(device)
+
+    torch.save(edge_index, path)
+
+    return edge_index
