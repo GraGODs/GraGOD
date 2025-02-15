@@ -15,7 +15,7 @@ class SWATPaths(Paths):
     name_train: str = "SWaT_data_train.csv"
     name_val: str = "SWaT_data_val.csv"
     name_test: str = "SWaT_data_test.csv"
-    edge_index_path: str = "../datasets_files/swat/edge_index.pt"
+    edge_index_path: str = "datasets_files/swat/edge_index.pt"
 
 
 @dataclass

@@ -197,7 +197,7 @@ def build_swat_edge_index(
     Returns:
         torch.Tensor: A tensor of shape [2, num_edges] containing the edge indices.
     """
-    df, _ = load_swat_df_val(path_to_dataset="../datasets_files/swat")
+    df, _ = load_swat_df_val(path_to_dataset="datasets_files/swat")
     node_names = df.columns.tolist()
 
     edges = []
