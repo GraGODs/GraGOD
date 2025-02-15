@@ -3,7 +3,7 @@ import torch
 
 
 def get_edge_index(
-    X: torch.Tensor, device: str, path: str | None = None
+    X: torch.Tensor | None = None, device: str = "cuda", path: str | None = None
 ) -> torch.Tensor:
     """
     Get the edge index of the graph.
@@ -23,6 +23,9 @@ def get_edge_index(
             return edge_index
         except FileNotFoundError:
             print(f"Edge index file not found at {path}")
+
+    if X is None:
+        raise ValueError("X must be provided if path is non-existent")
 
     print("Building fully connected edge index")
     return build_fully_connected_edge_index(X, device)
