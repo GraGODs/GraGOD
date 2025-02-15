@@ -19,10 +19,22 @@ def get_edge_index(
     if path:
         try:
             edge_index = torch.load(path)
+            if not isinstance(edge_index, torch.Tensor):
+                edge_index = torch.tensor(edge_index, dtype=torch.long)
+            else:
+                edge_index = edge_index.long()
+
+            if edge_index.dim() != 2 or edge_index.size(0) != 2:
+                raise ValueError(
+                    f"Edge index must have shape [2, num_edges], got {edge_index.shape}"
+                )
+
             print(f"Loaded edge index from {path}")
-            return edge_index
+            return edge_index.to(device)
         except FileNotFoundError:
             print(f"Edge index file not found at {path}")
+        except Exception as e:
+            print(f"Error loading edge index: {str(e)}")
 
     if X is None:
         raise ValueError("X must be provided if path is non-existent")

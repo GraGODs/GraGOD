@@ -178,26 +178,21 @@ def load_swat_training_data(
 
 
 def build_swat_edge_index(
-    X: torch.Tensor, device: str, path: str = SWATPaths.edge_index_path
+    device: str, path: str = SWATPaths.edge_index_path
 ) -> torch.Tensor:
     """
     Build the edge index based on the topological structure of SWaT system.
 
-    The function looks for pairs of node names that are identical
-    except for their last character, and creates edges between their
-    corresponding indices in the graph.
-
-    This way, sensors that measure similar signals in similar steps
-    are connected together.
-
     Args:
         X: Input tensor containing the node features (not used in edge construction)
         device: Device to place the resulting edge_index tensor on ('cpu' or 'cuda')
+        path: Path to save the edge index
 
     Returns:
         torch.Tensor: A tensor of shape [2, num_edges] containing the edge indices.
     """
-    df, _ = load_swat_df_val(path_to_dataset="datasets_files/swat")
+    df, _ = load_swat_df_val(path_to_dataset="../datasets_files/swat")
+    df = df.drop(columns=[" Timestamp"])
     node_names = df.columns.tolist()
 
     edges = []
@@ -214,8 +209,10 @@ def build_swat_edge_index(
                 ):
                     edges.append([i, j])
 
-    edge_index = torch.tensor(edges, dtype=torch.long).t().to(device)
+    edge_index = torch.tensor(edges, dtype=torch.long).t()
 
-    torch.save(edge_index, path)
+    # Save the CPU tensor
+    torch.save(edge_index.cpu(), path)
 
-    return edge_index
+    # Return the tensor on the requested device
+    return edge_index.to(device)
