@@ -117,13 +117,10 @@ def load_swat_training_data(
     ) = load_swat_df(path_to_dataset=path_to_dataset)
 
     # Drop timestamps from the dataframes (TODO: Add this to dataset config)
-    columns_to_drop = ["Timestamp"]
+    columns_to_drop = [" Timestamp"]
     df_train = df_train.drop(columns=columns_to_drop)
     df_val = df_val.drop(columns=columns_to_drop)
     df_test = df_test.drop(columns=columns_to_drop)
-    df_train_labels = df_train_labels.drop(columns=columns_to_drop)
-    df_val_labels = df_val_labels.drop(columns=columns_to_drop)
-    df_test_labels = df_test_labels.drop(columns=["time"])
 
     X_train, X_train_labels, scaler = preprocess_df(
         data_df=df_train,
