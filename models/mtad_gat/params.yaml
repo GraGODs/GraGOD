@@ -12,7 +12,8 @@ model_params:
   recon_hid_dim: 300
   dropout: 0.3
   alpha: 0.2
-
+  edge_index_path: "datasets_files/swat/edge_index.pt"
+  
 train_params:
   model_name: "mtad_gat"
   n_epochs: 2
@@ -42,7 +43,8 @@ predictor_params:
   epsilon: 0.8
   window_size_smooth: 5
   dataset_for_threshold: "val"
-
+  range_based: true
+  
 optimization_params:
   study_name: "mtad_gat_optimization"
   n_trials: 100

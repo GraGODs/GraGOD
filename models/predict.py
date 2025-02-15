@@ -86,7 +86,6 @@ def process_dataset(
     batch_size: int = 264,
     n_workers: int = 0,
     predict_params: dict = {},
-    range_based_th_optimization: bool = True,
 ):
     # Create test dataloader
     loader = get_data_loader(
@@ -122,7 +121,7 @@ def process_dataset(
             scores=scores,
             labels=y,
             n_thresholds=predict_params["n_thresholds"],
-            range_based=range_based_th_optimization,
+            range_based=predict_params["range_based"],
         )
 
     # Calculate metrics
@@ -263,7 +262,6 @@ def predict(
             batch_size=batch_size,
             n_workers=n_workers,
             predict_params=params["predictor_params"],
-            range_based_th_optimization=params["predictor_params"]["range_based"],
         )
         if thresholds is None:
             thresholds = output_dict["thresholds"]
