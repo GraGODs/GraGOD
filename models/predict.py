@@ -7,7 +7,8 @@ import torch
 from torch.utils.data import DataLoader
 
 from datasets.config import get_dataset_config
-from datasets.dataset import get_data_loader, get_edge_index
+from datasets.dataset import get_data_loader
+from datasets.graph import get_edge_index
 from gragod import CleanMethods, Datasets, Models, ParamFileTypes
 from gragod.metrics.calculator import get_metrics_and_save
 from gragod.models import get_model_and_module
@@ -85,7 +86,6 @@ def process_dataset(
     batch_size: int = 264,
     n_workers: int = 0,
     predict_params: dict = {},
-    range_based_th_optimization: bool = True,
 ):
     # Create test dataloader
     loader = get_data_loader(
@@ -121,7 +121,7 @@ def process_dataset(
             scores=scores,
             labels=y,
             n_thresholds=predict_params["n_thresholds"],
-            range_based=range_based_th_optimization,
+            range_based=predict_params["range_based"],
         )
 
     # Calculate metrics
@@ -194,7 +194,9 @@ def predict(
         labels_widening=labels_widening,
         cutoff_value=cutoff_value,
     )
-    edge_index = get_edge_index(X_train, device)
+    edge_index = get_edge_index(
+        X_train, device, model_params.get("edge_index_path", None)
+    )
 
     window_size = model_params["window_size"]
 
@@ -260,7 +262,6 @@ def predict(
             batch_size=batch_size,
             n_workers=n_workers,
             predict_params=params["predictor_params"],
-            range_based_th_optimization=params["predictor_params"]["range_based"],
         )
         if thresholds is None:
             thresholds = output_dict["thresholds"]

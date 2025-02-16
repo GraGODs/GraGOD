@@ -25,7 +25,8 @@ model_params:
   n_layers: 3
   hidden_dim: 64
   K: 3
-
+  edge_index_path: "datasets_files/swat/edge_index.pt"
+  
 predictor_params:
   ckpt_folder: "output/gcn/version_1"
   n_thresholds: 100
@@ -33,7 +34,8 @@ predictor_params:
   post_process_scores: true
   score_type: "abs"
   dataset_for_threshold: "train"
-
+  range_based: true
+  
 optimization_params:
   study_name: "gcn_optimization"
   n_trials: 100

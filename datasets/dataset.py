@@ -143,21 +143,3 @@ def get_data_loader(
     )
 
     return loader
-
-
-def get_edge_index(X: torch.Tensor, device: str) -> torch.Tensor:
-    """
-    Get the edge index of the graph.
-    """
-    # TODO: load this from each dataset
-    # Create a fully connected graph
-    edge_index = (
-        torch.tensor(
-            [[i, j] for i in range(X.shape[1]) for j in range(X.shape[1])],
-            dtype=torch.long,  # edge_index must be long type
-        )
-        .t()
-        .to(device)
-    )
-
-    return edge_index

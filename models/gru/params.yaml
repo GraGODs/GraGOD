@@ -5,7 +5,7 @@ model_params:
   bidirectional: true
   rnn_dropout: 0.3
   fc_dropout: 0.3
-
+  
 train_params:
   model_name: "gru"
   n_epochs: 2
@@ -32,6 +32,7 @@ predictor_params:
   post_process_scores: true
   score_type: "mse"
   dataset_for_threshold: "train"
+  range_based: true
 
 optimization_params:
   study_name: "gru_optimization"

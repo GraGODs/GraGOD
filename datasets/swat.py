@@ -117,13 +117,10 @@ def load_swat_training_data(
     ) = load_swat_df(path_to_dataset=path_to_dataset)
 
     # Drop timestamps from the dataframes (TODO: Add this to dataset config)
-    columns_to_drop = ["Timestamp"]
+    columns_to_drop = [" Timestamp"]
     df_train = df_train.drop(columns=columns_to_drop)
     df_val = df_val.drop(columns=columns_to_drop)
     df_test = df_test.drop(columns=columns_to_drop)
-    df_train_labels = df_train_labels.drop(columns=columns_to_drop)
-    df_val_labels = df_val_labels.drop(columns=columns_to_drop)
-    df_test_labels = df_test_labels.drop(columns=["time"])
 
     X_train, X_train_labels, scaler = preprocess_df(
         data_df=df_train,
@@ -178,3 +175,44 @@ def load_swat_training_data(
         X_test, X_test_labels = downsample(X_test, X_test_labels, down_len)
 
     return X_train, X_val, X_test, X_train_labels, X_val_labels, X_test_labels
+
+
+def build_swat_edge_index(
+    device: str, path: str = SWATPaths.edge_index_path
+) -> torch.Tensor:
+    """
+    Build the edge index based on the topological structure of SWaT system.
+
+    Args:
+        X: Input tensor containing the node features (not used in edge construction)
+        device: Device to place the resulting edge_index tensor on ('cpu' or 'cuda')
+        path: Path to save the edge index
+
+    Returns:
+        torch.Tensor: A tensor of shape [2, num_edges] containing the edge indices.
+    """
+    df, _ = load_swat_df_val(path_to_dataset="../datasets_files/swat")
+    df = df.drop(columns=[" Timestamp"])
+    node_names = df.columns.tolist()
+
+    edges = []
+    for i, name1 in enumerate(node_names):
+        for j, name2 in enumerate(node_names):
+            if i != j:
+                stripped_name1 = name1.strip()
+                stripped_name2 = name2.strip()
+
+                # Check if names are identical except for last character
+                if (
+                    len(stripped_name1) == len(stripped_name2)
+                    and stripped_name1[:-1] == stripped_name2[:-1]
+                ):
+                    edges.append([i, j])
+
+    edge_index = torch.tensor(edges, dtype=torch.long).t()
+
+    # Save the CPU tensor
+    torch.save(edge_index.cpu(), path)
+
+    # Return the tensor on the requested device
+    return edge_index.to(device)
