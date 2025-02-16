@@ -253,15 +253,10 @@ class MetricsCalculator:
             metric_system=float(system_recall),
         )
 
-    def calculate_range_based_precision(
-        self, alpha: float = 1.0
-    ) -> MetricsResult | SystemMetricsResult:
+    def calculate_range_based_precision(self) -> MetricsResult | SystemMetricsResult:
         """
         Calculate range-based precision metrics.
         Based on https://arxiv.org/pdf/1803.03639.
-
-        Args:
-            alpha: Relative importance of existence reward. 0 ≤ alpha ≤ 1.
 
         Returns:
             MetricsResult | SystemMetricsResult: Precision metrics.
@@ -270,7 +265,7 @@ class MetricsCalculator:
         system_predictions_np = np.array(self.system_predictions)
 
         system_precision = (
-            ts_precision(system_labels_np, system_predictions_np, alpha=alpha)
+            ts_precision(system_labels_np, system_predictions_np, alpha=0)
             if not (
                 np.allclose(np.unique(system_predictions_np), np.array([0]))
                 or np.allclose(np.unique(system_labels_np), np.array([0]))
@@ -286,7 +281,7 @@ class MetricsCalculator:
 
         per_class_precision = [
             (
-                ts_precision(labels_np[:, i], predictions_np[:, i], alpha=alpha)
+                ts_precision(labels_np[:, i], predictions_np[:, i], alpha=0)
                 # if there are no anomalies detected, precision is 0
                 if not (
                     np.allclose(np.unique(predictions_np[:, i]), np.array([0]))
@@ -479,8 +474,8 @@ class MetricsCalculator:
         precision = self.calculate_precision()
         recall = self.calculate_recall()
         f1 = self.calculate_f1(precision, recall)
-        range_based_precision = self.calculate_range_based_precision(alpha=alpha)
-        range_based_recall = self.calculate_range_based_recall(alpha=alpha)
+        range_based_precision = self.calculate_range_based_precision()
+        range_based_recall = self.calculate_range_based_recall()
         range_based_f1 = self.calculate_range_based_f1(
             range_based_precision, range_based_recall
         )
