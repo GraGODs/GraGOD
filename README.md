@@ -88,7 +88,7 @@ gragod --help
 The project currently supports the following models:
 
 - `gcn`: A graph convolutional network based on TAGConv
-- `gdn`: Graph Deviation Network, implementation based on [this repository](https://arxiv.org/pdf/2106.06947) and [this paper](https://arxiv.org/pdf/2106.06947)
+- `gdn`: Graph Deviation Network, implementation based on [this repository]([https://arxiv.org/pdf/2106.06947](https://github.com/d-ailin/GDN)) and [this paper](https://arxiv.org/pdf/2106.06947)
 - `mtad_gat`: Multi-Task Anomaly Detection with GAT, implementation based on [this repository](https://github.com/ML4ITS/mtad-gat-pytorch) and [this paper](https://arxiv.org/pdf/2009.02040)
 - `gru`: A GRU-based model
 
