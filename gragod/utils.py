@@ -3,6 +3,8 @@ import os
 import sys
 from pathlib import Path
 
+import numpy as np
+import pandas as pd
 import torch
 from colorama import Fore
 
@@ -87,3 +89,39 @@ def set_device() -> str:
         device = "cpu"
 
     return device
+
+
+def count_anomaly_ranges(labels: pd.DataFrame):
+    """Count contiguous sequences of 1s in each time series column"""
+    results = []
+
+    # Convert tensor to numpy for easier manipulation
+    labels_np = labels.to_numpy()
+    if labels.ndim == 1:
+        labels_np = labels_np.reshape(-1, 1)
+
+    for col in range(labels_np.shape[1]):
+        column_data = labels_np[:, col]
+
+        # Find where the values change (0->1 or 1->0)
+        diffs = np.diff(column_data, prepend=0, append=0)
+        run_starts = np.where(diffs == 1)[0]
+        run_ends = np.where(diffs == -1)[0]
+
+        # Calculate lengths of each anomaly range
+        lengths = run_ends - run_starts
+        total_ranges = len(lengths)
+        total_anomalies = np.sum(lengths)
+
+        results.append(
+            {
+                "column": col,
+                "total_ranges": total_ranges,
+                "total_anomalies": total_anomalies,
+                "range_lengths": lengths.tolist(),
+                "start_times": run_starts.tolist(),
+                "end_times": run_ends.tolist(),
+            }
+        )
+
+    return results
