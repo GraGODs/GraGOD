@@ -141,8 +141,10 @@ def process_dataset(
         y_pred = None
 
     if save_metrics_dir:
+        save_predictions_dir = os.path.join(save_metrics_dir, "predictions")
+        os.makedirs(save_predictions_dir, exist_ok=True)
         save_path = os.path.join(
-            save_metrics_dir,
+            save_predictions_dir,
             f"{dataset_split}_{model_name.lower()}_{dataset.value.lower()}",
         )
         torch.save(output, save_path + "_output.pt")
