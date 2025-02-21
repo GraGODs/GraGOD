@@ -33,6 +33,12 @@ Then, to activate the project environment, run:
 poetry shell
 ```
 
+There are some extra dependencies to install that are not managed via poetry (yet):
+
+```bash
+pip install -r requirements.txt
+```
+
 
 ## 📦 Usage
 
