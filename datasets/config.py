@@ -29,6 +29,17 @@ class TELCOPaths(Paths):
     name_test_labels: str = "TELCO_labels_test.csv"
 
 
+@dataclass
+class UTEPaths(Paths):
+    base_path: str = "datasets_files/ute"
+    name_data_train: str = "UTE_data_train.csv"
+    name_data_val: str = "UTE_data_val.csv"
+    name_data_test: str = "UTE_data_test.csv"
+    name_labels_train: str = "UTE_labels_train.csv"
+    name_labels_val: str = "UTE_labels_val.csv"
+    name_labels_test: str = "UTE_labels_test.csv"
+
+
 P = TypeVar("P", bound=Paths)
 
 
@@ -51,6 +62,13 @@ class TELCOConfig(DatasetConfig[TELCOPaths]):
     normalize: bool = True
     paths: TELCOPaths = TELCOPaths()
     timestamp_column: str = "time"
+
+
+@dataclass
+class UTEConfig(DatasetConfig[UTEPaths]):
+    normalize: bool = True
+    paths: UTEPaths = UTEPaths()
+    timestamp_column: str = "timestamp"
 
 
 def get_dataset_config(dataset: Datasets) -> DatasetConfig:
