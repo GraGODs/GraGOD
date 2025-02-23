@@ -75,5 +75,6 @@ def get_dataset_config(dataset: Datasets) -> DatasetConfig:
     DATASET_CONFIGS: Dict[Datasets, DatasetConfig] = {
         Datasets.SWAT: SWATConfig(),
         Datasets.TELCO: TELCOConfig(),
+        Datasets.UTE: UTEConfig(),
     }
     return DATASET_CONFIGS[dataset]
