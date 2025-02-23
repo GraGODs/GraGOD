@@ -131,3 +131,19 @@ def networkx_to_edge_index(
         return edge_index, weights
 
     return edge_index
+
+
+def build_random_edge_index(
+    num_nodes: int, num_edges: int, device: str
+) -> torch.Tensor:
+    """
+    Build a random edge index for the graph.
+
+    Args:
+        num_nodes: The number of nodes in the graph.
+        num_edges: The number of edges in the graph.
+    Returns:
+        The random edge index of the graph.
+    """
+    edge_index = torch.randint(0, num_nodes, (2, num_edges), device=device)
+    return edge_index

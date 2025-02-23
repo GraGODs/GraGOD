@@ -1,0 +1,49 @@
+model_params:
+  window_size: 25
+  kernel_size: 7
+  use_gatv2: false
+  feat_gat_embed_dim: null
+  time_gat_embed_dim: null
+  gru_n_layers: 5
+  gru_hid_dim: 32
+  forecast_n_layers: 5
+  forecast_hid_dim: 32
+  recon_n_layers: 1
+  recon_hid_dim: 32
+  dropout: 0.1
+  alpha: 0.02
+
+train_params:
+  model_name: "mtad_gat"
+  n_epochs: 2
+  batch_size: 264
+  init_lr: 0.001
+  target_dims: null
+  n_workers: 0
+  log_dir: "output"
+  log_every_n_steps: 1
+  test_size: 0.1
+  val_size: 0.1
+  shuffle: true
+  clean: "drop"
+  interpolate_method: null
+  horizon: 1
+  weight_decay: 0.00001
+  eps: 0.00000001
+  betas: [0.9, 0.999]
+  down_len: 10
+
+predictor_params:
+  target_dims: null
+  post_process_scores: true
+  score_type: "mse"
+  ckpt_folder: "output/mtad_gat/version_0"
+  n_thresholds: 100
+  epsilon: 0.8
+  window_size_smooth: 5
+  dataset_for_threshold: "val"
+
+optimization_params:
+  study_name: "mtad_gat_optimization"
+  n_trials: 100
+  metric: "vus_roc_system"

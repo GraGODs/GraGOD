@@ -1,0 +1,42 @@
+# version_8
+model_params:
+  window_size: 256
+  hidden_size: 32
+  n_layers: 3
+  bidirectional: true
+  rnn_dropout: 0.1
+  fc_dropout: 0.3
+
+train_params:
+  model_name: "gru"
+  n_epochs: 50
+  batch_size: 256
+  init_lr: 0.001
+  target_dims: null
+  n_workers: 0
+  log_dir: "output"
+  log_every_n_steps: 1
+  test_size: 0.1
+  val_size: 0.1
+  shuffle: true
+  clean: "drop"
+  interpolate_method: null
+  weight_decay: 0.00001
+  eps: 0.00000001
+  betas: [0.9, 0.999]
+  horizon: 1
+  down_len: 10
+
+
+predictor_params:
+  n_thresholds: 100
+  ckpt_folder: "output/gru/version_0/"
+  window_size_smooth: 5
+  post_process_scores: true
+  score_type: "mse"
+  dataset_for_threshold: "train"
+
+optimization_params:
+  study_name: "gru_optimization"
+  n_trials: 100
+  metric: "vus_roc_system"

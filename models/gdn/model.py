@@ -26,6 +26,7 @@ class GDN(nn.Module):
         out_layer: Output layer.
         cache_edge_index_sets: Cached edge indices for batch processing.
         dp: Dropout layer.
+        learn_graph: Whether to learn the graph structure.
 
     Args:
         edge_index: List of edge indices for different graph structures.
@@ -37,6 +38,7 @@ class GDN(nn.Module):
         topk: Number of top similarities to consider for each node.
         heads: Number of attention heads.
         dropout: Dropout rate.
+        learn_graph: Whether to learn the graph structure.
     """
 
     def __init__(
@@ -51,6 +53,7 @@ class GDN(nn.Module):
         heads: int = 1,
         dropout: float = 0,
         negative_slope: float = 0.2,
+        learn_graph: bool = True,
         **kwargs,
     ):
         super(GDN, self).__init__()
@@ -75,8 +78,9 @@ class GDN(nn.Module):
         )
 
         self.topk = topk
-        self.learned_graph = None
+        self.learned_edge_index = None
         self.heads = heads
+        self.learn_graph = learn_graph
 
         self.out_layer = OutLayer(
             embed_dim * heads * edge_set_num,
@@ -129,32 +133,35 @@ class GDN(nn.Module):
             weights_arr = all_embeddings.detach().clone()
             all_embeddings = all_embeddings.repeat(batch_num, 1)
 
-            weights = weights_arr.view(node_num, -1)
+            if self.learn_graph:
+                weights = weights_arr.view(node_num, -1)
 
-            cos_ji_mat = torch.matmul(weights, weights.T)
-            normed_mat = torch.matmul(
-                weights.norm(dim=-1).view(-1, 1), weights.norm(dim=-1).view(1, -1)
-            )
-            cos_ji_mat = cos_ji_mat / normed_mat
+                cos_ji_mat = torch.matmul(weights, weights.T)
+                normed_mat = torch.matmul(
+                    weights.norm(dim=-1).view(-1, 1), weights.norm(dim=-1).view(1, -1)
+                )
+                cos_ji_mat = cos_ji_mat / normed_mat
+                topk_indices_ji = torch.topk(cos_ji_mat, self.topk, dim=-1)[1]
 
-            topk_indices_ji = torch.topk(cos_ji_mat, self.topk, dim=-1)[1]
-
-            self.learned_graph = topk_indices_ji
-
-            gated_i = (
-                torch.arange(0, node_num)
-                .unsqueeze(1)
-                .repeat(1, self.topk)
-                .flatten()
-                .to(device)
-                .unsqueeze(0)
-            )
-            gated_j = topk_indices_ji.flatten().unsqueeze(0)
-            gated_edge_index = torch.cat((gated_j, gated_i), dim=0)
+                gated_i = (
+                    torch.arange(0, node_num)
+                    .unsqueeze(1)
+                    .repeat(1, self.topk)
+                    .flatten()
+                    .to(device)
+                    .unsqueeze(0)
+                )
+                gated_j = topk_indices_ji.flatten().unsqueeze(0)
+                gated_edge_index = torch.cat((gated_j, gated_i), dim=0)
+                self.learned_edge_index = gated_edge_index
+            else:
+                gated_edge_index = self.edge_index_sets[i].to(device)
+                self.learned_edge_index = gated_edge_index
 
             batch_gated_edge_index = self._get_batch_edge_index(
                 gated_edge_index, batch_num, node_num
             ).to(device)
+
             gcn_out = self.gnn_layers[i](
                 x,
                 batch_gated_edge_index,
