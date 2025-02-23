@@ -4,13 +4,13 @@ from typing import Tuple
 import pandas as pd
 import torch
 
-from datasets.config import SWATPaths
+from datasets.config import SWATConfig
 from datasets.data_processing import InterPolationMethods, downsample, preprocess_df
 
 
 def load_swat_df_train(
-    name: str = SWATPaths.name_train,
-    path_to_dataset: str = SWATPaths.base_path,
+    name: str = SWATConfig.paths.name_train,
+    path_to_dataset: str = SWATConfig.paths.base_path,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Loads the training dataset from the given path and returns a pandas DataFrame.
@@ -29,8 +29,8 @@ def load_swat_df_train(
 
 
 def load_swat_df_val(
-    name: str = SWATPaths.name_val,
-    path_to_dataset: str = SWATPaths.base_path,
+    name: str = SWATConfig.paths.name_val,
+    path_to_dataset: str = SWATConfig.paths.base_path,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Loads the validation dataset from the given path and returns a pandas DataFrame.
@@ -48,8 +48,8 @@ def load_swat_df_val(
 
 
 def load_swat_df_test(
-    name: str = SWATPaths.name_test,
-    path_to_dataset: str = SWATPaths.base_path,
+    name: str = SWATConfig.paths.name_test,
+    path_to_dataset: str = SWATConfig.paths.base_path,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     file = os.path.join(path_to_dataset, name)
     df_test = pd.read_csv(file)
@@ -60,7 +60,7 @@ def load_swat_df_test(
 
 
 def load_swat_df(
-    path_to_dataset: str = SWATPaths.base_path, val_size: float = 0.6
+    path_to_dataset: str = SWATConfig.paths.base_path, val_size: float = 0.6
 ) -> Tuple[
     pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame
 ]:
@@ -80,7 +80,7 @@ def load_swat_df(
 
 
 def load_swat_training_data(
-    path_to_dataset: str = SWATPaths.base_path,
+    path_to_dataset: str = SWATConfig.paths.base_path,
     normalize: bool = False,
     clean: bool = False,
     scaler=None,
@@ -91,7 +91,7 @@ def load_swat_training_data(
     cutoff_value: float | None = None,
 ) -> Tuple[torch.Tensor, ...]:
     """
-    Load the data for the telco dataset, splitted into train, val and test.
+    Load the data for the swat dataset, splitted into train, val and test.
     Args:
         base_path: The path where the datasets are stored.
         normalize: Whether to normalize the data. Default is False.
@@ -178,7 +178,7 @@ def load_swat_training_data(
 
 
 def build_swat_edge_index(
-    device: str, path: str = SWATPaths.edge_index_path
+    device: str, path: str = SWATConfig.paths.edge_index_path
 ) -> torch.Tensor:
     """
     Build the edge index based on the topological structure of SWaT system.
@@ -192,7 +192,7 @@ def build_swat_edge_index(
         torch.Tensor: A tensor of shape [2, num_edges] containing the edge indices.
     """
     df, _ = load_swat_df_val(path_to_dataset="../datasets_files/swat")
-    df = df.drop(columns=[" Timestamp"])
+    df = df.drop(columns=[SWATConfig.timestamp_column])
     node_names = df.columns.tolist()
 
     edges = []
