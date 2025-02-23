@@ -4,12 +4,12 @@ from typing import Tuple
 import pandas as pd
 import torch
 
-from datasets.config import TELCOPaths
+from datasets.config import TELCOConfig
 from datasets.data_processing import InterPolationMethods, downsample, preprocess_df
 
 
 def load_telco_df(
-    base_path: str | os.PathLike = TELCOPaths.base_path,
+    base_path: str | os.PathLike = TELCOConfig.paths.base_path,
 ) -> Tuple[pd.DataFrame, ...]:
     """
     Load the TELCO datasets as pandas DataFrames from the given path.
@@ -18,17 +18,23 @@ def load_telco_df(
     Returns:
         Tuple of DataFrames for train, validation, and test datasets.
     """
-    df_train = pd.read_csv(os.path.join(base_path, "TELCO_data_train.csv"))
-    df_train_labels = pd.read_csv(os.path.join(base_path, "TELCO_labels_train.csv"))
-    df_val = pd.read_csv(os.path.join(base_path, "TELCO_data_val.csv"))
-    df_val_labels = pd.read_csv(os.path.join(base_path, "TELCO_labels_val.csv"))
-    df_test = pd.read_csv(os.path.join(base_path, "TELCO_data_test.csv"))
-    df_test_labels = pd.read_csv(os.path.join(base_path, "TELCO_labels_test.csv"))
+    df_train = pd.read_csv(os.path.join(base_path, str(TELCOConfig.paths.name_train)))
+    df_train_labels = pd.read_csv(
+        os.path.join(base_path, str(TELCOConfig.paths.name_train_labels))
+    )
+    df_val = pd.read_csv(os.path.join(base_path, str(TELCOConfig.paths.name_val)))
+    df_val_labels = pd.read_csv(
+        os.path.join(base_path, str(TELCOConfig.paths.name_val_labels))
+    )
+    df_test = pd.read_csv(os.path.join(base_path, str(TELCOConfig.paths.name_test)))
+    df_test_labels = pd.read_csv(
+        os.path.join(base_path, str(TELCOConfig.paths.name_test_labels))
+    )
 
     return df_train, df_train_labels, df_val, df_val_labels, df_test, df_test_labels
 
 
-def load_telco_tp(base_path: str | os.PathLike = TELCOPaths.base_path):
+def load_telco_tp(base_path: str | os.PathLike = TELCOConfig.paths.base_path):
     """
     Load the TELCO datasets as Temporian EventSets from the given path.
     Args:
@@ -61,7 +67,7 @@ def load_telco_tp(base_path: str | os.PathLike = TELCOPaths.base_path):
 
 
 def load_telco_training_data(
-    base_path: str | os.PathLike = TELCOPaths.base_path,
+    base_path: str | os.PathLike = TELCOConfig.paths.base_path,
     normalize: bool = False,
     clean: bool = False,
     scaler=None,
@@ -98,7 +104,7 @@ def load_telco_training_data(
     ) = load_telco_df(base_path=base_path)
 
     # Drop timestamps from the dataframes (TODO: Add this to dataset config)
-    columns_to_drop = ["time"]
+    columns_to_drop = [TELCOConfig.timestamp_column]
     df_train.drop(columns=columns_to_drop, inplace=True)
     df_train_labels.drop(columns=columns_to_drop, inplace=True)
     df_val.drop(columns=columns_to_drop, inplace=True)
