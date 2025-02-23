@@ -25,7 +25,7 @@ def get_logger(logger_name: str | None = None):
     return logger
 
 
-def load_checkpoint_path(checkpoint_folder: str, experiment_name: str) -> Path:
+def load_checkpoint_path(checkpoint_path: str, experiment_name: str) -> Path:
     """
     Load the checkpoint path from the checkpoint folder.
     If the checkpoint folder ends with ".ckpt", it is used as the checkpoint path.
@@ -35,17 +35,18 @@ def load_checkpoint_path(checkpoint_folder: str, experiment_name: str) -> Path:
     checkpoint folder with the experiment name.
 
     Args:
-        checkpoint_folder: The folder containing the checkpoint.
+        checkpoint_path: The path to the checkpoint.
         experiment_name: The name of the experiment.
 
     Returns:
         The checkpoint path.
     """
-    checkpoint_path = os.path.join(checkpoint_folder, "best.ckpt")
+    if not checkpoint_path.endswith(".ckpt"):
+        checkpoint_path = os.path.join(checkpoint_path, "best.ckpt")
 
     if not os.path.exists(checkpoint_path):
         checkpoint_path_candidate = os.path.join(
-            checkpoint_folder,
+            checkpoint_path,
             f"{experiment_name}.ckpt",
         )
         print(

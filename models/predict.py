@@ -13,7 +13,7 @@ from gragod import CleanMethods, Datasets, Models, ParamFileTypes
 from gragod.metrics.calculator import get_metrics_and_save
 from gragod.metrics.visualization import (
     plot_score_histograms_grid_telco,
-    plot_score_histograms_grid_with_ranges_telco,
+    plot_single_score_histogram,
 )
 from gragod.models import get_model_and_module
 from gragod.predictions.prediction import get_threshold, post_process_scores
@@ -158,28 +158,65 @@ def process_dataset(
         torch.save(X_true, save_path + "_data.pt")
         torch.save(thresholds, save_path + "_thresholds.pt")
 
-    fig_1 = plot_score_histograms_grid_telco(scores, y, thresholds, metrics, model_name)
-    fig_2 = plot_score_histograms_grid_with_ranges_telco(
-        scores, y, thresholds, metrics, model_name
-    )
-
+    # Plots
     save_plots_dir = os.path.join(save_metrics_dir, "plots")
     os.makedirs(save_plots_dir, exist_ok=True)
+    if dataset == Datasets.TELCO:
+        fig_1 = plot_score_histograms_grid_telco(
+            scores=scores,
+            labels=y,
+            thresholds=thresholds,
+        )
+        fig_2 = plot_score_histograms_grid_telco(
+            scores=scores,
+            labels=y,
+            thresholds=thresholds,
+            use_ranged_anomalies=True,
+        )
+        fig_1.savefig(
+            os.path.join(
+                save_plots_dir,
+                f"{dataset_split}_{model_name.lower()}_{dataset.value.lower()}"
+                + "_score_histograms.png",
+            )
+        )
+        fig_2.savefig(
+            os.path.join(
+                save_plots_dir,
+                f"{dataset_split}_{model_name.lower()}_{dataset.value.lower()}"
+                + "_score_histograms_with_ranges.png",
+            )
+        )
+
+    fig_1 = plot_single_score_histogram(
+        scores=scores.flatten(),
+        labels=y.flatten(),
+        use_ranged_anomalies=False,
+        model_name=model_name,
+        dataset_name=dataset.value,
+    )
+    fig_2 = plot_single_score_histogram(
+        scores=scores.flatten(),
+        labels=y.flatten(),
+        use_ranged_anomalies=True,
+        model_name=model_name,
+        dataset_name=dataset.value,
+    )
+
     fig_1.savefig(
         os.path.join(
             save_plots_dir,
             f"{dataset_split}_{model_name.lower()}_{dataset.value.lower()}"
-            + "_score_histograms.png",
+            + "_score_histogram_single.png",
         )
     )
     fig_2.savefig(
         os.path.join(
             save_plots_dir,
             f"{dataset_split}_{model_name.lower()}_{dataset.value.lower()}"
-            + "_score_histograms_with_ranges.png",
+            + "_score_histogram_single_with_ranges.png",
         )
     )
-
     output_dict: DatasetPredictOutput = {
         "output": output,
         "predictions": y_pred,
@@ -259,7 +296,7 @@ def predict(
 
     checkpoint_path = (
         load_checkpoint_path(
-            checkpoint_folder=params["predictor_params"]["ckpt_folder"],
+            checkpoint_path=params["predictor_params"]["ckpt_folder"],
             experiment_name=params["train_params"]["model_name"],
         )
         if ckpt_path is None
