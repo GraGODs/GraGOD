@@ -1,4 +1,5 @@
 import argparse
+import os
 from pathlib import Path
 from typing import Any, cast
 
@@ -79,6 +80,7 @@ def process_dataset(
     thresholds: torch.Tensor | None,
     device: str,
     dataset: Datasets,
+    model_name: str,
     edge_index: torch.Tensor,
     save_metrics_dir: Path,
     dataset_split: str,
@@ -137,6 +139,18 @@ def process_dataset(
     else:
         metrics = None
         y_pred = None
+
+    if save_metrics_dir:
+        save_path = os.path.join(
+            save_metrics_dir,
+            f"{dataset_split}_{model_name.lower()}_{dataset.value.lower()}",
+        )
+        torch.save(output, save_path + "_output.pt")
+        torch.save(y_pred, save_path + "_predictions.pt")
+        torch.save(y, save_path + "_labels.pt")
+        torch.save(scores, save_path + "_scores.pt")
+        torch.save(X_true, save_path + "_data.pt")
+        torch.save(thresholds, save_path + "_thresholds.pt")
 
     output_dict: DatasetPredictOutput = {
         "output": output,
@@ -242,6 +256,8 @@ def predict(
 
     if params["predictor_params"]["dataset_for_threshold"] == "train":
         datasets_to_process = ["train", "val", "test"]
+    elif params["predictor_params"]["dataset_for_threshold"] == "test":
+        datasets_to_process = ["test", "train", "val"]
     else:
         datasets_to_process = ["val", "train", "test"]
     thresholds = None
@@ -255,6 +271,7 @@ def predict(
             thresholds=thresholds,
             device=device,
             dataset=dataset,
+            model_name=params["train_params"]["model_name"],
             save_metrics_dir=checkpoint_path.parent,
             dataset_split=dataset_split,
             edge_index=edge_index,
