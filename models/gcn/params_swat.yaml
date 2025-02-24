@@ -1,40 +1,41 @@
-env_params:
-  random_seed: 42
-
-train_params:
-  test_size: 0.1
-  val_size: 0.1
-  model_name: "gcn"
-  clean: "drop"
-  log_dir: "output"
-  interpolate_method: null
-  shuffle: true
-  batch_size: 128
-  n_workers: 0
-  init_lr: 0.001
-  n_epochs: 50
-  log_every_n_steps: 1
-  ckpt_path_resume: null
-  weight_decay: 0.00001
-  eps: 0.00000001
-  betas: [0.9, 0.999]
-  down_len: 10
-
 model_params:
   window_size: 5
   n_layers: 9
   hidden_dim: 80
   K: 3
 
+train_params:
+  model_name: "gcn"
+  log_dir: "test_swat"
+  n_epochs: 200
+  batch_size: 512
+  init_lr: 0.001
+  target_dims: null
+  n_workers: 0
+  log_every_n_steps: 1
+  shuffle: true
+  clean: "drop"
+  interpolate_method: null
+  weight_decay: 0.00001
+  eps: 0.00000001
+  betas: [0.9, 0.999]
+  horizon: 1
+  down_len: 10
+  max_std: null
+  cutoff_value: null
+  labels_widening: false
+  monitor: "Loss/val"
+  monitor_mode: "min"
+  early_stop_patience: 10
+  early_stop_delta: 0.001
+
 predictor_params:
-  ckpt_folder: "output/gcn/version_1"
+  post_process_scores: true
   n_thresholds: 100
   window_size_smooth: 5
-  post_process_scores: true
-  score_type: "abs"
-  dataset_for_threshold: "train"
+  dataset_for_threshold: "val"
+  range_based: true
+  range_metrics_alpha: 0.5
 
-optimization_params:
-  study_name: "gcn_optimization"
-  n_trials: 100
-  metric: "vus_roc_system"
+  score_type: "abs"
+  ckpt_folder: "test_swat/gcn/version_0"
