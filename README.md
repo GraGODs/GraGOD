@@ -21,7 +21,7 @@ It's part of our thesis to get our Engineering Degree at [La Facultad de Ingenie
 
 ## 📦 Installation
 
-The project requirements are managed with [poetry](https://python-poetry.org/). After installing poetry, install the project dependencies with:
+The project requirements are managed with [poetry](https://python-poetry.org/). Make sure to install version 1.8 (or before 2.). After installing poetry, install the project dependencies with:
 
 ```bash
 poetry install
@@ -102,7 +102,7 @@ The project currently supports the following models:
 
 The project currently supports the following datasets:
 
-- `swat`: Standard Water Treatment dataset, found [here](https://github.com/yzhao062/anomaly-detection-resources)
+- `swat`: Standard Water Treatment dataset, found [here](https://itrust.sutd.edu.sg/itrust-labs_datasets/dataset_info/)
 - `telco`: Telecommunications dataset, found [here](https://iie.fing.edu.uy/investigacion/grupos/anomalias/)
 
 ## Metrics
