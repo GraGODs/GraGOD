@@ -14,12 +14,15 @@ def get_threshold(
     labels: torch.Tensor,
     n_thresholds: int,
     range_based: bool = True,
+    range_metrics_alpha: float = 0.5,
 ) -> torch.Tensor:
     if labels.ndim == 0 or labels.shape[1] in [0, 1]:
-        return get_threshold_system(dataset, scores, labels, n_thresholds, range_based)
+        return get_threshold_system(
+            dataset, scores, labels, n_thresholds, range_based, range_metrics_alpha
+        )
     else:
         return get_threshold_per_class(
-            dataset, scores, labels, n_thresholds, range_based
+            dataset, scores, labels, n_thresholds, range_based, range_metrics_alpha
         )
 
 
@@ -29,6 +32,7 @@ def get_threshold_per_class(
     labels: torch.Tensor,
     n_thresholds: int,
     range_based: bool = True,
+    range_metrics_alpha: float = 0.5,
 ) -> torch.Tensor:
     """
     Gets the threshold for the scores for each time series.
@@ -48,9 +52,9 @@ def get_threshold_per_class(
         dataset=dataset, labels=labels, predictions=preds, scores=scores
     )
     if range_based:
-        precision = metrics.calculate_range_based_precision()
-        recall = metrics.calculate_range_based_recall()
-        f1 = metrics.calculate_range_based_f1(precision, recall)
+        precision = metrics.calculate_precision()
+        recall = metrics.calculate_range_based_recall(range_metrics_alpha)
+        f1 = metrics.calculate_f1(precision, recall)
     else:
         precision = metrics.calculate_precision()
         recall = metrics.calculate_recall()
@@ -76,9 +80,9 @@ def get_threshold_per_class(
             dataset=dataset, labels=labels, predictions=preds, scores=scores
         )
         if range_based:
-            precision = metrics.calculate_range_based_precision()
-            recall = metrics.calculate_range_based_recall()
-            f1 = metrics.calculate_range_based_f1(precision, recall)
+            precision = metrics.calculate_precision()
+            recall = metrics.calculate_range_based_recall(range_metrics_alpha)
+            f1 = metrics.calculate_f1(precision, recall)
         else:
             precision = metrics.calculate_precision()
             recall = metrics.calculate_recall()
@@ -103,6 +107,7 @@ def get_threshold_system(
     labels: torch.Tensor,
     n_thresholds: int,
     range_based: bool = True,
+    range_metrics_alpha: float = 0.5,
 ) -> torch.Tensor:
     """
     Get the threshold for the scores.
@@ -123,9 +128,9 @@ def get_threshold_system(
         dataset=dataset, labels=labels, predictions=preds, scores=scores
     )
     if range_based:
-        precision = metrics.calculate_range_based_precision()
-        recall = metrics.calculate_range_based_recall()
-        f1 = metrics.calculate_range_based_f1(precision, recall)
+        precision = metrics.calculate_precision()
+        recall = metrics.calculate_range_based_recall(range_metrics_alpha)
+        f1 = metrics.calculate_f1(precision, recall)
     else:
         precision = metrics.calculate_precision()
         recall = metrics.calculate_recall()
@@ -142,9 +147,9 @@ def get_threshold_system(
             dataset=dataset, labels=labels, predictions=preds, scores=scores
         )
         if range_based:
-            precision = metrics.calculate_range_based_precision()
-            recall = metrics.calculate_range_based_recall()
-            f1 = metrics.calculate_range_based_f1(precision, recall)
+            precision = metrics.calculate_precision()
+            recall = metrics.calculate_range_based_recall(range_metrics_alpha)
+            f1 = metrics.calculate_f1(precision, recall)
         else:
             precision = metrics.calculate_precision()
             recall = metrics.calculate_recall()

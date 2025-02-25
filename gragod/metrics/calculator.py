@@ -198,7 +198,7 @@ class MetricsCalculator:
         )
 
     def calculate_range_based_recall(
-        self, alpha: float = 1.0
+        self, alpha: float
     ) -> MetricsResult | SystemMetricsResult:
         """
         Calculate range-based recall metrics.
@@ -214,7 +214,13 @@ class MetricsCalculator:
         system_predictions_np = np.array(self.system_predictions)
 
         system_recall = (
-            ts_recall(system_labels_np, system_predictions_np, alpha=alpha)
+            ts_recall(
+                system_labels_np,
+                system_predictions_np,
+                alpha=alpha,
+                cardinality="reciprocal",
+                bias="flat",
+            )
             if not (
                 np.allclose(np.unique(system_predictions_np), np.array([0]))
                 or np.allclose(np.unique(system_labels_np), np.array([0]))
@@ -230,7 +236,13 @@ class MetricsCalculator:
 
         per_class_recall = [
             (
-                ts_recall(labels_np[:, i], predictions_np[:, i], alpha=alpha)
+                ts_recall(
+                    labels_np[:, i],
+                    predictions_np[:, i],
+                    alpha=alpha,
+                    cardinality="reciprocal",
+                    bias="flat",
+                )
                 # if there are no anomalies detected, recall is 0
                 if not (
                     np.allclose(np.unique(predictions_np[:, i]), np.array([0]))
@@ -263,9 +275,14 @@ class MetricsCalculator:
         """
         system_labels_np = np.array(self.system_labels)
         system_predictions_np = np.array(self.system_predictions)
-
         system_precision = (
-            ts_precision(system_labels_np, system_predictions_np, alpha=0)
+            ts_precision(
+                system_labels_np,
+                system_predictions_np,
+                alpha=0,
+                cardinality="reciprocal",
+                bias="flat",
+            )
             if not (
                 np.allclose(np.unique(system_predictions_np), np.array([0]))
                 or np.allclose(np.unique(system_labels_np), np.array([0]))
@@ -281,7 +298,13 @@ class MetricsCalculator:
 
         per_class_precision = [
             (
-                ts_precision(labels_np[:, i], predictions_np[:, i], alpha=0)
+                ts_precision(
+                    labels_np[:, i],
+                    predictions_np[:, i],
+                    alpha=0,
+                    cardinality="reciprocal",
+                    bias="flat",
+                )
                 # if there are no anomalies detected, precision is 0
                 if not (
                     np.allclose(np.unique(predictions_np[:, i]), np.array([0]))
@@ -304,16 +327,6 @@ class MetricsCalculator:
             metric_per_class=per_class_precision,
             metric_system=float(system_precision),
         )
-
-    def calculate_range_based_f1(
-        self,
-        range_based_precision: MetricsResult | SystemMetricsResult,
-        range_based_recall: MetricsResult | SystemMetricsResult,
-    ) -> MetricsResult | SystemMetricsResult:
-        """
-        Calculate range-based F1 score metrics.
-        """
-        return self.calculate_f1(range_based_precision, range_based_recall)
 
     def calculate_vus_roc(
         self,
@@ -461,7 +474,7 @@ class MetricsCalculator:
             metric_system=float(system_vus_pr),
         )
 
-    def get_all_metrics(self, alpha: float = 1.0) -> dict[str, torch.Tensor]:
+    def get_all_metrics(self, alpha: float) -> dict[str, torch.Tensor]:
         """
         Calculate all metrics and return as dictionary.
 
@@ -476,9 +489,8 @@ class MetricsCalculator:
         f1 = self.calculate_f1(precision, recall)
         range_based_precision = self.calculate_range_based_precision()
         range_based_recall = self.calculate_range_based_recall(alpha=alpha)
-        range_based_f1 = self.calculate_range_based_f1(
-            range_based_precision, range_based_recall
-        )
+        range_based_f1 = self.calculate_f1(range_based_precision, range_based_recall)
+        custom_f1 = self.calculate_f1(precision, range_based_recall)
         vus_roc = self.calculate_vus_roc()
         vus_pr = self.calculate_vus_pr()
 
@@ -489,6 +501,7 @@ class MetricsCalculator:
             **range_based_precision.model_dump("range_based_precision"),
             **range_based_recall.model_dump("range_based_recall"),
             **range_based_f1.model_dump("range_based_f1"),
+            **custom_f1.model_dump("custom_f1"),
             **vus_roc.model_dump("vus_roc"),
             **vus_pr.model_dump("vus_pr"),
         }
@@ -499,7 +512,7 @@ def get_metrics(
     predictions: torch.Tensor,
     labels: torch.Tensor,
     scores: torch.Tensor,
-    range_metrics_alpha: float = 1.0,
+    range_metrics_alpha: float,
 ) -> dict:
     """
     Calculate and visualize all metrics for given predictions and labels.
@@ -526,8 +539,9 @@ def get_metrics_and_save(
     scores: torch.Tensor,
     save_dir: Path,
     dataset_split: str,
+    range_metrics_alpha: float,
 ):
-    metrics = get_metrics(dataset, predictions, labels, scores)
+    metrics = get_metrics(dataset, predictions, labels, scores, range_metrics_alpha)
     print_all_metrics(metrics, f"------- {dataset_split.capitalize()} -------")
     json.dump(
         metrics,
