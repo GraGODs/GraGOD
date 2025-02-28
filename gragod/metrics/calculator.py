@@ -15,7 +15,7 @@ N_TH_SAMPLES_DEFAULT = 100
 MAX_BUFFER_SIZE_DEFAULT = {
     Datasets.TELCO: 2,
     Datasets.SWAT: 3,
-    Datasets.UTE: 5,
+    Datasets.UTE: 4,
 }
 
 # TODO: Check neither labels or predictions are None

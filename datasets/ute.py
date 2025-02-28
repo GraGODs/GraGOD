@@ -112,4 +112,4 @@ def load_ute_training_data(
         X_val, X_val_labels = downsample(X_val, X_val_labels, down_len)
         X_test, X_test_labels = downsample(X_test, X_test_labels, down_len)
 
-    return X_train, X_train_labels, X_val, X_val_labels, X_test, X_test_labels
+    return X_train, X_val, X_test, X_train_labels, X_val_labels, X_test_labels
