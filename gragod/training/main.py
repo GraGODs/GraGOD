@@ -4,7 +4,11 @@ import pytorch_lightning as pl
 import torch
 import yaml
 
-from datasets import load_swat_training_data, load_telco_training_data
+from datasets import (
+    load_swat_training_data,
+    load_telco_training_data,
+    load_ute_training_data,
+)
 from gragod import Datasets, InterPolationMethods, ParamFileTypes
 from gragod.utils import get_logger
 
@@ -122,6 +126,12 @@ def load_training_data(
             labels_widening=labels_widening,
             cutoff_value=cutoff_value,
         )
-
+    elif dataset == Datasets.UTE:
+        return load_ute_training_data(
+            normalize=normalize,
+            clean=clean,
+            interpolate_method=interpolate_method,
+            down_len=down_len,
+        )
     else:
         raise ValueError(f"{dataset} is an unkown dataset")

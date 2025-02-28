@@ -68,7 +68,7 @@ class TELCOConfig(DatasetConfig[TELCOPaths]):
 class UTEConfig(DatasetConfig[UTEPaths]):
     normalize: bool = True
     paths: UTEPaths = UTEPaths()
-    timestamp_column: str = "timestamp"
+    timestamp_column: str = ""
 
 
 def get_dataset_config(dataset: Datasets) -> DatasetConfig:

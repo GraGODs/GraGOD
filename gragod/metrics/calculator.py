@@ -15,7 +15,7 @@ N_TH_SAMPLES_DEFAULT = 100
 MAX_BUFFER_SIZE_DEFAULT = {
     Datasets.TELCO: 2,
     Datasets.SWAT: 3,
-    Datasets.UTE: 5,
+    Datasets.UTE: 4,
 }
 
 # TODO: Check neither labels or predictions are None
@@ -202,7 +202,7 @@ class MetricsCalculator:
         )
 
     def calculate_range_based_recall(
-        self, alpha: float = 1.0
+        self, alpha: float = 0.5
     ) -> MetricsResult | SystemMetricsResult:
         """
         Calculate range-based recall metrics.
@@ -218,7 +218,12 @@ class MetricsCalculator:
         system_predictions_np = np.array(self.system_predictions)
 
         system_recall = (
-            ts_recall(system_labels_np, system_predictions_np, alpha=alpha)
+            ts_recall(
+                system_labels_np,
+                system_predictions_np,
+                cardinality="reciprocal",
+                alpha=alpha,
+            )
             if not (
                 np.allclose(np.unique(system_predictions_np), np.array([0]))
                 or np.allclose(np.unique(system_labels_np), np.array([0]))
@@ -234,7 +239,12 @@ class MetricsCalculator:
 
         per_class_recall = [
             (
-                ts_recall(labels_np[:, i], predictions_np[:, i], alpha=alpha)
+                ts_recall(
+                    labels_np[:, i],
+                    predictions_np[:, i],
+                    alpha=alpha,
+                    cardinality="reciprocal",
+                )
                 # if there are no anomalies detected, recall is 0
                 if not (
                     np.allclose(np.unique(predictions_np[:, i]), np.array([0]))
@@ -269,7 +279,12 @@ class MetricsCalculator:
         system_predictions_np = np.array(self.system_predictions)
 
         system_precision = (
-            ts_precision(system_labels_np, system_predictions_np, alpha=0)
+            ts_precision(
+                system_labels_np,
+                system_predictions_np,
+                alpha=0,
+                cardinality="reciprocal",
+            )
             if not (
                 np.allclose(np.unique(system_predictions_np), np.array([0]))
                 or np.allclose(np.unique(system_labels_np), np.array([0]))
@@ -285,7 +300,12 @@ class MetricsCalculator:
 
         per_class_precision = [
             (
-                ts_precision(labels_np[:, i], predictions_np[:, i], alpha=0)
+                ts_precision(
+                    labels_np[:, i],
+                    predictions_np[:, i],
+                    alpha=0,
+                    cardinality="reciprocal",
+                )
                 # if there are no anomalies detected, precision is 0
                 if not (
                     np.allclose(np.unique(predictions_np[:, i]), np.array([0]))
@@ -465,7 +485,7 @@ class MetricsCalculator:
             metric_system=float(system_vus_pr),
         )
 
-    def get_all_metrics(self, alpha: float = 1.0) -> dict[str, torch.Tensor]:
+    def get_all_metrics(self, alpha: float = 1) -> dict[str, torch.Tensor]:
         """
         Calculate all metrics and return as dictionary.
 
