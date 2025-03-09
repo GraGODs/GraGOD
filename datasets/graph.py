@@ -122,7 +122,11 @@ def networkx_to_edge_index(
             return edge_index, weights
         return edge_index
 
-    edge_index = torch.tensor(edges, dtype=torch.long).t()
+    # Convert node labels to integers if they're not already
+    node_map = {node: i for i, node in enumerate(G.nodes())}
+    edge_list = [(node_map[u], node_map[v]) for u, v in edges]
+
+    edge_index = torch.tensor(edge_list, dtype=torch.long).t()
 
     if return_weights:
         weights = torch.tensor(
