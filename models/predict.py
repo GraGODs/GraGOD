@@ -115,6 +115,7 @@ def process_dataset(
         loader=loader,
         device=device,
         X_true=X_true,
+        post_process=predict_params["post_process_scores"],
         **predict_params,
     )
 
