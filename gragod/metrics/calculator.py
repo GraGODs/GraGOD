@@ -20,14 +20,17 @@ MAX_BUFFER_SIZE_DEFAULT = {Datasets.TELCO: 2, Datasets.SWAT: 3}
 class MetricsCalculator:
     """Calculator for precision, recall, and F1 metrics."""
 
-    # TODO: Save scores, labels, predictions, system_scores, system_labels,
-    #       system_predictions to calculate metrics later
+    # TODO: Separate into two classes: one for system metrics and
+    # one for per-class metrics
     def __init__(
         self,
         dataset: Datasets,
-        labels: torch.Tensor,
-        predictions: torch.Tensor,
-        scores: torch.Tensor,
+        labels: torch.Tensor | None = None,
+        predictions: torch.Tensor | None = None,
+        scores: torch.Tensor | None = None,
+        system_scores: torch.Tensor | None = None,
+        system_labels: torch.Tensor | None = None,
+        system_predictions: torch.Tensor | None = None,
     ):
         """
         Initialize calculator with labels and predictions.
@@ -40,14 +43,30 @@ class MetricsCalculator:
         self.scores = scores
         self.labels = labels
         self.predictions = predictions
-        self.system_scores = torch.sum(scores, dim=1)
-        self.system_labels = (torch.sum(labels, dim=1) > 0).int()
-        self.system_predictions = (torch.sum(predictions, dim=1) > 0).int()
+        self.system_scores = (
+            system_scores if system_scores is not None else torch.sum(scores, dim=1)
+        ).squeeze()
+        self.system_labels = (
+            system_labels
+            if system_labels is not None
+            else (torch.sum(labels, dim=1) > 0).int()
+        ).squeeze()
 
-        self.calculate_only_system_metrics = labels.ndim == 0 or labels.shape[1] in [
-            0,
-            1,
-        ]
+        self.system_predictions = (
+            system_predictions
+            if system_predictions is not None
+            else (torch.sum(predictions, dim=1) > 0).int()
+        ).squeeze()
+
+        self.calculate_only_system_metrics = (
+            labels is None
+            or labels.ndim == 0
+            or labels.shape[1]
+            in [
+                0,
+                1,
+            ]
+        )
 
     def calculate_precision(self) -> MetricsResult | SystemMetricsResult:
         """
@@ -513,6 +532,8 @@ def get_metrics(
     labels: torch.Tensor,
     scores: torch.Tensor,
     range_metrics_alpha: float,
+    system_scores: torch.Tensor | None = None,
+    system_labels: torch.Tensor | None = None,
 ) -> dict:
     """
     Calculate and visualize all metrics for given predictions and labels.
@@ -525,7 +546,12 @@ def get_metrics(
         Dictionary containing all calculated metrics
     """
     calculator = MetricsCalculator(
-        dataset=dataset, labels=labels, predictions=predictions, scores=scores
+        dataset=dataset,
+        labels=labels,
+        predictions=predictions,
+        scores=scores,
+        system_scores=system_scores,
+        system_labels=system_labels,
     )
     metrics = calculator.get_all_metrics(alpha=range_metrics_alpha)
 
@@ -540,8 +566,18 @@ def get_metrics_and_save(
     save_dir: Path,
     dataset_split: str,
     range_metrics_alpha: float,
+    system_scores: torch.Tensor | None = None,
+    system_labels: torch.Tensor | None = None,
 ):
-    metrics = get_metrics(dataset, predictions, labels, scores, range_metrics_alpha)
+    metrics = get_metrics(
+        dataset=dataset,
+        predictions=predictions,
+        labels=labels,
+        scores=scores,
+        range_metrics_alpha=range_metrics_alpha,
+        system_scores=system_scores,
+        system_labels=system_labels,
+    )
     print_all_metrics(metrics, f"------- {dataset_split.capitalize()} -------")
     json.dump(
         metrics,
