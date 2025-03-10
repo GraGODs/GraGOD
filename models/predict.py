@@ -63,6 +63,9 @@ def calculate_metrics(
     dataset: Datasets,
     dataset_split: str,
     save_dir: Path,
+    range_metrics_alpha: float = 0.5,
+    system_scores: torch.Tensor | None = None,
+    system_labels: torch.Tensor | None = None,
 ):
     y_pred = (scores > threshold).float()
 
@@ -73,6 +76,9 @@ def calculate_metrics(
         scores=scores,
         save_dir=save_dir,
         dataset_split=dataset_split,
+        range_metrics_alpha=range_metrics_alpha,
+        system_scores=system_scores,
+        system_labels=system_labels,
     )
     return metrics, y_pred
 
@@ -92,6 +98,7 @@ def process_dataset(
     batch_size: int = 264,
     n_workers: int = 0,
     predict_params: dict = {},
+    initial_window_size: int | None = None,
 ):
     # Create test dataloader
     loader = get_data_loader(
@@ -107,7 +114,11 @@ def process_dataset(
 
     # First `window_size` samples are not used for prediction
     X_true = X_true[window_size:]
-    y = y[window_size:]
+
+    # Drop the amount of samples equal to the window size of the
+    # model with the biggest window size. Drop the last sample
+    # since it can't be used on recon
+    y = y[initial_window_size:-1]
 
     # Run model
     scores, output = run_model(
@@ -118,8 +129,26 @@ def process_dataset(
         **predict_params,
     )
 
+    # Calculate how many initial scores to drop to match y shape
+    # n_trim = scores.shape[0] - y.shape[0]
+    # scores = scores[n_trim:]
+    scores = scores[initial_window_size - window_size :]
+
+    try:
+        assert scores.shape[0] == y.shape[0]
+    except AssertionError:
+        print(f"scores.shape: {scores.shape}")
+        print(f"y.shape: {y.shape}")
+        raise
+
+    if dataset == Datasets.SWAT:
+        system_scores = torch.max(scores, dim=1)[0]
+        system_labels = y.int()
+    else:
+        system_scores = None
+        system_labels = None
+
     # Discard last datapoint since it can't be used on recon
-    y = y[:-1]
 
     if thresholds is None:
         thresholds = get_threshold(
@@ -128,6 +157,10 @@ def process_dataset(
             labels=y,
             n_thresholds=predict_params["n_thresholds"],
             range_based=predict_params["range_based"],
+            range_metrics_alpha=predict_params["range_metrics_alpha"],
+            min_precision=predict_params["min_precision"],
+            system_scores=system_scores,
+            system_labels=system_labels,
         )
 
     # Calculate metrics
@@ -139,6 +172,9 @@ def process_dataset(
             dataset=dataset,
             dataset_split=dataset_split,
             save_dir=save_metrics_dir,
+            range_metrics_alpha=predict_params["range_metrics_alpha"],
+            system_scores=system_scores,
+            system_labels=system_labels,
         )
     else:
         metrics = None
@@ -188,16 +224,23 @@ def process_dataset(
             )
         )
 
+    if dataset == Datasets.TELCO:
+        scores_single = scores.flatten()
+        y_single = y.flatten()
+    elif dataset == Datasets.SWAT:
+        scores_single = torch.sum(scores, dim=1)  # TODO: This should not be done here
+        y_single = (torch.sum(y, dim=1) > 0).int()
+
     fig_1 = plot_single_score_histogram(
-        scores=scores.flatten(),
-        labels=y.flatten(),
+        scores=scores_single,
+        labels=y_single,
         use_ranged_anomalies=False,
         model_name=model_name,
         dataset_name=dataset.value,
     )
     fig_2 = plot_single_score_histogram(
-        scores=scores.flatten(),
-        labels=y.flatten(),
+        scores=scores_single,
+        labels=y_single,
         use_ranged_anomalies=True,
         model_name=model_name,
         dataset_name=dataset.value,
@@ -244,12 +287,15 @@ def predict(
     max_std: float | None = None,
     labels_widening: bool = False,
     cutoff_value: float | None = None,
+    initial_window_size: int | None = None,
     **kwargs,
 ) -> PredictOutput:
     """
     Main function to load data, model and generate predictions.
     Returns a dictionary containing evaluation metrics.
     """
+    if initial_window_size is None:
+        initial_window_size = model_params["window_size"]
     torch.set_float32_matmul_precision("high")
     device = set_device()
     dataset_config = get_dataset_config(dataset=dataset)
@@ -344,6 +390,7 @@ def predict(
             batch_size=batch_size,
             n_workers=n_workers,
             predict_params=params["predictor_params"],
+            initial_window_size=initial_window_size,
         )
         if thresholds is None:
             thresholds = output_dict["thresholds"]
@@ -358,6 +405,7 @@ def main(
     dataset: Datasets,
     ckpt_path: str | None = None,
     params_file: str = "models/mtad_gat/params.yaml",
+    initial_window_size: int | None = None,
 ) -> PredictOutput:
     """
     Main function to load data, model and generate predictions.
@@ -376,6 +424,7 @@ def main(
         model_params=params["model_params"],
         params=params,
         ckpt_path=ckpt_path,
+        initial_window_size=initial_window_size,
     )
 
 
@@ -403,6 +452,14 @@ if __name__ == "__main__":
         default=None,
         help="Path to checkpoint file",
     )
+    parser.add_argument(
+        "--initial_window_size",
+        "-iw",
+        type=int,
+        default=None,
+        help="If a variety of models is being tested, the maximum window size of the"
+        "first model is used to drop the initial points from the other models",
+    )
     args = parser.parse_args()
 
     if args.params_file is None:
@@ -421,4 +478,5 @@ if __name__ == "__main__":
         dataset=args.dataset,
         params_file=args.params_file,
         ckpt_path=args.ckpt_path,
+        initial_window_size=args.initial_window_size,
     )
