@@ -21,7 +21,7 @@ def generate_metrics_table(metrics: dict, only_system: bool = False) -> str:
 
     # Create headers
     if only_system:
-        metrics_table = [["System"]]
+        metrics_table = [["Metric", "System"]]
     else:
         metrics_table = [["Metric", "Global", "Mean", "System"]]
 
@@ -29,6 +29,7 @@ def generate_metrics_table(metrics: dict, only_system: bool = False) -> str:
     for metric_key, metric_name in metric_groups.items():
         if only_system:
             row = [
+                f"{metric_name}",
                 f"{metrics.get(f'{metric_key}_system', '')}",
             ]
         else:
