@@ -151,7 +151,7 @@ def generate_ranged_plots(anomaly_stats: list[dict]):
         fig, ax = plt.subplots(figsize=(10, 5))  # Single plot
         axs = [ax]
     else:
-        fig, axs = plt.subplots(4, 3, figsize=(20, 20))
+        fig, axs = plt.subplots(4, 3, figsize=(20, 15))
         axs = axs.flatten()  # Flatten to 1D array for easier iteration
 
     # Plot for each time series in subplots
@@ -178,28 +178,42 @@ def generate_ranged_plots(anomaly_stats: list[dict]):
             ],
         )
 
-        ax.set_title(f"TS {stat['column']} - {total_anomalies} anomalies", fontsize=10)
-        ax.set_xlabel("Range Index", fontsize=8)
-        ax.set_ylabel("Range Length", fontsize=8)
+        if num_plots == 1:
+            ax.set_xlabel("Range Index", fontsize=16)
+            ax.set_ylabel("Range Length", fontsize=16)
+        else:
+            ax.set_title(f"TS {stat['column'] + 1}", fontsize=20)
+            ax.set_xlabel("Range Index", fontsize=20)
+            ax.set_ylabel("Range Length", fontsize=20)
         ax.grid(axis="y", alpha=0.4)
-        ax.tick_params(axis="both", which="major", labelsize=8)
+        ax.tick_params(axis="both", which="major", labelsize=10)
 
     plt.tight_layout()
     plt.show()
 
+    return fig
 
-def run_pipeline(labels: pd.DataFrame):
+
+def run_pipeline(
+    labels: pd.DataFrame,
+    dataset: str,
+    split: str,
+):
     anomaly_stats = count_anomaly_ranges(labels)
-    # print_anomaly_stats(anomaly_stats)
-    generate_ranged_plots(anomaly_stats)
+    fig = generate_ranged_plots(anomaly_stats)
+
+    fig.savefig(f"plots/{dataset}_{split}_ranges_histogram.png")
 
 
-run_pipeline(df_train_telco_labels)
-run_pipeline(df_val_telco_labels)
-run_pipeline(df_test_telco_labels)
+if os.path.exists("plots") is False:
+    os.makedirs("plots")
 
-run_pipeline(df_val_swat_labels)
-run_pipeline(df_test_swat_labels)
+run_pipeline(df_train_telco_labels, "telco", "train")
+run_pipeline(df_val_telco_labels, "telco", "val")
+run_pipeline(df_test_telco_labels, "telco", "test")
+
+run_pipeline(df_val_swat_labels, "swat", "val")
+run_pipeline(df_test_swat_labels, "swat", "test")
 
 
 # %%
