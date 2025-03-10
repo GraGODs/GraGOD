@@ -6,7 +6,7 @@ model_params:
 
 train_params:
   model_name: "gcn"
-  log_dir: "benchmarks"
+  log_dir: "test_telco"
   n_epochs: 200
   batch_size: 512
   init_lr: 0.001
@@ -20,8 +20,10 @@ train_params:
   eps: 0.00000001
   betas: [0.9, 0.999]
   horizon: 1
-  down_len: 1  
+  down_len: 0  
   max_std: 7.0
+  cutoff_value: 30.0
+  labels_widening: true
   monitor: "Loss/val"
   monitor_mode: "min"
   early_stop_patience: 10
@@ -33,6 +35,9 @@ predictor_params:
   window_size_smooth: 5 
   dataset_for_threshold: "train"
   range_based: true
-
+  range_metrics_alpha: 0.5
+  min_precision: 0.2
+  
   score_type: "abs"
-  ckpt_folder: "output/gcn/version_1"
+  # ckpt_folder: "benchmarks_telco/gcn/version_0"
+  ckpt_folder: "test_telco/gcn/version_0"

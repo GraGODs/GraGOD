@@ -5,12 +5,13 @@ model_params:
   out_layer_inter_dim: 448
   topk: 3
   heads: 4
-  dropout: 0.1
+  learn_graph: true
   negative_slope: 0.2
+  dropout: 0.1
 
 train_params:
   model_name: "gdn"
-  log_dir: "benchmarks"
+  log_dir: "test_telco"
   n_epochs: 200
   batch_size: 512
   init_lr: 0.001
@@ -26,6 +27,8 @@ train_params:
   horizon: 1
   down_len: 1  
   max_std: 7.0
+  cutoff_value: 30.0
+  labels_widening: true
   monitor: "Loss/val"
   monitor_mode: "min"
   early_stop_patience: 10
@@ -37,7 +40,8 @@ predictor_params:
   window_size_smooth: 5 
   dataset_for_threshold: "train"
   range_based: true
-
+  range_metrics_alpha: 0.5
+  min_precision: 0.2
   score_type: "abs"
-  ckpt_folder: "output/gdn/version_0"
-
+  # ckpt_folder: "benchmarks_telco/gdn/version_0"
+  ckpt_folder: "test_telco/gdn/version_0"
