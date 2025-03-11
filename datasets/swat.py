@@ -193,16 +193,16 @@ def load_swat_training_data(
     six_hours_in_seconds = 6 * 60 * 60
     df_train = df_train.iloc[six_hours_in_seconds:]
     df_train_labels = df_train_labels.iloc[six_hours_in_seconds:]
-
     if down_len is not None:
-        if down_len < 1:
-            raise ValueError("Downsample length must be greater than 0")
-
-        print(f"Downsampling data by {down_len}")
-        X_train, X_train_labels = downsample(X_train, X_train_labels, down_len)
-        X_val, X_val_labels = downsample(X_val, X_val_labels, down_len)
-        X_test, X_test_labels = downsample(X_test, X_test_labels, down_len)
-
+        if down_len < 0:
+            raise ValueError("Downsample length must be positive")
+        elif down_len > 1:
+            print(f"Downsampling data by {down_len}")
+            X_train, X_train_labels = downsample(X_train, X_train_labels, down_len)
+            X_val, X_val_labels = downsample(X_val, X_val_labels, down_len)
+            X_test, X_test_labels = downsample(X_test, X_test_labels, down_len)
+        else:
+            print("No downsampling performed")
     return X_train, X_val, X_test, X_train_labels, X_val_labels, X_test_labels
 
 

@@ -130,8 +130,6 @@ def process_dataset(
     )
 
     # Calculate how many initial scores to drop to match y shape
-    # n_trim = scores.shape[0] - y.shape[0]
-    # scores = scores[n_trim:]
     scores = scores[initial_window_size - window_size :]
 
     try:

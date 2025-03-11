@@ -39,6 +39,13 @@ class MetricsCalculator:
             labels: Ground truth labels tensor (n_samples, n_nodes)
             predictions: Predicted labels tensor (n_samples, n_nodes)
         """
+        if (
+            labels is None
+            and predictions is None
+            and system_labels is None
+            and system_predictions is None
+        ):
+            raise ValueError("Labels and predictions must be provided")
         self.dataset = dataset
         self.scores = scores
         self.labels = labels
@@ -528,12 +535,13 @@ class MetricsCalculator:
 
 def get_metrics(
     dataset: Datasets,
-    predictions: torch.Tensor,
-    labels: torch.Tensor,
-    scores: torch.Tensor,
     range_metrics_alpha: float,
+    predictions: torch.Tensor | None = None,
+    labels: torch.Tensor | None = None,
+    scores: torch.Tensor | None = None,
     system_scores: torch.Tensor | None = None,
     system_labels: torch.Tensor | None = None,
+    system_predictions: torch.Tensor | None = None,
 ) -> dict:
     """
     Calculate and visualize all metrics for given predictions and labels.
@@ -552,6 +560,7 @@ def get_metrics(
         scores=scores,
         system_scores=system_scores,
         system_labels=system_labels,
+        system_predictions=system_predictions,
     )
     metrics = calculator.get_all_metrics(alpha=range_metrics_alpha)
 
