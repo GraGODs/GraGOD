@@ -140,7 +140,7 @@ def process_dataset(
         raise
 
     if dataset == Datasets.SWAT:
-        system_scores = torch.max(scores, dim=1)[0]
+        system_scores = torch.mean(scores, dim=1)
         system_labels = y.int()
     else:
         system_scores = None
