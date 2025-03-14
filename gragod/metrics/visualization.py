@@ -173,6 +173,7 @@ def plot_single_score_histogram(
     ax.set_xlabel("Anomaly Score (log scale)", fontsize=16)
     ax.set_ylabel("Number of Samples (log scale)", fontsize=16)
     ax.legend(title="Label", fontsize=15, title_fontsize=15, loc="upper left")
+    ax.tick_params(axis="both", which="major", labelsize=14)
 
     # Add metrics if provided
     if metrics:
