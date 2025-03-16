@@ -131,6 +131,7 @@ def process_dataset(
 
     # Calculate how many initial scores to drop to match y shape
     scores = scores[initial_window_size - window_size :]
+    X_true = X_true[initial_window_size - window_size :]
 
     try:
         assert scores.shape[0] == y.shape[0]
@@ -185,6 +186,28 @@ def process_dataset(
             save_predictions_dir,
             f"{dataset_split}_{model_name.lower()}_{dataset.value.lower()}",
         )
+        if isinstance(output, tuple):
+            output_aux = output[0]
+        else:
+            output_aux = output
+        output_aux = output_aux[initial_window_size - window_size :]
+        try:
+            assert (
+                output_aux.shape[0]
+                == y.shape[0]
+                == scores.shape[0]
+                == (X_true.shape[0] - 1)
+            )
+
+            if y_pred is not None:
+                assert y_pred.shape[0] == output_aux.shape[0]
+        except AssertionError:
+            print(f"output_aux.shape: {output_aux.shape}")
+            print(f"y.shape: {y.shape}")
+            print(f"scores.shape: {scores.shape}")
+            print(f"X_true.shape: {X_true.shape}")
+            raise
+
         torch.save(output, save_path + "_output.pt")
         torch.save(y_pred, save_path + "_predictions.pt")
         torch.save(y, save_path + "_labels.pt")
