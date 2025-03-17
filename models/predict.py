@@ -91,6 +91,7 @@ def process_dataset(
     device: str,
     dataset: Datasets,
     model_name: str,
+    initial_window_size: int,
     edge_index: torch.Tensor,
     save_metrics_dir: Path,
     dataset_split: str,
@@ -98,7 +99,6 @@ def process_dataset(
     batch_size: int = 264,
     n_workers: int = 0,
     predict_params: dict = {},
-    initial_window_size: int | None = None,
 ):
     # Create test dataloader
     loader = get_data_loader(
@@ -118,7 +118,7 @@ def process_dataset(
     # Drop the amount of samples equal to the window size of the
     # model with the biggest window size. Drop the last sample
     # since it can't be used on recon
-    y = y[initial_window_size:-1]
+    # y = y[initial_window_size:-1]
 
     # Run model
     scores, output = run_model(
@@ -128,10 +128,17 @@ def process_dataset(
         X_true=X_true,
         **predict_params,
     )
+    # Score and output: (window_size, N-1)
+    # N-1 is manually forced
+
+    y = y[initial_window_size:-1]
+
+    X_true = X_true[initial_window_size - window_size : -1, :]
+    scores = scores[initial_window_size - window_size :]
+    output = output[initial_window_size - window_size :]
 
     # Calculate how many initial scores to drop to match y shape
-    scores = scores[initial_window_size - window_size :]
-    X_true = X_true[initial_window_size - window_size :]
+    # scores = scores[initial_window_size - window_size :]
 
     try:
         assert scores.shape[0] == y.shape[0]
