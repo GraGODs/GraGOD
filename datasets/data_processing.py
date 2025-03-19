@@ -124,6 +124,7 @@ def preprocess_df(
     labels_df_copy = labels_df.copy() if labels_df is not None else None
 
     if cutoff_value is not None:
+        print(f"Using cutoff value: {cutoff_value}")
         data_df_copy = data_df_copy.clip(upper=cutoff_value)
 
     data = interpolate_data(
