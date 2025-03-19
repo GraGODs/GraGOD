@@ -8,7 +8,7 @@ model_params:
 
 train_params:
   model_name: "gru"
-  log_dir: "test_telco"
+  log_dir: "benchmarks"
   n_epochs: 200
   batch_size: 512
   init_lr: 0.001
@@ -22,10 +22,8 @@ train_params:
   eps: 0.00000001
   betas: [0.9, 0.999]
   horizon: 1
-  down_len: 0
+  down_len: 1  
   max_std: 7.0
-  cutoff_value: 30.0
-  labels_widening: true
   monitor: "Loss/val"
   monitor_mode: "min"
   early_stop_patience: 10
@@ -33,12 +31,11 @@ train_params:
 
 predictor_params:
   post_process_scores: true
-  n_thresholds: 1000
+  n_thresholds: 100
   window_size_smooth: 5 
   dataset_for_threshold: "train"
   range_based: true
-  range_metrics_alpha: 0.5
-  min_precision: 0.0
+
   score_type: "mse"
-  # ckpt_folder: "benchmarks_telco/gru/version_6"
-  ckpt_folder: "test_telco/gru/version_0"
+  ckpt_folder: "output/gru/version_0/"
+

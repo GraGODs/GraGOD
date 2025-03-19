@@ -20,17 +20,14 @@ MAX_BUFFER_SIZE_DEFAULT = {Datasets.TELCO: 2, Datasets.SWAT: 3}
 class MetricsCalculator:
     """Calculator for precision, recall, and F1 metrics."""
 
-    # TODO: Separate into two classes: one for system metrics and
-    # one for per-class metrics
+    # TODO: Save scores, labels, predictions, system_scores, system_labels,
+    #       system_predictions to calculate metrics later
     def __init__(
         self,
         dataset: Datasets,
-        labels: torch.Tensor | None = None,
-        predictions: torch.Tensor | None = None,
-        scores: torch.Tensor | None = None,
-        system_scores: torch.Tensor | None = None,
-        system_labels: torch.Tensor | None = None,
-        system_predictions: torch.Tensor | None = None,
+        labels: torch.Tensor,
+        predictions: torch.Tensor,
+        scores: torch.Tensor,
     ):
         """
         Initialize calculator with labels and predictions.
@@ -39,41 +36,18 @@ class MetricsCalculator:
             labels: Ground truth labels tensor (n_samples, n_nodes)
             predictions: Predicted labels tensor (n_samples, n_nodes)
         """
-        if (
-            labels is None
-            and predictions is None
-            and system_labels is None
-            and system_predictions is None
-        ):
-            raise ValueError("Labels and predictions must be provided")
         self.dataset = dataset
         self.scores = scores
         self.labels = labels
         self.predictions = predictions
-        self.system_scores = (
-            system_scores if system_scores is not None else torch.sum(scores, dim=1)
-        ).squeeze()
-        self.system_labels = (
-            system_labels
-            if system_labels is not None
-            else (torch.sum(labels, dim=1) > 0).int()
-        ).squeeze()
+        self.system_scores = torch.sum(scores, dim=1)
+        self.system_labels = (torch.sum(labels, dim=1) > 0).int()
+        self.system_predictions = (torch.sum(predictions, dim=1) > 0).int()
 
-        self.system_predictions = (
-            system_predictions
-            if system_predictions is not None
-            else (torch.sum(predictions, dim=1) > 0).int()
-        ).squeeze()
-
-        self.calculate_only_system_metrics = (
-            labels is None
-            or labels.ndim == 0
-            or labels.shape[1]
-            in [
-                0,
-                1,
-            ]
-        )
+        self.calculate_only_system_metrics = labels.ndim == 0 or labels.shape[1] in [
+            0,
+            1,
+        ]
 
     def calculate_precision(self) -> MetricsResult | SystemMetricsResult:
         """
@@ -224,7 +198,7 @@ class MetricsCalculator:
         )
 
     def calculate_range_based_recall(
-        self, alpha: float
+        self, alpha: float = 1.0
     ) -> MetricsResult | SystemMetricsResult:
         """
         Calculate range-based recall metrics.
@@ -240,13 +214,7 @@ class MetricsCalculator:
         system_predictions_np = np.array(self.system_predictions)
 
         system_recall = (
-            ts_recall(
-                system_labels_np,
-                system_predictions_np,
-                alpha=alpha,
-                cardinality="reciprocal",
-                bias="flat",
-            )
+            ts_recall(system_labels_np, system_predictions_np, alpha=alpha)
             if not (
                 np.allclose(np.unique(system_predictions_np), np.array([0]))
                 or np.allclose(np.unique(system_labels_np), np.array([0]))
@@ -262,13 +230,7 @@ class MetricsCalculator:
 
         per_class_recall = [
             (
-                ts_recall(
-                    labels_np[:, i],
-                    predictions_np[:, i],
-                    alpha=alpha,
-                    cardinality="reciprocal",
-                    bias="flat",
-                )
+                ts_recall(labels_np[:, i], predictions_np[:, i], alpha=alpha)
                 # if there are no anomalies detected, recall is 0
                 if not (
                     np.allclose(np.unique(predictions_np[:, i]), np.array([0]))
@@ -301,14 +263,9 @@ class MetricsCalculator:
         """
         system_labels_np = np.array(self.system_labels)
         system_predictions_np = np.array(self.system_predictions)
+
         system_precision = (
-            ts_precision(
-                system_labels_np,
-                system_predictions_np,
-                alpha=0,
-                cardinality="reciprocal",
-                bias="flat",
-            )
+            ts_precision(system_labels_np, system_predictions_np, alpha=0)
             if not (
                 np.allclose(np.unique(system_predictions_np), np.array([0]))
                 or np.allclose(np.unique(system_labels_np), np.array([0]))
@@ -324,13 +281,7 @@ class MetricsCalculator:
 
         per_class_precision = [
             (
-                ts_precision(
-                    labels_np[:, i],
-                    predictions_np[:, i],
-                    alpha=0,
-                    cardinality="reciprocal",
-                    bias="flat",
-                )
+                ts_precision(labels_np[:, i], predictions_np[:, i], alpha=0)
                 # if there are no anomalies detected, precision is 0
                 if not (
                     np.allclose(np.unique(predictions_np[:, i]), np.array([0]))
@@ -353,6 +304,16 @@ class MetricsCalculator:
             metric_per_class=per_class_precision,
             metric_system=float(system_precision),
         )
+
+    def calculate_range_based_f1(
+        self,
+        range_based_precision: MetricsResult | SystemMetricsResult,
+        range_based_recall: MetricsResult | SystemMetricsResult,
+    ) -> MetricsResult | SystemMetricsResult:
+        """
+        Calculate range-based F1 score metrics.
+        """
+        return self.calculate_f1(range_based_precision, range_based_recall)
 
     def calculate_vus_roc(
         self,
@@ -500,7 +461,7 @@ class MetricsCalculator:
             metric_system=float(system_vus_pr),
         )
 
-    def get_all_metrics(self, alpha: float) -> dict[str, torch.Tensor]:
+    def get_all_metrics(self, alpha: float = 1.0) -> dict[str, torch.Tensor]:
         """
         Calculate all metrics and return as dictionary.
 
@@ -515,8 +476,9 @@ class MetricsCalculator:
         f1 = self.calculate_f1(precision, recall)
         range_based_precision = self.calculate_range_based_precision()
         range_based_recall = self.calculate_range_based_recall(alpha=alpha)
-        range_based_f1 = self.calculate_f1(range_based_precision, range_based_recall)
-        custom_f1 = self.calculate_f1(precision, range_based_recall)
+        range_based_f1 = self.calculate_range_based_f1(
+            range_based_precision, range_based_recall
+        )
         vus_roc = self.calculate_vus_roc()
         vus_pr = self.calculate_vus_pr()
 
@@ -527,7 +489,6 @@ class MetricsCalculator:
             **range_based_precision.model_dump("range_based_precision"),
             **range_based_recall.model_dump("range_based_recall"),
             **range_based_f1.model_dump("range_based_f1"),
-            **custom_f1.model_dump("custom_f1"),
             **vus_roc.model_dump("vus_roc"),
             **vus_pr.model_dump("vus_pr"),
         }
@@ -535,13 +496,10 @@ class MetricsCalculator:
 
 def get_metrics(
     dataset: Datasets,
-    range_metrics_alpha: float,
-    predictions: torch.Tensor | None = None,
-    labels: torch.Tensor | None = None,
-    scores: torch.Tensor | None = None,
-    system_scores: torch.Tensor | None = None,
-    system_labels: torch.Tensor | None = None,
-    system_predictions: torch.Tensor | None = None,
+    predictions: torch.Tensor,
+    labels: torch.Tensor,
+    scores: torch.Tensor,
+    range_metrics_alpha: float = 1.0,
 ) -> dict:
     """
     Calculate and visualize all metrics for given predictions and labels.
@@ -554,13 +512,7 @@ def get_metrics(
         Dictionary containing all calculated metrics
     """
     calculator = MetricsCalculator(
-        dataset=dataset,
-        labels=labels,
-        predictions=predictions,
-        scores=scores,
-        system_scores=system_scores,
-        system_labels=system_labels,
-        system_predictions=system_predictions,
+        dataset=dataset, labels=labels, predictions=predictions, scores=scores
     )
     metrics = calculator.get_all_metrics(alpha=range_metrics_alpha)
 
@@ -574,19 +526,8 @@ def get_metrics_and_save(
     scores: torch.Tensor,
     save_dir: Path,
     dataset_split: str,
-    range_metrics_alpha: float,
-    system_scores: torch.Tensor | None = None,
-    system_labels: torch.Tensor | None = None,
 ):
-    metrics = get_metrics(
-        dataset=dataset,
-        predictions=predictions,
-        labels=labels,
-        scores=scores,
-        range_metrics_alpha=range_metrics_alpha,
-        system_scores=system_scores,
-        system_labels=system_labels,
-    )
+    metrics = get_metrics(dataset, predictions, labels, scores)
     print_all_metrics(metrics, f"------- {dataset_split.capitalize()} -------")
     json.dump(
         metrics,

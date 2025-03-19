@@ -5,14 +5,12 @@ model_params:
   out_layer_inter_dim: 448
   topk: 3
   heads: 4
-  learn_graph: true
-  n_features: 12
-  negative_slope: 0.2
   dropout: 0.1
+  negative_slope: 0.2
 
 train_params:
   model_name: "gdn"
-  log_dir: "test_telco"
+  log_dir: "benchmarks"
   n_epochs: 200
   batch_size: 512
   init_lr: 0.001
@@ -28,8 +26,6 @@ train_params:
   horizon: 1
   down_len: 1  
   max_std: 7.0
-  cutoff_value: 30.0
-  labels_widening: true
   monitor: "Loss/val"
   monitor_mode: "min"
   early_stop_patience: 10
@@ -37,15 +33,11 @@ train_params:
 
 predictor_params:
   post_process_scores: true
-  n_thresholds: 1000
+  n_thresholds: 100
   window_size_smooth: 5 
   dataset_for_threshold: "train"
   range_based: true
-  range_metrics_alpha: 0.5
-  min_precision: 0.0
 
-  score_type: "mse"
-  ckpt_folder: "test_telco/gdn/version_1"
+  score_type: "abs"
+  ckpt_folder: "output/gdn/version_0"
 
-  epsilon: 0.8
-  target_dims: null

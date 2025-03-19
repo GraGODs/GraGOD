@@ -144,15 +144,14 @@ def load_telco_training_data(
         raise ValueError("Telco labels are not being loaded.")
 
     if down_len is not None:
-        if down_len < 0:
-            raise ValueError("Downsample length must be positive")
-        elif down_len > 1:
-            print(f"Downsampling data by {down_len}")
-            X_train, X_train_labels = downsample(X_train, X_train_labels, down_len)
-            X_val, X_val_labels = downsample(X_val, X_val_labels, down_len)
-            X_test, X_test_labels = downsample(X_test, X_test_labels, down_len)
-        else:
-            print("No downsampling performed")
+        if down_len < 1:
+            raise ValueError("Downsample length must be greater than 0")
+
+        print(f"Downsampling data by {down_len}")
+        X_train, X_train_labels = downsample(X_train, X_train_labels, down_len)
+        X_val, X_val_labels = downsample(X_val, X_val_labels, down_len)
+        X_test, X_test_labels = downsample(X_test, X_test_labels, down_len)
+
     return (
         X_train,
         X_val,
