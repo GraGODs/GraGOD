@@ -116,40 +116,11 @@ def load_swat_training_data(
         df_test_labels,
     ) = load_swat_df(path_to_dataset=path_to_dataset)
 
-    # Remove whitespaces from column names
-    df_train.columns = df_train.columns.str.strip()
-    df_val.columns = df_val.columns.str.strip()
-    df_test.columns = df_test.columns.str.strip()
-
     # Drop timestamps from the dataframes (TODO: Add this to dataset config)
-    columns_to_drop = [
-        "Timestamp",
-        "P102",
-        "P201",
-        "P202",
-        "P204",
-        "P206",
-        "P401",
-        "P402",
-        "P403",
-        "P404",
-        "UV401",
-        "P501",
-        "P502",
-        "P601",
-        "P603",
-    ]
+    columns_to_drop = [" Timestamp"]
     df_train = df_train.drop(columns=columns_to_drop)
     df_val = df_val.drop(columns=columns_to_drop)
     df_test = df_test.drop(columns=columns_to_drop)
-
-    # Ensure columns are in the same order
-    df_val = df_val[df_train.columns]
-    df_test = df_test[df_train.columns]
-
-    assert df_train.columns.equals(df_val.columns) and df_train.columns.equals(
-        df_test.columns
-    ), "Columns are not in the same order"
 
     X_train, X_train_labels, scaler = preprocess_df(
         data_df=df_train,
@@ -191,18 +162,18 @@ def load_swat_training_data(
     # The first 6 hours worth of training data is discarded since the
     # system takes 5-6 hours to stabilize.
     six_hours_in_seconds = 6 * 60 * 60
-    df_train = df_train.iloc[six_hours_in_seconds:]
-    df_train_labels = df_train_labels.iloc[six_hours_in_seconds:]
+    X_train = X_train[six_hours_in_seconds:]
+    X_train_labels = X_train_labels[six_hours_in_seconds:]
+
     if down_len is not None:
-        if down_len < 0:
-            raise ValueError("Downsample length must be positive")
-        elif down_len > 1:
-            print(f"Downsampling data by {down_len}")
-            X_train, X_train_labels = downsample(X_train, X_train_labels, down_len)
-            X_val, X_val_labels = downsample(X_val, X_val_labels, down_len)
-            X_test, X_test_labels = downsample(X_test, X_test_labels, down_len)
-        else:
-            print("No downsampling performed")
+        if down_len < 1:
+            raise ValueError("Downsample length must be greater than 0")
+
+        print(f"Downsampling data by {down_len}")
+        X_train, X_train_labels = downsample(X_train, X_train_labels, down_len)
+        X_val, X_val_labels = downsample(X_val, X_val_labels, down_len)
+        X_test, X_test_labels = downsample(X_test, X_test_labels, down_len)
+
     return X_train, X_val, X_test, X_train_labels, X_val_labels, X_test_labels
 
 

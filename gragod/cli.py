@@ -17,9 +17,7 @@ def hello(name: str):
 
 @app.command()
 def show_metrics(
-    metric_path: str,
-    per_class: bool = typer.Option(False, "--per-class", "-pc"),
-    split: str = typer.Option("train", "--split", "-s"),
+    metric_path: str, per_class: bool = False, dataset_split: str = "train"
 ):
     from pathlib import Path
 
@@ -42,8 +40,8 @@ def show_metrics(
         metric_files = []
         for pattern in [
             "**/metric.json",
-            f"**/metrics_{split}.json",
-            f"**/{split}_metrics.json",
+            f"**/metrics_{dataset_split}.json",
+            f"**/{dataset_split}_metrics.json",
         ]:
             metric_files.extend(path.glob(pattern))
 
