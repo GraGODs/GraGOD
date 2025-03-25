@@ -17,7 +17,11 @@ from models.train import train
 
 RANDOM_SEED = 42
 
-OPTIMIZATION_SPLIT = {Datasets.TELCO: "train", Datasets.SWAT: "val"}
+OPTIMIZATION_SPLIT = {
+    Datasets.TELCO: "train",
+    Datasets.SWAT: "val",
+    Datasets.UTE: "test",
+}
 
 
 def load_model_functions(
@@ -187,7 +191,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.params_file is None:
-        args.params_file = f"models/{args.model.value}/params.yaml"
+        args.params_file = f"models/{args.model.value}/params_ute.yaml"
     if args.dataset is None:
         raise ValueError("Dataset is required")
     if args.model is None:
