@@ -12,11 +12,7 @@ from gragod.metrics.visualization import print_all_metrics
 from gragod.types import Datasets
 
 N_TH_SAMPLES_DEFAULT = 100
-MAX_BUFFER_SIZE_DEFAULT = {
-    Datasets.TELCO: 2,
-    Datasets.SWAT: 3,
-    Datasets.UTE: 4,
-}
+MAX_BUFFER_SIZE_DEFAULT = {Datasets.TELCO: 2, Datasets.SWAT: 3}
 
 # TODO: Check neither labels or predictions are None
 
