@@ -115,6 +115,7 @@ def process_dataset(
         loader=loader,
         device=device,
         X_true=X_true,
+        post_process=predict_params["post_process_scores"],
         **predict_params,
     )
 
@@ -290,6 +291,13 @@ def predict(
         )
         params["predictor_params"]["dataset_for_threshold"] = "val"
 
+        if not torch.any(y_val == 1):
+            print(
+                "No anomalies in val set either, cannot calculate threshold. "
+                "Using test set instead."
+            )
+            params["predictor_params"]["dataset_for_threshold"] = "test"
+
     # Create and load model
     _, model_pl_module = get_model_and_module(model)
     model_params["edge_index"] = [edge_index]
@@ -321,10 +329,15 @@ def predict(
 
     if params["predictor_params"]["dataset_for_threshold"] == "train":
         datasets_to_process = ["train", "val", "test"]
+    elif params["predictor_params"]["dataset_for_threshold"] == "val":
+        datasets_to_process = ["val", "train", "test"]
     elif params["predictor_params"]["dataset_for_threshold"] == "test":
         datasets_to_process = ["test", "train", "val"]
     else:
-        datasets_to_process = ["val", "train", "test"]
+        raise ValueError(
+            f"Invalid dataset for threshold: "
+            f"{params['predictor_params']['dataset_for_threshold']}"
+        )
     thresholds = None
     return_dict = {}
 
