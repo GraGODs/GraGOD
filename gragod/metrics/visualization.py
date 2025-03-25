@@ -168,7 +168,6 @@ def plot_single_score_histogram(
         edgecolor="black",
     )
     ax.set_xscale("log")
-    ax.set_title(f"{model_name} - {dataset_name} - Histogram of Anomaly Scores")
     ax.set_xlabel("Anomaly Score (log scale)", fontsize=16)
     ax.set_ylabel("Number of Samples (log scale)", fontsize=16)
     ax.legend(title="Label", fontsize=15, title_fontsize=15, loc="upper left")
@@ -268,8 +267,6 @@ def plot_score_histograms_grid_telco(
             edgecolor="black",
         )
 
-        # ax.set_xlabel("Anomaly Score (log scale)", fontsize=10)
-        # ax.set_ylabel("Number of Samples (log scale)", fontsize=10)
         ax.set_title(f"TS{i+1}", fontsize=20)
         ax.axvline(threshold_class, color="blue", linestyle="--", label="Threshold")
 

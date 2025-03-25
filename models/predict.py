@@ -107,7 +107,6 @@ def process_dataset(
 
     # First `window_size` samples are not used for prediction
     X_true = X_true[window_size:]
-    y = y[window_size:]
 
     # Run model
     scores, output = run_model(
@@ -119,8 +118,32 @@ def process_dataset(
         **predict_params,
     )
 
-    # Discard last datapoint since it can't be used on recon
-    y = y[:-1]
+    y = y[initial_window_size:-1]
+
+    X_true = X_true[initial_window_size - window_size : -1, :]
+    scores = scores[initial_window_size - window_size :]
+
+    if isinstance(output, tuple):
+        forecast, reconstruction = output
+        forecast = forecast[initial_window_size - window_size :]
+        reconstruction = reconstruction[initial_window_size - window_size :]
+        output = (forecast, reconstruction)
+    else:
+        output = output[initial_window_size - window_size :]
+
+    try:
+        assert scores.shape[0] == y.shape[0]
+    except AssertionError:
+        print(f"scores.shape: {scores.shape}")
+        print(f"y.shape: {y.shape}")
+        raise
+
+    if dataset == Datasets.SWAT:
+        system_scores = torch.mean(scores, dim=1)
+        system_labels = y.int()
+    else:
+        system_scores = None
+        system_labels = None
 
     if thresholds is None:
         thresholds = get_threshold(
@@ -152,6 +175,23 @@ def process_dataset(
             save_predictions_dir,
             f"{dataset_split}_{model_name.lower()}_{dataset.value.lower()}",
         )
+        if isinstance(output, tuple):
+            output_aux, _ = output
+        else:
+            output_aux = output
+        try:
+            assert (
+                output_aux.shape[0]
+                == y.shape[0]
+                == scores.shape[0]
+                == (X_true.shape[0])
+            )
+
+            if y_pred is not None:
+                assert y_pred.shape[0] == output_aux.shape[0]
+        except AssertionError:
+            raise
+
         torch.save(output, save_path + "_output.pt")
         torch.save(y_pred, save_path + "_predictions.pt")
         torch.save(y, save_path + "_labels.pt")

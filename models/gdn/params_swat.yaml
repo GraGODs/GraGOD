@@ -1,3 +1,15 @@
+model_params:
+  window_size: 255
+  embed_dim: 128
+  out_layer_num: 6
+  out_layer_inter_dim: 448
+  topk: 15
+  heads: 2
+  learn_graph: true
+  n_features: 51
+  negative_slope: 0.2
+  dropout: 0.4
+  
 train_params:
   shuffle: true
   model_name: "gdn"
@@ -21,24 +33,6 @@ train_params:
   save_top_k: 1
   down_len: 10
 
-model_params:
-  window_size: 255
-  embed_dim: 128
-  out_layer_num: 6
-  out_layer_inter_dim: 448
-  topk: 39
-  heads: 2
-  dropout: 0.4
-  negative_slope: 0.2
-  
-
-env_params:
-  save_path_pattern: ""
-  random_seed: 42
-  report: "best"
-  load_model_path: ""
-  save_path: "msl"
-
 predictor_params:
   ckpt_folder: "output/gdn/version_1"
   n_thresholds: 1000
@@ -46,8 +40,3 @@ predictor_params:
   post_process_scores: true
   score_type: "abs"
   dataset_for_threshold: "train"
-
-optimization_params:
-  study_name: "gdn_optimization"
-  n_trials: 100
-  metric: "vus_roc_system"
