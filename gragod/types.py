@@ -8,7 +8,6 @@ class Datasets(Enum):
     TELCO = "telco"
     MIHAELA = "mihaela"
     SWAT = "swat"
-    UTE = "ute"
 
 
 def cast_dataset(dataset: str) -> Datasets:
