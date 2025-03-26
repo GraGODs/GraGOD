@@ -1,4 +1,3 @@
-# version_8
 model_params:
   window_size: 256
   hidden_size: 32

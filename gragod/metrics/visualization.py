@@ -169,7 +169,6 @@ def plot_single_score_histogram(
         edgecolor="black",
     )
     ax.set_xscale("log")
-    ax.set_title(f"{model_name}", fontsize=20)
     ax.legend(title="Label", fontsize=15, title_fontsize=15, loc="upper left")
     ax.tick_params(axis="both", which="major", labelsize=20)
 

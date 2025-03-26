@@ -128,17 +128,18 @@ def process_dataset(
         X_true=X_true,
         **predict_params,
     )
-    # Score and output: (window_size, N-1)
-    # N-1 is manually forced
-
     y = y[initial_window_size:-1]
 
     X_true = X_true[initial_window_size - window_size : -1, :]
     scores = scores[initial_window_size - window_size :]
-    output = output[initial_window_size - window_size :]
 
-    # Calculate how many initial scores to drop to match y shape
-    # scores = scores[initial_window_size - window_size :]
+    if isinstance(output, tuple):
+        forecast, reconstruction = output
+        forecast = forecast[initial_window_size - window_size :]
+        reconstruction = reconstruction[initial_window_size - window_size :]
+        output = (forecast, reconstruction)
+    else:
+        output = output[initial_window_size - window_size :]
 
     try:
         assert scores.shape[0] == y.shape[0]
@@ -194,16 +195,15 @@ def process_dataset(
             f"{dataset_split}_{model_name.lower()}_{dataset.value.lower()}",
         )
         if isinstance(output, tuple):
-            output_aux = output[0]
+            output_aux, _ = output
         else:
             output_aux = output
-        output_aux = output_aux[initial_window_size - window_size :]
         try:
             assert (
                 output_aux.shape[0]
                 == y.shape[0]
                 == scores.shape[0]
-                == (X_true.shape[0] - 1)
+                == (X_true.shape[0])
             )
 
             if y_pred is not None:

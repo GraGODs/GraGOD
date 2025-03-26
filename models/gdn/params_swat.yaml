@@ -1,14 +1,14 @@
 model_params:
-  window_size: 5
-  embed_dim: 64
-  out_layer_num: 1
-  out_layer_inter_dim: 64
+  window_size: 255
+  embed_dim: 128
+  out_layer_num: 6
+  out_layer_inter_dim: 448
   topk: 15
-  heads: 1
+  heads: 2
   learn_graph: true
   n_features: 51
   negative_slope: 0.2
-  dropout: 0.2
+  dropout: 0.4
   
 train_params:
   model_name: "gdn"
@@ -49,4 +49,3 @@ predictor_params:
 
   epsilon: 0.8
   target_dims: null
-
