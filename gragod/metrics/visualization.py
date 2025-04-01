@@ -1,4 +1,6 @@
+import os
 from collections import defaultdict
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -6,6 +8,7 @@ import pandas as pd
 import tabulate
 import torch
 
+from gragod.types import Datasets
 from gragod.utils import count_anomaly_ranges
 
 
@@ -299,3 +302,73 @@ def plot_score_histograms_grid_telco(
     plt.tight_layout()
     # plt.show()
     return fig
+
+
+def save_histograms(
+    scores: torch.Tensor,
+    y: torch.Tensor,
+    thresholds: torch.Tensor,
+    dataset: Datasets,
+    dataset_split: str,
+    model_name: str,
+    save_metrics_dir: Path,
+):
+    save_plots_dir = os.path.join(save_metrics_dir, "plots")
+    os.makedirs(save_plots_dir, exist_ok=True)
+    if dataset == Datasets.TELCO:
+        fig_1 = plot_score_histograms_grid_telco(
+            scores=scores,
+            labels=y,
+            thresholds=thresholds,
+            use_ranged_anomalies=False,
+        )
+        fig_2 = plot_score_histograms_grid_telco(
+            scores=scores,
+            labels=y,
+            thresholds=thresholds,
+            use_ranged_anomalies=True,
+        )
+        fig_1.savefig(
+            os.path.join(
+                save_plots_dir,
+                f"{dataset_split}_{model_name.lower()}_{dataset.value.lower()}"
+                + "_score_histograms.png",
+            )
+        )
+        fig_2.savefig(
+            os.path.join(
+                save_plots_dir,
+                f"{dataset_split}_{model_name.lower()}_{dataset.value.lower()}"
+                + "_score_histograms_with_ranges.png",
+            )
+        )
+
+    fig_1 = plot_single_score_histogram(
+        scores=scores.flatten(),
+        labels=y.flatten(),
+        use_ranged_anomalies=False,
+        model_name=model_name,
+        dataset_name=dataset.value,
+    )
+    fig_2 = plot_single_score_histogram(
+        scores=scores.flatten(),
+        labels=y.flatten(),
+        use_ranged_anomalies=True,
+        model_name=model_name,
+        dataset_name=dataset.value,
+    )
+
+    fig_1.savefig(
+        os.path.join(
+            save_plots_dir,
+            f"{dataset_split}_{model_name.lower()}_{dataset.value.lower()}"
+            + "_score_histogram_single.png",
+        )
+    )
+    fig_2.savefig(
+        os.path.join(
+            save_plots_dir,
+            f"{dataset_split}_{model_name.lower()}_{dataset.value.lower()}"
+            + "_score_histogram_single_with_ranges.png",
+        )
+    )
