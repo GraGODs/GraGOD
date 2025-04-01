@@ -63,6 +63,7 @@ def calculate_metrics(
     dataset: Datasets,
     dataset_split: str,
     save_dir: Path,
+    range_metrics_alpha: float,
 ):
     y_pred = (scores > threshold).float()
 
@@ -73,6 +74,7 @@ def calculate_metrics(
         scores=scores,
         save_dir=save_dir,
         dataset_split=dataset_split,
+        range_metrics_alpha=range_metrics_alpha,
     )
     return metrics, y_pred
 
@@ -93,6 +95,13 @@ def process_dataset(
     n_workers: int = 0,
     predict_params: dict = {},
 ):
+    start_index = predict_params["start_index"]
+    # First `start_index` samples are not predicted
+    X_true = X_true[start_index - window_size :]
+    y = y[start_index - window_size :]
+
+    print(f"X_true.shape: {X_true.shape}, y.shape: {y.shape}")
+
     # Create test dataloader
     loader = get_data_loader(
         X=X_true,
@@ -105,9 +114,11 @@ def process_dataset(
         shuffle=False,
     )
 
-    # First `window_size` samples are not used for prediction
+    # Drop everything until the predicted samples
     X_true = X_true[window_size:]
     y = y[window_size:]
+    # Discard last datapoint since it can't be used on recon
+    y = y[:-1]
 
     # Run model
     scores, output = run_model(
@@ -119,8 +130,23 @@ def process_dataset(
         **predict_params,
     )
 
-    # Discard last datapoint since it can't be used on recon
-    y = y[:-1]
+    forecast, reconstruction = output if isinstance(output, tuple) else (output, None)
+
+    if y.shape[0] != forecast.shape[0] or y.shape[0] != scores.shape[0]:
+        print(
+            f"Shape mismatch: y.shape={y.shape},\
+            forecast.shape={forecast.shape},\
+            scores.shape={scores.shape}"
+        )
+        raise AssertionError("Shape mismatch between y, forecast, and scores")
+
+    # Check reconstruction shape if it exists
+    if reconstruction is not None and y.shape[0] != reconstruction.shape[0]:
+        print(
+            f"Shape mismatch: y.shape={y.shape},\
+            reconstruction.shape={reconstruction.shape}"
+        )
+        raise AssertionError("Shape mismatch between y and reconstruction")
 
     if thresholds is None:
         thresholds = get_threshold(
@@ -140,6 +166,7 @@ def process_dataset(
             dataset=dataset,
             dataset_split=dataset_split,
             save_dir=save_metrics_dir,
+            range_metrics_alpha=predict_params["range_metrics_alpha"],
         )
     else:
         metrics = None
@@ -371,6 +398,7 @@ def main(
     dataset: Datasets,
     ckpt_path: str | None = None,
     params_file: str = "models/mtad_gat/params.yaml",
+    start_index: int | None = None,
 ) -> PredictOutput:
     """
     Main function to load data, model and generate predictions.
@@ -381,6 +409,13 @@ def main(
     """
     params = load_params(params_file, file_type=ParamFileTypes.YAML)
     set_seeds(RANDOM_SEED)
+
+    if start_index is not None:
+        assert (
+            start_index >= params["model_params"]["window_size"]
+        ), "The start index should be greater than or equal to the model's window size"
+
+        params["predictor_params"]["start_index"] = start_index
 
     return predict(
         model=model,
@@ -416,6 +451,14 @@ if __name__ == "__main__":
         default=None,
         help="Path to checkpoint file",
     )
+    parser.add_argument(
+        "--start_index",
+        "-si",
+        type=int,
+        default=None,
+        help="If a variety of models is being tested, the maximum window size of the"
+        "first model is used to drop the initial points from the other models",
+    )
     args = parser.parse_args()
 
     if args.params_file is None:
@@ -434,4 +477,5 @@ if __name__ == "__main__":
         dataset=args.dataset,
         params_file=args.params_file,
         ckpt_path=args.ckpt_path,
+        start_index=args.start_index,
     )
