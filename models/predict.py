@@ -14,7 +14,11 @@ from gragod import CleanMethods, Datasets, Models, ParamFileTypes
 from gragod.metrics.calculator import get_metrics_and_save
 from gragod.metrics.visualization import save_histograms
 from gragod.models import get_model_and_module
-from gragod.predictions.prediction import get_threshold, post_process_scores
+from gragod.predictions.prediction import (
+    get_system_scores,
+    get_threshold,
+    post_process_scores,
+)
 from gragod.training import load_params, load_training_data, set_seeds
 from gragod.utils import load_checkpoint_path, set_device
 from models.schemas import DatasetPredictOutput, PredictOutput
@@ -53,29 +57,6 @@ def run_model(
     return scores, output
 
 
-def calculate_metrics(
-    scores: torch.Tensor,
-    threshold: torch.Tensor,
-    y: torch.Tensor,
-    dataset: Datasets,
-    dataset_split: str,
-    save_dir: Path,
-    range_metrics_alpha: float,
-):
-    y_pred = (scores > threshold).float()
-
-    metrics = get_metrics_and_save(
-        dataset=dataset,
-        predictions=y_pred,
-        labels=y,
-        scores=scores,
-        save_dir=save_dir,
-        dataset_split=dataset_split,
-        range_metrics_alpha=range_metrics_alpha,
-    )
-    return metrics, y_pred
-
-
 def process_dataset(
     model: pl.LightningModule,
     X_true: torch.Tensor,
@@ -97,8 +78,6 @@ def process_dataset(
     X_true = X_true[start_index - window_size :]
     y = y[start_index - window_size :]
 
-    print(f"X_true.shape: {X_true.shape}, y.shape: {y.shape}")
-
     # Create test dataloader
     loader = get_data_loader(
         X=X_true,
@@ -115,7 +94,7 @@ def process_dataset(
     X_true = X_true[window_size:]
     y = y[window_size:]
     # Discard last datapoint since it can't be used on recon
-    y = y[:-1]
+    y = y[:-1].int()
 
     # Run model
     scores, output = run_model(
@@ -152,22 +131,40 @@ def process_dataset(
             labels=y,
             n_thresholds=predict_params["n_thresholds"],
             range_based=predict_params["range_based"],
+            system_output_mode=predict_params.get("system_output_mode", None),
         )
+
+    if y.ndim == 1 or y.shape[1] == 1:
+        # We only calculate system metrics if there's only system anomalies
+        system_scores = get_system_scores(
+            scores=scores,
+            mode=predict_params["system_output_mode"],
+        )
+        system_predictions = (system_scores > thresholds).int()
+        system_labels = y
+        per_class_y_pred = None
+
+    else:
+        system_scores, system_predictions, system_labels = None, None, None
+        per_class_y_pred = (scores > thresholds).float()
+        system_predictions = None
 
     # Calculate metrics
     if torch.any(y == 1):
-        metrics, y_pred = calculate_metrics(
-            scores=scores,
-            threshold=thresholds,
-            y=y,
+        metrics = get_metrics_and_save(
             dataset=dataset,
-            dataset_split=dataset_split,
+            predictions=per_class_y_pred,
+            labels=y,
+            scores=scores,
             save_dir=save_metrics_dir,
+            dataset_split=dataset_split,
             range_metrics_alpha=predict_params["range_metrics_alpha"],
+            system_predictions=system_predictions,
+            system_labels=system_labels,
+            system_scores=system_scores,
         )
     else:
         metrics = None
-        y_pred = None
 
     if save_metrics_dir:
         save_predictions_dir = os.path.join(save_metrics_dir, "predictions")
@@ -177,14 +174,17 @@ def process_dataset(
             f"{dataset_split}_{model_name.lower()}_{dataset.value.lower()}",
         )
         torch.save(output, save_path + "_output.pt")
-        torch.save(y_pred, save_path + "_predictions.pt")
+        torch.save(
+            per_class_y_pred if per_class_y_pred is not None else system_predictions,
+            save_path + "_predictions.pt",
+        )
         torch.save(y, save_path + "_labels.pt")
         torch.save(scores, save_path + "_scores.pt")
         torch.save(X_true, save_path + "_data.pt")
         torch.save(thresholds, save_path + "_thresholds.pt")
 
         save_histograms(
-            scores=scores,
+            scores=system_scores if system_scores is not None else scores,
             y=y,
             thresholds=thresholds,
             dataset=dataset,
@@ -194,7 +194,9 @@ def process_dataset(
         )
     output_dict: DatasetPredictOutput = {
         "output": output,
-        "predictions": y_pred,
+        "predictions": (
+            per_class_y_pred if per_class_y_pred is not None else system_predictions
+        ),
         "labels": y,
         "scores": scores,
         "data": X_true,

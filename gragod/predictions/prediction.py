@@ -2,8 +2,9 @@ from typing import Literal
 
 import torch
 
-from gragod.metrics.calculator import MetricsCalculator
 from gragod.metrics.models import SystemMetricsResult
+from gragod.metrics.per_class_calculator import PerClassCalculator
+from gragod.metrics.system_calculator import SystemCalculator
 from gragod.predictions.spot import SPOT
 from gragod.types import Datasets
 
@@ -15,15 +16,43 @@ def get_threshold(
     n_thresholds: int,
     range_based: bool = True,
     range_metrics_alpha: float = 0.5,
+    system_output_mode: Literal["max", "mean", "sum"] | None = None,
 ) -> torch.Tensor:
     if labels.ndim == 0 or labels.shape[1] in [0, 1]:
+        if system_output_mode is None:
+            raise ValueError(
+                "system_output_mode must be provided for system-level metrics"
+            )
         return get_threshold_system(
-            dataset, scores, labels, n_thresholds, range_based, range_metrics_alpha
+            dataset,
+            scores,
+            labels,
+            n_thresholds,
+            range_based,
+            range_metrics_alpha,
+            system_output_mode,
         )
     else:
         return get_threshold_per_class(
             dataset, scores, labels, n_thresholds, range_based, range_metrics_alpha
         )
+
+
+def get_system_scores(
+    scores: torch.Tensor,
+    mode: Literal["max", "mean", "sum"] = "mean",
+) -> torch.Tensor:
+    """
+    Get the system outputs.
+    """
+    if mode == "max":
+        system_scores = torch.max(scores, dim=1).values
+    elif mode == "mean":
+        system_scores = torch.mean(scores, dim=1)
+    elif mode == "sum":
+        system_scores = torch.sum(scores, dim=1)
+
+    return system_scores.unsqueeze(1)
 
 
 def get_threshold_per_class(
@@ -48,17 +77,21 @@ def get_threshold_per_class(
     # Initial best thresholds with highest scores
     max_scores = best_thresholds = torch.max(scores, dim=0)[0]
     preds = scores > best_thresholds.unsqueeze(0)
-    metrics = MetricsCalculator(
-        dataset=dataset, labels=labels, predictions=preds, scores=scores
+
+    calculator = PerClassCalculator(
+        dataset=dataset,
+        labels=labels,
+        predictions=preds,
+        scores=scores,
     )
     if range_based:
-        precision = metrics.calculate_precision()
-        recall = metrics.calculate_range_based_recall(range_metrics_alpha)
-        f1 = metrics.calculate_f1(precision, recall)
+        precision = calculator.calculate_precision()
+        recall = calculator.calculate_range_based_recall(range_metrics_alpha)
+        f1 = calculator.calculate_f1(precision, recall)
     else:
-        precision = metrics.calculate_precision()
-        recall = metrics.calculate_recall()
-        f1 = metrics.calculate_f1(precision, recall)
+        precision = calculator.calculate_precision()
+        recall = calculator.calculate_recall()
+        f1 = calculator.calculate_f1(precision, recall)
 
     # Check if we got a SystemMetricsResult
     if isinstance(f1, SystemMetricsResult):
@@ -76,17 +109,17 @@ def get_threshold_per_class(
     for threshold in thresholds:
         preds = (scores > threshold.unsqueeze(0)).float()
 
-        metrics = MetricsCalculator(
+        calculator = PerClassCalculator(
             dataset=dataset, labels=labels, predictions=preds, scores=scores
         )
         if range_based:
-            precision = metrics.calculate_precision()
-            recall = metrics.calculate_range_based_recall(range_metrics_alpha)
-            f1 = metrics.calculate_f1(precision, recall)
+            precision = calculator.calculate_precision()
+            recall = calculator.calculate_range_based_recall(range_metrics_alpha)
+            f1 = calculator.calculate_f1(precision, recall)
         else:
-            precision = metrics.calculate_precision()
-            recall = metrics.calculate_recall()
-            f1 = metrics.calculate_f1(precision, recall)
+            precision = calculator.calculate_precision()
+            recall = calculator.calculate_recall()
+            f1 = calculator.calculate_f1(precision, recall)
 
         if isinstance(f1, SystemMetricsResult):
             raise ValueError(
@@ -108,6 +141,7 @@ def get_threshold_system(
     n_thresholds: int,
     range_based: bool = True,
     range_metrics_alpha: float = 0.5,
+    system_output_mode: Literal["max", "mean", "sum"] = "mean",
 ) -> torch.Tensor:
     """
     Get the threshold for the scores.
@@ -122,10 +156,16 @@ def get_threshold_system(
     """
     # here we only have system class so there will be only one threshold
     # Initial best thresholds with highest scores
-    max_score = best_threshold = torch.max(scores)
-    preds = scores > best_threshold
-    metrics = MetricsCalculator(
-        dataset=dataset, labels=labels, predictions=preds, scores=scores
+    system_scores = get_system_scores(scores, system_output_mode)
+    max_score = best_threshold = torch.max(system_scores)
+
+    system_predictions = (system_scores > max_score).int()
+
+    metrics = SystemCalculator(
+        dataset=dataset,
+        system_labels=labels,
+        system_predictions=system_predictions,
+        system_scores=system_scores,
     )
     if range_based:
         precision = metrics.calculate_precision()
@@ -141,19 +181,22 @@ def get_threshold_system(
     thresholds = torch.linspace(0, max_score, n_thresholds)
 
     for threshold in thresholds:
-        preds = (scores > threshold).float()
+        system_predictions = (system_scores > threshold).int()
 
-        metrics = MetricsCalculator(
-            dataset=dataset, labels=labels, predictions=preds, scores=scores
+        calculator = SystemCalculator(
+            dataset=dataset,
+            system_labels=labels,
+            system_predictions=system_predictions,
+            system_scores=system_scores,
         )
         if range_based:
-            precision = metrics.calculate_precision()
-            recall = metrics.calculate_range_based_recall(range_metrics_alpha)
-            f1 = metrics.calculate_f1(precision, recall)
+            precision = calculator.calculate_precision()
+            recall = calculator.calculate_range_based_recall(range_metrics_alpha)
+            f1 = calculator.calculate_f1(precision, recall)
         else:
-            precision = metrics.calculate_precision()
-            recall = metrics.calculate_recall()
-            f1 = metrics.calculate_f1(precision, recall)
+            precision = calculator.calculate_precision()
+            recall = calculator.calculate_recall()
+            f1 = calculator.calculate_f1(precision, recall)
 
         # Update best thresholds where F1
         if f1.metric_system > system_f1:
