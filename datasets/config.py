@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, Generic, List, TypeVar
+from typing import Generic, TypeVar
 
 from gragod import Datasets
 
@@ -48,7 +48,7 @@ class DatasetConfig(Generic[P]):
     normalize: bool
     paths: P
     timestamp_column: str
-    columns_to_drop: List[str]
+    columns_to_drop: list[str]
 
 
 @dataclass
@@ -56,7 +56,7 @@ class SWATConfig(DatasetConfig[SWATPaths]):
     normalize: bool = True
     paths: SWATPaths = SWATPaths()
     timestamp_column: str = "Timestamp"
-    columns_to_drop: List[str] = field(
+    columns_to_drop: list[str] = field(
         default_factory=lambda: [
             "P102",
             "P201",
@@ -81,7 +81,7 @@ class TELCOConfig(DatasetConfig[TELCOPaths]):
     normalize: bool = True
     paths: TELCOPaths = TELCOPaths()
     timestamp_column: str = "time"
-    columns_to_drop: List[str] = field(default_factory=lambda: [])
+    columns_to_drop: list[str] = field(default_factory=lambda: [])
 
 
 @dataclass
@@ -89,11 +89,11 @@ class UTEConfig(DatasetConfig[UTEPaths]):
     normalize: bool = True
     paths: UTEPaths = UTEPaths()
     timestamp_column: str = ""
-    columns_to_drop: List[str] = field(default_factory=lambda: [])
+    columns_to_drop: list[str] = field(default_factory=lambda: [])
 
 
 def get_dataset_config(dataset: Datasets) -> DatasetConfig:
-    DATASET_CONFIGS: Dict[Datasets, DatasetConfig] = {
+    DATASET_CONFIGS: dict[Datasets, DatasetConfig] = {
         Datasets.SWAT: SWATConfig(),
         Datasets.TELCO: TELCOConfig(),
         Datasets.UTE: UTEConfig(),
