@@ -35,7 +35,6 @@ def load_swat_df_split(
 
     df.columns = df.columns.str.strip()
 
-    # Drop timestamps from the dataframes (TODO: Add this to dataset config)
     columns_to_drop = [
         SWATConfig().timestamp_column,
         *SWATConfig().columns_to_drop,
