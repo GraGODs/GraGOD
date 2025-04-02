@@ -12,6 +12,21 @@ def load_swat_df_split(
     name: str,
     path_to_dataset: str,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Load and preprocess a single SWAT dataset file.
+
+    This function loads a SWAT dataset file, separates the data from the labels,
+    and performs basic preprocessing by removing specified columns.
+
+    Args:
+        name: Name of the file to load.
+        path_to_dataset: Path to the directory containing the dataset file.
+
+    Returns:
+        A tuple containing:
+            - pd.DataFrame: The preprocessed data features.
+            - pd.DataFrame: The binary labels (1 for attack, 0 for normal).
+    """
     file = os.path.join(path_to_dataset, name)
     df = pd.read_csv(file)
     df_labels = (df["Normal/Attack"] == "Attack").astype(int)
