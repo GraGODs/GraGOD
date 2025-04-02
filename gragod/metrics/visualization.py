@@ -12,35 +12,28 @@ from gragod.types import Datasets
 from gragod.utils import count_anomaly_ranges
 
 
-def generate_metrics_table(metrics: dict, only_system: bool = False) -> str:
+def generate_metrics_table(metrics: dict) -> str:
     """Generate a table of metrics as a string."""
 
     # Define metric groups and their display names
     metric_groups = {}
+    metric_types = set()
     for metric in metrics.keys():
-        if metric.endswith("_system"):
-            metric_name = metric.replace("_system", "")
+        if not metric.endswith("_per_class"):
+            metric_types.add(metric.split("_")[-1])
+            metric_name = "_".join(metric.split("_")[:-1])
             metric_groups[metric_name] = metric_name.title()
 
     # Create headers
-    if only_system:
-        metrics_table = [["System"]]
-    else:
-        metrics_table = [["Metric", "Global", "Mean", "System"]]
+    headers = [str(metric_type).capitalize() for metric_type in metric_types]
+    metrics_table = [["Metric"] + headers]
 
     # Build table rows dynamically
     for metric_key, metric_name in metric_groups.items():
-        if only_system:
-            row = [
-                f"{metrics.get(f'{metric_key}_system', '')}",
-            ]
-        else:
-            row = [
-                metric_name,
-                f"{metrics.get(f'{metric_key}_global', '')}",
-                f"{metrics.get(f'{metric_key}_mean', '')}",
-                f"{metrics.get(f'{metric_key}_system', '')}",
-            ]
+        row = []
+        row.append(metric_name)
+        for metric_type in metric_types:
+            row.append(f"{metrics.get(f'{metric_key}_{metric_type}', '')}")
         metrics_table.append(row)
 
     return tabulate.tabulate(metrics_table, headers="firstrow", tablefmt="grid")
@@ -86,7 +79,7 @@ def print_all_metrics(metrics: dict, message: str):
         metrics_per_class_table = generate_metrics_per_class_table(metrics)
         print(metrics_per_class_table)
     else:
-        metrics_table = generate_metrics_table(metrics, only_system=True)
+        metrics_table = generate_metrics_table(metrics)
         print(metrics_table)
 
 
