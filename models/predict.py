@@ -37,7 +37,23 @@ def run_model(
 ) -> tuple[torch.Tensor, Any]:
     """
     Generate predictions and calculate anomaly scores.
-    Returns the anomaly predictions and evaluation metrics.
+
+    Args:
+        model: PyTorch Lightning module to run predictions with
+        loader: DataLoader containing the input data
+        device: Device to run the model on (e.g., 'cpu', 'cuda', 'mps')
+        X_true: Ground truth data tensor
+        post_process: Whether to apply post-processing to the anomaly scores
+        window_size_smooth: Window size for smoothing the anomaly scores
+        **kwargs: Additional keyword arguments
+
+    Returns:
+        A tuple containing:
+            - Anomaly scores tensor
+            - Model output (forecast and/or reconstruction)
+
+    Raises:
+        ValueError: If model predictions return None
     """
     trainer = pl.Trainer(accelerator=device)
     output = trainer.predict(model, loader)
@@ -73,6 +89,38 @@ def process_dataset(
     n_workers: int = 0,
     predict_params: dict = {},
 ):
+    """
+    Process a dataset split to generate predictions, scores, and metrics.
+
+    Args:
+        model: PyTorch Lightning module to run predictions with
+        X_true: Ground truth data tensor
+        y: Ground truth labels tensor
+        thresholds: Anomaly detection thresholds, or None to calculate them
+        device: Device to run the model on
+        dataset: Dataset enum value
+        model_name: Name of the model being used
+        edge_index: Edge index tensor for graph-based models
+        save_metrics_dir: Directory to save metrics and visualizations
+        dataset_split: Split name ('train', 'val', or 'test')
+        window_size: Window size for the model
+        batch_size: Batch size for data loading
+        n_workers: Number of workers for data loading
+        predict_params: Dictionary of prediction parameters
+
+    Returns:
+        Dictionary containing:
+            - output: Model output (forecast and/or reconstruction)
+            - predictions: Anomaly predictions
+            - labels: Ground truth labels
+            - scores: Anomaly scores
+            - data: Input data
+            - thresholds: Anomaly detection thresholds
+            - metrics: Evaluation metrics
+
+    Raises:
+        AssertionError: If there's a shape mismatch between outputs
+    """
     start_index = predict_params["start_index"]
     # First `start_index` samples are not predicted
     X_true = X_true[start_index - window_size :]
@@ -225,7 +273,26 @@ def predict(
 ) -> PredictOutput:
     """
     Main function to load data, model and generate predictions.
-    Returns a dictionary containing evaluation metrics.
+
+    Args:
+        model: Model enum value to use for prediction
+        dataset: Dataset enum value to predict on
+        model_params: Dictionary of model parameters
+        batch_size: Batch size for data loading
+        ckpt_path: Path to checkpoint file, or None to use default path
+        device: Device to run the model on
+        n_workers: Number of workers for data loading
+        test_size: Fraction of data to use for testing
+        val_size: Fraction of data to use for validation
+        params: Dictionary of additional parameters
+        down_len: Downsampling length, or None for no downsampling
+        max_std: Maximum standard deviation for outlier removal
+        labels_widening: Whether to widen anomaly labels
+        cutoff_value: Cutoff value for data preprocessing
+        **kwargs: Additional keyword arguments
+
+    Returns:
+        Dictionary containing prediction outputs for train, validation, and test sets
     """
     torch.set_float32_matmul_precision("high")
     device = set_device()
@@ -354,7 +421,16 @@ def main(
 
     Args:
         model: Name of model to predict
+        dataset: Dataset to predict on
+        ckpt_path: Path to checkpoint file, or None to use default path
         params_file: Path to parameter file
+        start_index: Starting index for predictions, or None to use default
+
+    Returns:
+        Dictionary containing prediction outputs for train, validation, and test sets
+
+    Raises:
+        AssertionError: If start_index is less than the model's window size
     """
     params = load_params(params_file, file_type=ParamFileTypes.YAML)
     set_seeds(RANDOM_SEED)
