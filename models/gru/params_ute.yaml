@@ -36,6 +36,7 @@ predictor_params:
   score_type: "mse"
   dataset_for_threshold: "train"
   range_based: true
+  range_metrics_alpha: 0.5
 
 optimization_params:
   study_name: "gru_optimization_ute"
