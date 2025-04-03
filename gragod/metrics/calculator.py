@@ -180,13 +180,7 @@ def get_metrics(
     if not (predictions is None or labels is None or scores is None):
         calculators.append(
             PerClassCalculator(
-                dataset=dataset,
-                labels=labels,
-                predictions=predictions,
-                scores=scores,
-                system_labels=system_labels,
-                system_predictions=system_predictions,
-                system_scores=system_scores,
+                dataset=dataset, labels=labels, predictions=predictions, scores=scores
             )
         )
         print("Going to calculate per-class metrics")
