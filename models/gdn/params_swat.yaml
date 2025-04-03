@@ -42,11 +42,9 @@ predictor_params:
   dataset_for_threshold: "val"
   range_based: true
   range_metrics_alpha: 0.5
-  system_output_mode: "score"
-
+  system_output_mode: "mean"
   score_type: "mse"
   ckpt_folder: "test_swat/gdn/version_0"
-
   epsilon: 0.8
   target_dims: null
 
