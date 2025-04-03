@@ -21,9 +21,6 @@ class PerClassCalculator(MetricsCalculator[PerClassMetricsResult]):
         labels: torch.Tensor,
         predictions: torch.Tensor,
         scores: torch.Tensor,
-        system_labels: torch.Tensor | None = None,
-        system_predictions: torch.Tensor | None = None,
-        system_scores: torch.Tensor | None = None,
     ):
         """
         Initialize calculator with per-class labels and predictions.
@@ -41,14 +38,6 @@ class PerClassCalculator(MetricsCalculator[PerClassMetricsResult]):
         self.labels = labels
         self.predictions = predictions
         self.scores = scores
-
-        # If system-level metrics are not provided, we don't calculate them
-        self.calculate_only_system_metrics = False
-
-        # System-level metrics - if not provided, we don't calculate them
-        self.system_labels = system_labels
-        self.system_predictions = system_predictions
-        self.system_scores = system_scores
 
     def calculate_precision(self) -> PerClassMetricsResult:
         """
