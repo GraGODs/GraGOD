@@ -147,5 +147,5 @@ class GRU_PLModule(PLBaseModule):
     def calculate_anomaly_score(self, predict_output, X_true, **kwargs):
         """Calculate the anomaly score."""
         predictions = self.post_process_predictions(predict_output)
-        X_true = X_true[:-1, :]
+
         return torch.abs(predictions - X_true)

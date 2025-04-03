@@ -139,7 +139,7 @@ def process_dataset(
     )
 
     # Drop everything until the predicted samples
-    X_true = X_true[window_size:]
+    X_true = X_true[window_size:-1, :]
     y = y[window_size:]
     # Discard last datapoint since it can't be used on recon
     y = y[:-1].int()
@@ -156,11 +156,16 @@ def process_dataset(
 
     forecast, reconstruction = output if isinstance(output, tuple) else (output, None)
 
-    if y.shape[0] != forecast.shape[0] or y.shape[0] != scores.shape[0]:
+    if (
+        y.shape[0] != forecast.shape[0]
+        or y.shape[0] != scores.shape[0]
+        or y.shape[0] != X_true.shape[0]
+    ):
         print(
             f"Shape mismatch: y.shape={y.shape},\
             forecast.shape={forecast.shape},\
-            scores.shape={scores.shape}"
+            scores.shape={scores.shape},\
+            X_true.shape={X_true.shape}"
         )
         raise AssertionError("Shape mismatch between y, forecast, and scores")
 
