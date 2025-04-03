@@ -46,17 +46,22 @@ def get_threshold(
                 "system_output_mode must be provided for system-level metrics"
             )
         return get_threshold_system(
-            dataset,
-            scores,
-            labels,
-            n_thresholds,
-            range_based,
-            range_metrics_alpha,
-            system_output_mode,
+            dataset=dataset,
+            scores=scores,
+            labels=labels,
+            n_thresholds=n_thresholds,
+            range_based=range_based,
+            range_metrics_alpha=range_metrics_alpha,
+            system_output_mode=system_output_mode,
         )
     else:
         return get_threshold_per_class(
-            dataset, scores, labels, n_thresholds, range_based, range_metrics_alpha
+            dataset=dataset,
+            scores=scores,
+            labels=labels,
+            n_thresholds=n_thresholds,
+            range_based=range_based,
+            range_metrics_alpha=range_metrics_alpha,
         )
 
 
@@ -176,9 +181,9 @@ def get_threshold_system(
     scores: torch.Tensor,
     labels: torch.Tensor,
     n_thresholds: int,
+    system_output_mode: Literal["max", "mean", "sum"],
     range_based: bool = True,
     range_metrics_alpha: float = 0.5,
-    system_output_mode: Literal["max", "mean", "sum"] = "mean",
 ) -> torch.Tensor:
     """
     Determine the optimal system-level threshold for anomaly detection.
