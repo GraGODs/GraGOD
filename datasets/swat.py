@@ -8,55 +8,41 @@ from datasets.config import SWATConfig
 from datasets.data_processing import InterPolationMethods, downsample, preprocess_df
 
 
-def load_swat_df_train(
-    name: str = SWATConfig.paths.name_train,
-    path_to_dataset: str = SWATConfig.paths.base_path,
+def load_swat_df_split(
+    name: str,
+    path_to_dataset: str,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
-    Loads the training dataset from the given path and returns a pandas DataFrame.
+    Load and preprocess a single SWAT dataset file.
+
+    This function loads a SWAT dataset file, separates the data from the labels,
+    and performs basic preprocessing by removing specified columns.
+
     Args:
-        path_to_dataset: Path to the dataset files.
+        name: Name of the file to load.
+        path_to_dataset: Path to the directory containing the dataset file.
+
     Returns:
-        A pandas DataFrame containing the training dataset.
+        A tuple containing:
+            - pd.DataFrame: The preprocessed data features.
+            - pd.DataFrame: The binary labels (1 for attack, 0 for normal).
     """
     file = os.path.join(path_to_dataset, name)
-    df_train = pd.read_csv(file)
-    df_train_labels = (df_train["Normal/Attack"] == "Attack").astype(int)
-    df_train_labels = df_train_labels.to_frame()
-    df_train = df_train.drop(columns=["Normal/Attack"])
+    df = pd.read_csv(file)
+    df_labels = (df["Normal/Attack"] == "Attack").astype(int)
+    df_labels = df_labels.to_frame()
+    df = df.drop(columns=["Normal/Attack"])
 
-    return df_train, df_train_labels
+    df.columns = df.columns.str.strip()
 
+    columns_to_drop = [
+        SWATConfig().timestamp_column,
+        *SWATConfig().columns_to_drop,
+    ]
 
-def load_swat_df_val(
-    name: str = SWATConfig.paths.name_val,
-    path_to_dataset: str = SWATConfig.paths.base_path,
-) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    """
-    Loads the validation dataset from the given path and returns a pandas DataFrame.
-    Args:
-        path_to_dataset: Path to the dataset files.
-    Returns:
-        A pandas DataFrame containing the validation dataset.
-    """
-    file = os.path.join(path_to_dataset, name)
-    df_val = pd.read_csv(file)
-    df_val_labels = (df_val["Normal/Attack"] == "Attack").astype(int)
-    df_val_labels = df_val_labels.to_frame()
-    df_val = df_val.drop(columns=["Normal/Attack"])
-    return df_val, df_val_labels
+    df = df.drop(columns=columns_to_drop)
 
-
-def load_swat_df_test(
-    name: str = SWATConfig.paths.name_test,
-    path_to_dataset: str = SWATConfig.paths.base_path,
-) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    file = os.path.join(path_to_dataset, name)
-    df_test = pd.read_csv(file)
-    df_test_labels = (df_test["Normal/Attack"] == "Attack").astype(int)
-    df_test_labels = df_test_labels.to_frame()
-    df_test = df_test.drop(columns=["Normal/Attack"])
-    return df_test, df_test_labels
+    return df, df_labels
 
 
 def load_swat_df(
@@ -72,9 +58,23 @@ def load_swat_df(
     Returns:
         A pandas DataFrame containing the dataset.
     """
-    df_train, df_train_labels = load_swat_df_train(path_to_dataset=path_to_dataset)
-    df_val, df_val_labels = load_swat_df_val(path_to_dataset=path_to_dataset)
-    df_test, df_test_labels = load_swat_df_test(path_to_dataset=path_to_dataset)
+    df_train, df_train_labels = load_swat_df_split(
+        name=SWATConfig.paths.name_train, path_to_dataset=path_to_dataset
+    )
+    df_val, df_val_labels = load_swat_df_split(
+        name=SWATConfig.paths.name_val, path_to_dataset=path_to_dataset
+    )
+    df_test, df_test_labels = load_swat_df_split(
+        name=SWATConfig.paths.name_test, path_to_dataset=path_to_dataset
+    )
+
+    # Ensure columns are in the same order
+    df_val = df_val[df_train.columns]
+    df_test = df_test[df_train.columns]
+
+    assert df_train.columns.equals(df_val.columns) and df_train.columns.equals(
+        df_test.columns
+    ), "Columns are not in the same order"
 
     return df_train, df_train_labels, df_val, df_val_labels, df_test, df_test_labels
 
@@ -115,12 +115,6 @@ def load_swat_training_data(
         df_test,
         df_test_labels,
     ) = load_swat_df(path_to_dataset=path_to_dataset)
-
-    # Drop timestamps from the dataframes (TODO: Add this to dataset config)
-    columns_to_drop = [" Timestamp"]
-    df_train = df_train.drop(columns=columns_to_drop)
-    df_val = df_val.drop(columns=columns_to_drop)
-    df_test = df_test.drop(columns=columns_to_drop)
 
     X_train, X_train_labels, scaler = preprocess_df(
         data_df=df_train,
@@ -191,8 +185,10 @@ def build_swat_edge_index(
     Returns:
         torch.Tensor: A tensor of shape [2, num_edges] containing the edge indices.
     """
-    df, _ = load_swat_df_val(path_to_dataset="../datasets_files/swat")
-    df = df.drop(columns=[SWATConfig.timestamp_column])
+    df, _ = load_swat_df_split(
+        name=SWATConfig.paths.name_val, path_to_dataset="../datasets_files/swat"
+    )
+
     node_names = df.columns.tolist()
 
     edges = []
