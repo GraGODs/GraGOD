@@ -18,6 +18,17 @@ class PerClassThresholdCalculator(ThresholdCalculator):
         range_metrics_alpha: float,
         scores: torch.Tensor,
     ):
+        """
+        Initialize the per-class threshold calculator.
+
+        Args:
+            dataset: Dataset to use for threshold calculation
+            labels: Ground truth labels
+            n_thresholds: Number of thresholds to evaluate
+            range_based: Whether to use range-based metrics
+            range_metrics_alpha: Alpha parameter for range-based metrics
+            scores: Anomaly scores for each feature/class
+        """
         super().__init__(
             dataset=dataset,
             labels=labels,
@@ -92,6 +103,18 @@ class PerClassThresholdCalculator(ThresholdCalculator):
         return best_thresholds
 
     def calculate_otsu_threshold(self) -> torch.Tensor:
+        """
+        Calculate thresholds using Otsu's method for each feature independently.
+
+        Otsu's method finds the threshold that minimizes intra-class variance
+        between foreground and background pixels.
+
+        Returns:
+            Tensor of shape (n_features,) containing Otsu thresholds for each feature
+
+        Raises:
+            ValueError: If scores are not provided
+        """
         if self.scores is None:
             raise ValueError(
                 "System scores must be provided for histogram-based thresholding"
@@ -105,6 +128,15 @@ class PerClassThresholdCalculator(ThresholdCalculator):
         return thresholds
 
     def calculate_gmm_threshold(self) -> torch.Tensor:
+        """
+        Calculate thresholds using Gaussian Mixture Models for each feature.
+
+        This method fits a two-component GMM to each feature's score distribution and
+        finds the boundary between the two components as the threshold.
+
+        Returns:
+            Tensor of shape (n_features,) containing GMM thresholds for each feature
+        """
         print("Calculating GMM thresholds")
         thresholds = []
         for i in range(self.scores.shape[1]):
@@ -116,13 +148,16 @@ class PerClassThresholdCalculator(ThresholdCalculator):
             sorted_data = np.sort(data.reshape(-1))
             predictions = gmm.predict(sorted_data.reshape(-1, 1))
 
-            for i in range(len(predictions) - 1):
-                if predictions[i] != predictions[i + 1]:
-                    threshold = (sorted_data[i] + sorted_data[i + 1]) / 2
+            found_separation = False
+            for j in range(len(predictions) - 1):
+                if predictions[j] != predictions[j + 1]:
+                    threshold = (sorted_data[j] + sorted_data[j + 1]) / 2
                     thresholds.append(threshold)
-
-            print("No clear separation found, using median for feature", i)
-            thresholds.append(torch.tensor(np.median(data)))
+                    found_separation = True
+                    break
+            if not found_separation:
+                print("No clear separation found, using median for feature", i)
+                thresholds.append(torch.tensor(np.median(data)))
 
         return torch.tensor(thresholds, device=self.scores.device)
 
@@ -130,13 +165,18 @@ class PerClassThresholdCalculator(ThresholdCalculator):
         self, window_size: int = 100, k: float = 2
     ) -> torch.Tensor:
         """
-            Compute thresholds as rolling_mean(MSE) + k × rolling_std(MSE),
-            where k is a parameter that controls the sensitivity of the threshold.
-            Args:
-            dataset: Dataset to use for threshold calculation
-            range_metrics_alpha: Alpha parameter for range-based metrics
+        Calculate dynamic thresholds based on rolling statistics of MSE scores.
+
+        Computes thresholds as rolling_mean(MSE) + k × rolling_std(MSE),
+        where k is a parameter that controls the sensitivity of the threshold.
+
+        Args:
+            window_size: Size of the rolling window for calculating statistics
+            k: Sensitivity parameter for threshold calculation
+
         Returns:
-            Tensor containing the best thresholds for each class
+            Tensor of shape (n_samples, n_features) containing dynamic thresholds
+            for each sample and feature
         """
         print("Calculating MSE dynamic thresholds")
         rolling_mean = torch.zeros_like(self.scores)
@@ -164,7 +204,6 @@ class PerClassThresholdCalculator(ThresholdCalculator):
                     dynamic_thresholds = torch.where(
                         nan_mask, mean_value, dynamic_thresholds
                     )
-
-            thresholds[:, i] = dynamic_thresholds
+            thresholds[:, i] = dynamic_thresholds[:, i]
 
         return thresholds

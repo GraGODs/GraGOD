@@ -9,6 +9,14 @@ from gragod.types import Datasets
 
 
 class SystemThresholdCalculator(ThresholdCalculator):
+    """
+    Calculator for determining system-level thresholds for anomaly detection.
+
+    This class provides methods to calculate various types of thresholds
+    at the system level, including F1-optimized, Otsu, GMM, and dynamic
+    MSE-based thresholds.
+    """
+
     def __init__(
         self,
         dataset: Datasets,
@@ -18,6 +26,17 @@ class SystemThresholdCalculator(ThresholdCalculator):
         range_based: bool,
         range_metrics_alpha,
     ):
+        """
+        Initialize the SystemThresholdCalculator.
+
+        Args:
+            dataset: The dataset type being analyzed
+            labels: Ground truth labels for the data
+            n_thresholds: Number of threshold values to test
+            system_scores: System-level anomaly scores
+            range_based: Whether to use range-based metrics
+            range_metrics_alpha: Alpha parameter for range-based metrics
+        """
         super().__init__(
             dataset=dataset,
             labels=labels,
@@ -31,13 +50,11 @@ class SystemThresholdCalculator(ThresholdCalculator):
         """
         Determine the optimal system-level threshold for anomaly detection.
 
-        This function finds a single threshold that maximizes the system-level F1 score.
+        This function finds a single threshold that maximizes the system-level F1 score
+        by testing multiple threshold values and selecting the one with the highest F1.
 
         Returns:
-            A single threshold value for system-level anomaly detection
-
-        Raises:
-            ValueError: If system_output_mode is not provided
+            torch.Tensor: A single threshold value for system-level anomaly detection
         """
         # here we only have system class so there will be only one threshold
         # Initial best thresholds with highest scores
@@ -93,11 +110,30 @@ class SystemThresholdCalculator(ThresholdCalculator):
         return best_threshold
 
     def calculate_otsu_threshold(self) -> torch.Tensor:
+        """
+        Calculate the Otsu threshold for system-level anomaly detection.
+
+        Uses Otsu's method to find the optimal threshold that separates the
+        system scores into two classes (normal and anomalous).
+
+        Returns:
+            torch.Tensor: The calculated Otsu threshold
+        """
         print("Calculating OTSU threshold")
         threshold = threshold_otsu(self.system_scores.numpy())
         return threshold
 
     def calculate_gmm_threshold(self) -> torch.Tensor:
+        """
+        Calculate the GMM-based threshold for system-level anomaly detection.
+
+        Fits a Gaussian Mixture Model with two components to the system scores
+        and finds the boundary between the two components as the threshold.
+
+        Returns:
+            torch.Tensor: The calculated GMM threshold, or the median if no clear
+                          separation is found
+        """
         print("Calculating GMM threshold")
         data = self.system_scores.numpy().reshape(-1, 1)
 
@@ -119,13 +155,18 @@ class SystemThresholdCalculator(ThresholdCalculator):
         self, window_size: int = 100, k: float = 2
     ) -> torch.Tensor:
         """
-            Compute thresholds as rolling_mean(MSE) + k × rolling_std(MSE),
-            where k is a parameter that controls the sensitivity of the threshold.
-            Args:
-            dataset: Dataset to use for threshold calculation
-            range_metrics_alpha: Alpha parameter for range-based metrics
+        Calculate dynamic thresholds based on rolling statistics of system scores.
+
+        Computes thresholds as rolling_mean(scores) + k × rolling_std(scores),
+        where k is a parameter that controls the sensitivity of the threshold.
+        This creates a dynamic threshold that adapts to local patterns in the data.
+
+        Args:
+            window_size: Size of the rolling window for calculating statistics
+            k: Multiplier for the standard deviation, controls threshold sensitivity
+
         Returns:
-            Tensor containing the best thresholds for each class
+            torch.Tensor: Dynamic thresholds for each time point in the system scores
         """
         print("Calculating MSE dynamic threshold")
         rolling_mean = torch.zeros_like(self.system_scores)
