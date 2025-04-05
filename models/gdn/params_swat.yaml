@@ -47,4 +47,5 @@ predictor_params:
   ckpt_folder: "test_swat/gdn/version_0"
   epsilon: 0.8
   target_dims: null
+  threshold_method: "f1_optimize"
 

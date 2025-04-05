@@ -27,7 +27,8 @@ train_params:
   val_size: 0.1
   shuffle: true
   clean: "drop"
-  interpolate_method: null
+  interpolate_method: null  threshold_method: "f1_optimize"
+
   horizon: 1
   weight_decay: 0.00001
   eps: 0.00000001
@@ -44,7 +45,8 @@ predictor_params:
   window_size_smooth: 5
   dataset_for_threshold: "val"
   range_based: true
-  
+  threshold_method: "f1_optimize"
+
 optimization_params:
   study_name: "mtad_gat_optimization"
   n_trials: 100

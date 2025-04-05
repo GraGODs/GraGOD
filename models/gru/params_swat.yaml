@@ -42,3 +42,4 @@ predictor_params:
   system_output_mode: "mean"
   score_type: "mse"
   ckpt_folder: "test_swat/gru/version_0"
+  threshold_method: "f1_optimize"

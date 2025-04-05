@@ -45,7 +45,7 @@ predictor_params:
   dataset_for_threshold: "val"
   range_based: false
   range_metrics_alpha: 0.5
-  
+  threshold_method: "f1_optimize"
 optimization_params:
   study_name: "mtad_gat_optimization_ute"
   n_trials: 100
