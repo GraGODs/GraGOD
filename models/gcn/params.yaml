@@ -36,8 +36,6 @@ predictor_params:
   dataset_for_threshold: "train"
   range_based: true
   threshold_method: "f1_optimize"
-  threshold_method: "f1_optimize"
-
 optimization_params:
   study_name: "gcn_optimization"
   n_trials: 100
