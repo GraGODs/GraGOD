@@ -1,5 +1,7 @@
+import numpy as np
 import torch
 from skimage.filters import threshold_otsu
+from sklearn.mixture import GaussianMixture
 
 from gragod.metrics.per_class_calculator import PerClassCalculator
 from gragod.predictions.threshold_calculator import ThresholdCalculator
@@ -101,3 +103,25 @@ class PerClassThresholdCalculator(ThresholdCalculator):
             thresholds.append(threshold)
         thresholds = torch.tensor(thresholds, device=self.scores.device)
         return thresholds
+
+    def calculate_gmm_threshold(self) -> torch.Tensor:
+        print("Calculating GMM thresholds")
+        thresholds = []
+        for i in range(self.scores.shape[1]):
+            data = self.scores[:, i].numpy().reshape(-1, 1)
+
+            gmm = GaussianMixture(n_components=2, random_state=42)
+            gmm.fit(data)
+
+            sorted_data = np.sort(data.reshape(-1))
+            predictions = gmm.predict(sorted_data.reshape(-1, 1))
+
+            for i in range(len(predictions) - 1):
+                if predictions[i] != predictions[i + 1]:
+                    threshold = (sorted_data[i] + sorted_data[i + 1]) / 2
+                    thresholds.append(threshold)
+
+            print("No clear separation found, using median for feature", i)
+            thresholds.append(torch.tensor(np.median(data)))
+
+        return torch.tensor(thresholds, device=self.scores.device)

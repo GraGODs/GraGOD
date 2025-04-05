@@ -1,5 +1,7 @@
+import numpy as np
 import torch
 from skimage.filters import threshold_otsu
+from sklearn.mixture import GaussianMixture
 
 from gragod.metrics.system_calculator import SystemCalculator
 from gragod.predictions.threshold_calculator import ThresholdCalculator
@@ -91,13 +93,24 @@ class SystemThresholdCalculator(ThresholdCalculator):
         return best_threshold
 
     def calculate_otsu_threshold(self) -> torch.Tensor:
-        if self.system_scores is None:
-            raise ValueError(
-                "System scores must be provided for histogram-based thresholding"
-            )
-
         print("Calculating OTSU threshold")
-
         threshold = threshold_otsu(self.system_scores.numpy())
-
         return threshold
+
+    def calculate_gmm_threshold(self) -> torch.Tensor:
+        print("Calculating GMM threshold")
+        data = self.system_scores.numpy().reshape(-1, 1)
+
+        gmm = GaussianMixture(n_components=2, random_state=42)
+        gmm.fit(data)
+
+        sorted_data = np.sort(data.reshape(-1))
+        predictions = gmm.predict(sorted_data.reshape(-1, 1))
+
+        for i in range(len(predictions) - 1):
+            if predictions[i] != predictions[i + 1]:
+                threshold = (sorted_data[i] + sorted_data[i + 1]) / 2
+                return torch.tensor(threshold)
+
+        print("No clear separation found, using median")
+        return torch.tensor(np.median(data))
