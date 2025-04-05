@@ -1,0 +1,88 @@
+import torch
+
+from gragod.metrics.per_class_calculator import PerClassCalculator
+from gragod.predictions.threshold_calculator import ThresholdCalculator
+from gragod.types import Datasets
+
+
+class PerClassThresholdCalculator(ThresholdCalculator):
+    def __init__(
+        self,
+        dataset: Datasets,
+        labels: torch.Tensor,
+        n_thresholds: int,
+        range_based: bool,
+        range_metrics_alpha: float,
+        scores: torch.Tensor,
+    ):
+        super().__init__(
+            dataset=dataset,
+            labels=labels,
+            n_thresholds=n_thresholds,
+            range_based=range_based,
+            range_metrics_alpha=range_metrics_alpha,
+        )
+        self.scores = scores
+
+    def calculate_f1_optimized(self) -> torch.Tensor:
+        """
+        Determine optimal thresholds for each feature/class independently.
+
+        This function finds the threshold that maximizes the F1 score for each feature.
+
+        Returns:
+            Tensor of shape (n_features,) containing optimal thresholds for each feature
+        """
+        # Initial best thresholds with highest scores
+        max_scores = best_thresholds = torch.max(self.scores, dim=0)[0]
+        preds = self.scores > best_thresholds.unsqueeze(0)
+
+        calculator = PerClassCalculator(
+            dataset=self.dataset,
+            labels=self.labels,
+            predictions=preds,
+            scores=self.scores,
+        )
+        if self.range_based:
+            precision = calculator.calculate_precision()
+            recall = calculator.calculate_range_based_recall(self.range_metrics_alpha)
+            f1 = calculator.calculate_f1(precision, recall)
+        else:
+            precision = calculator.calculate_precision()
+            recall = calculator.calculate_recall()
+            f1 = calculator.calculate_f1(precision, recall)
+
+        best_f1s = f1.metric_per_class
+
+        thresholds = torch.stack(
+            [
+                torch.linspace(0, max_score, self.n_thresholds)
+                for max_score in max_scores
+            ],
+            dim=1,
+        )
+        for threshold in thresholds:
+            preds = (self.scores > threshold.unsqueeze(0)).float()
+
+            calculator = PerClassCalculator(
+                dataset=self.dataset,
+                labels=self.labels,
+                predictions=preds,
+                scores=self.scores,
+            )
+            if self.range_based:
+                precision = calculator.calculate_precision()
+                recall = calculator.calculate_range_based_recall(
+                    self.range_metrics_alpha
+                )
+                f1 = calculator.calculate_f1(precision, recall)
+            else:
+                precision = calculator.calculate_precision()
+                recall = calculator.calculate_recall()
+                f1 = calculator.calculate_f1(precision, recall)
+
+            # Update best thresholds where F1 improved
+            improved = f1.metric_per_class > best_f1s
+            best_f1s[improved] = f1.metric_per_class[improved]
+            best_thresholds[improved] = threshold[improved]
+        return best_thresholds
