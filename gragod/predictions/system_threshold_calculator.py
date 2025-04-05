@@ -1,4 +1,5 @@
 import torch
+from skimage.filters import threshold_otsu
 
 from gragod.metrics.system_calculator import SystemCalculator
 from gragod.predictions.threshold_calculator import ThresholdCalculator
@@ -24,7 +25,7 @@ class SystemThresholdCalculator(ThresholdCalculator):
         )
         self.system_scores = system_scores
 
-    def calculate_f1_optimized(self) -> torch.Tensor:
+    def calculate_f1_optimized_threshold(self) -> torch.Tensor:
         """
         Determine the optimal system-level threshold for anomaly detection.
 
@@ -38,6 +39,7 @@ class SystemThresholdCalculator(ThresholdCalculator):
         """
         # here we only have system class so there will be only one threshold
         # Initial best thresholds with highest scores
+        print("Calculating F1 optimized threshold")
         max_score = best_threshold = torch.max(self.system_scores)
 
         system_predictions = (self.system_scores > max_score).int()
@@ -87,3 +89,15 @@ class SystemThresholdCalculator(ThresholdCalculator):
                 best_threshold = threshold
 
         return best_threshold
+
+    def calculate_otsu_threshold(self) -> torch.Tensor:
+        if self.system_scores is None:
+            raise ValueError(
+                "System scores must be provided for histogram-based thresholding"
+            )
+
+        print("Calculating OTSU threshold")
+
+        threshold = threshold_otsu(self.system_scores.numpy())
+
+        return threshold

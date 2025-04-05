@@ -1,4 +1,5 @@
 import torch
+from skimage.filters import threshold_otsu
 
 from gragod.metrics.per_class_calculator import PerClassCalculator
 from gragod.predictions.threshold_calculator import ThresholdCalculator
@@ -24,7 +25,7 @@ class PerClassThresholdCalculator(ThresholdCalculator):
         )
         self.scores = scores
 
-    def calculate_f1_optimized(self) -> torch.Tensor:
+    def calculate_f1_optimized_threshold(self) -> torch.Tensor:
         """
         Determine optimal thresholds for each feature/class independently.
 
@@ -33,6 +34,7 @@ class PerClassThresholdCalculator(ThresholdCalculator):
         Returns:
             Tensor of shape (n_features,) containing optimal thresholds for each feature
         """
+        print("Calculating F1 optimized thresholds")
         # Initial best thresholds with highest scores
         max_scores = best_thresholds = torch.max(self.scores, dim=0)[0]
         preds = self.scores > best_thresholds.unsqueeze(0)
@@ -86,3 +88,16 @@ class PerClassThresholdCalculator(ThresholdCalculator):
             best_f1s[improved] = f1.metric_per_class[improved]
             best_thresholds[improved] = threshold[improved]
         return best_thresholds
+
+    def calculate_otsu_threshold(self) -> torch.Tensor:
+        if self.scores is None:
+            raise ValueError(
+                "System scores must be provided for histogram-based thresholding"
+            )
+        print("Calculating OTSU thresholds")
+        thresholds = []
+        for i in range(self.scores.shape[1]):
+            threshold = threshold_otsu(self.scores[:, i].numpy())
+            thresholds.append(threshold)
+        thresholds = torch.tensor(thresholds, device=self.scores.device)
+        return thresholds

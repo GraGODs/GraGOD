@@ -37,12 +37,20 @@ class ThresholdCalculator:
         self.range_metrics_alpha = range_metrics_alpha
 
     @abstractmethod
-    def calculate_f1_optimized(self) -> torch.Tensor:
+    def calculate_f1_optimized_threshold(self) -> torch.Tensor:
         pass
 
-    def calculate_threshold(self, method: Literal["f1_optimize"]) -> torch.Tensor:
+    @abstractmethod
+    def calculate_otsu_threshold(self) -> torch.Tensor:
+        pass
+
+    def calculate_threshold(
+        self, method: Literal["f1_optimize", "otsu"]
+    ) -> torch.Tensor:
         if method == "f1_optimize":
-            return self.calculate_f1_optimized()
+            return self.calculate_f1_optimized_threshold()
+        elif method == "otsu":
+            return self.calculate_otsu_threshold()
         else:
             raise ValueError(f"Invalid method: {method}")
 
