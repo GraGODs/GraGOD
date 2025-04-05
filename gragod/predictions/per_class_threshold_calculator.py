@@ -125,3 +125,46 @@ class PerClassThresholdCalculator(ThresholdCalculator):
             thresholds.append(torch.tensor(np.median(data)))
 
         return torch.tensor(thresholds, device=self.scores.device)
+
+    def calculate_mse_dynamic_threshold(
+        self, window_size: int = 100, k: float = 2
+    ) -> torch.Tensor:
+        """
+            Compute thresholds as rolling_mean(MSE) + k × rolling_std(MSE),
+            where k is a parameter that controls the sensitivity of the threshold.
+            Args:
+            dataset: Dataset to use for threshold calculation
+            range_metrics_alpha: Alpha parameter for range-based metrics
+        Returns:
+            Tensor containing the best thresholds for each class
+        """
+        print("Calculating MSE dynamic thresholds")
+        rolling_mean = torch.zeros_like(self.scores)
+        rolling_std = torch.zeros_like(self.scores)
+        thresholds = torch.zeros_like(self.scores)
+        for i in range(self.scores.shape[1]):
+            for j in range(self.scores.shape[0]):
+                start_idx = max(0, j - window_size + 1)
+                window = self.scores[start_idx : j + 1, i]
+                if len(window) > 1:
+                    rolling_mean[j, i] = torch.mean(window)
+                    rolling_std[j, i] = torch.std(window)
+                else:
+                    rolling_mean[j, i] = window[0]
+                    rolling_std[j, i] = 0.0
+
+            # Calculate dynamic thresholds
+            dynamic_thresholds = rolling_mean + k * rolling_std
+
+            nan_mask = torch.isnan(dynamic_thresholds)
+            if nan_mask.any():
+                non_nan_values = dynamic_thresholds[~nan_mask]
+                if len(non_nan_values) > 0:
+                    mean_value = torch.mean(non_nan_values)
+                    dynamic_thresholds = torch.where(
+                        nan_mask, mean_value, dynamic_thresholds
+                    )
+
+            thresholds[:, i] = dynamic_thresholds
+
+        return thresholds

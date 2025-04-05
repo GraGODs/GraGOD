@@ -48,8 +48,12 @@ class ThresholdCalculator:
     def calculate_gmm_threshold(self) -> torch.Tensor:
         pass
 
+    @abstractmethod
+    def calculate_mse_dynamic_threshold(self) -> torch.Tensor:
+        pass
+
     def calculate_threshold(
-        self, method: Literal["f1_optimize", "otsu", "gmm"]
+        self, method: Literal["f1_optimize", "otsu", "gmm", "mse_dynamic"]
     ) -> torch.Tensor:
         if method == "f1_optimize":
             return self.calculate_f1_optimized_threshold()
@@ -57,6 +61,8 @@ class ThresholdCalculator:
             return self.calculate_otsu_threshold()
         elif method == "gmm":
             return self.calculate_gmm_threshold()
+        elif method == "mse_dynamic":
+            return self.calculate_mse_dynamic_threshold()
         else:
             raise ValueError(f"Invalid method: {method}")
 
@@ -65,7 +71,7 @@ def get_thresholds(
     dataset: Datasets,
     scores: torch.Tensor,
     labels: torch.Tensor,
-    method: Literal["f1_optimize", "otsu", "gmm"],
+    method: Literal["f1_optimize", "otsu", "gmm", "mse_dynamic"],
     n_thresholds: int = 100,
     range_based: bool = True,
     range_metrics_alpha: float = 0.5,

@@ -114,3 +114,43 @@ class SystemThresholdCalculator(ThresholdCalculator):
 
         print("No clear separation found, using median")
         return torch.tensor(np.median(data))
+
+    def calculate_mse_dynamic_threshold(
+        self, window_size: int = 100, k: float = 2
+    ) -> torch.Tensor:
+        """
+            Compute thresholds as rolling_mean(MSE) + k × rolling_std(MSE),
+            where k is a parameter that controls the sensitivity of the threshold.
+            Args:
+            dataset: Dataset to use for threshold calculation
+            range_metrics_alpha: Alpha parameter for range-based metrics
+        Returns:
+            Tensor containing the best thresholds for each class
+        """
+        print("Calculating MSE dynamic threshold")
+        rolling_mean = torch.zeros_like(self.system_scores)
+        rolling_std = torch.zeros_like(self.system_scores)
+
+        for i in range(len(self.system_scores)):
+            start_idx = max(0, i - window_size + 1)
+            window = self.system_scores[start_idx : i + 1]
+            if len(window) > 1:
+                rolling_mean[i] = torch.mean(window)
+                rolling_std[i] = torch.std(window)
+            else:
+                rolling_mean[i] = window[0]
+                rolling_std[i] = 0.0
+
+        # Calculate dynamic thresholds
+        dynamic_thresholds = rolling_mean + k * rolling_std
+
+        nan_mask = torch.isnan(dynamic_thresholds)
+        if nan_mask.any():
+            non_nan_values = dynamic_thresholds[~nan_mask]
+            if len(non_nan_values) > 0:
+                mean_value = torch.mean(non_nan_values)
+                dynamic_thresholds = torch.where(
+                    nan_mask, mean_value, dynamic_thresholds
+                )
+
+        return dynamic_thresholds
