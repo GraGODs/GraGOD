@@ -84,9 +84,7 @@ class MetricsCalculator(Generic[T], ABC):
         """Calculate VUS-PR metrics."""
         pass
 
-    def get_all_metrics(
-        self, alpha: float, calculate_vus_metrics: bool
-    ) -> dict[str, torch.Tensor]:
+    def get_all_metrics(self, alpha: float) -> dict[str, torch.Tensor]:
         """
         Calculate all metrics and return as dictionary.
 
@@ -95,7 +93,6 @@ class MetricsCalculator(Generic[T], ABC):
 
         Args:
             alpha: Relative importance of existence reward. 0 ≤ alpha ≤ 1.
-            calculate_vus_metrics: Whether to calculate VUS-ROC and VUS-PR metrics.
         Returns:
             Dict[str, torch.Tensor]: Dictionary of metrics.
         """
@@ -132,7 +129,6 @@ def get_metrics(
     system_predictions: Optional[torch.Tensor] = None,
     system_labels: Optional[torch.Tensor] = None,
     system_scores: Optional[torch.Tensor] = None,
-    calculate_vus_metrics: bool = True,
 ) -> dict:
     """
     Calculate and visualize all metrics for given predictions and labels.
@@ -146,7 +142,6 @@ def get_metrics(
         system_predictions: System-level predicted labels tensor (optional)
         system_labels: System-level ground truth labels tensor (optional)
         system_scores: System-level prediction scores tensor (optional)
-        only_system_metrics: Whether to calculate only system-level metrics
 
     Returns:
         Dictionary containing all calculated metrics
@@ -186,11 +181,7 @@ def get_metrics(
         print("Going to calculate per-class metrics")
     metrics = {}
     for calculator in calculators:
-        metrics.update(
-            calculator.get_all_metrics(
-                alpha=range_metrics_alpha, calculate_vus_metrics=calculate_vus_metrics
-            )
-        )
+        metrics.update(calculator.get_all_metrics(alpha=range_metrics_alpha))
 
     return metrics
 
