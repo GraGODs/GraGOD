@@ -32,15 +32,9 @@ class SystemCalculator(MetricsCalculator[SystemMetricsResult]):
             system_scores: System-level prediction scores tensor (n_samples)
         """
         super().__init__(dataset)
-        self.system_labels = system_labels
-        if self.system_labels.ndim == 2:
-            self.system_labels = self.system_labels.squeeze()
-        self.system_predictions = system_predictions
-        if self.system_predictions.ndim == 2:
-            self.system_predictions = self.system_predictions.squeeze()
-        self.system_scores = system_scores
-        if self.system_scores.ndim == 2:
-            self.system_scores = self.system_scores.squeeze()
+        self.system_labels = system_labels.squeeze()
+        self.system_predictions = system_predictions.squeeze()
+        self.system_scores = system_scores.squeeze()
 
     def calculate_precision(self) -> SystemMetricsResult:
         """
