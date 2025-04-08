@@ -1,4 +1,6 @@
+import os
 from collections import defaultdict
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -6,46 +8,57 @@ import pandas as pd
 import tabulate
 import torch
 
+from gragod.types import Datasets
 from gragod.utils import count_anomaly_ranges
 
 
-def generate_metrics_table(metrics: dict, only_system: bool = False) -> str:
-    """Generate a table of metrics as a string."""
+def generate_metrics_table(metrics: dict) -> str:
+    """
+    Generate a table of metrics as a string.
 
+    Args:
+        metrics: Dictionary containing metric names as keys and their values
+
+    Returns:
+        A formatted string table of metrics
+    """
     # Define metric groups and their display names
     metric_groups = {}
+    metric_types = set()
     for metric in metrics.keys():
-        if metric.endswith("_system"):
-            metric_name = metric.replace("_system", "")
+        if not metric.endswith("_per_class"):
+            metric_types.add(metric.split("_")[-1])
+            metric_name = "_".join(metric.split("_")[:-1])
             metric_groups[metric_name] = metric_name.title()
 
     # Create headers
-    if only_system:
-        metrics_table = [["System"]]
-    else:
-        metrics_table = [["Metric", "Global", "Mean", "System"]]
+    headers = [str(metric_type).capitalize() for metric_type in metric_types]
+    metrics_table = [["Metric"] + headers]
 
     # Build table rows dynamically
     for metric_key, metric_name in metric_groups.items():
-        if only_system:
-            row = [
-                f"{metrics.get(f'{metric_key}_system', '')}",
-            ]
-        else:
-            row = [
-                metric_name,
-                f"{metrics.get(f'{metric_key}_global', '')}",
-                f"{metrics.get(f'{metric_key}_mean', '')}",
-                f"{metrics.get(f'{metric_key}_system', '')}",
-            ]
+        row = []
+        row.append(metric_name)
+        for metric_type in metric_types:
+            row.append(f"{metrics.get(f'{metric_key}_{metric_type}', '')}")
         metrics_table.append(row)
 
     return tabulate.tabulate(metrics_table, headers="firstrow", tablefmt="grid")
 
 
 def generate_metrics_per_class_table(metrics: dict) -> str:
-    """Generate a table of per-class metrics as a string."""
+    """
+    Generate a table of per-class metrics as a string.
 
+    Args:
+        metrics: Dictionary containing metric names as keys and their values
+
+    Returns:
+        A formatted string table of per-class metrics
+
+    Raises:
+        ValueError: If no per-class metrics are found in the input dictionary
+    """
     n_classes = 0
     metrics_per_class = {}
     for metric in metrics.keys():
@@ -76,6 +89,13 @@ def generate_metrics_per_class_table(metrics: dict) -> str:
 
 
 def print_all_metrics(metrics: dict, message: str):
+    """
+    Print all metrics with a message header.
+
+    Args:
+        metrics: Dictionary containing metric names as keys and their values
+        message: Message to display before printing the metrics
+    """
     print(message)
     if "precision_per_class" in metrics:
         metrics_table = generate_metrics_table(metrics)
@@ -83,11 +103,21 @@ def print_all_metrics(metrics: dict, message: str):
         metrics_per_class_table = generate_metrics_per_class_table(metrics)
         print(metrics_per_class_table)
     else:
-        metrics_table = generate_metrics_table(metrics, only_system=True)
+        metrics_table = generate_metrics_table(metrics)
         print(metrics_table)
 
 
 def get_metrics_per_class(metrics: dict, n_classes: int):
+    """
+    Extract per-class metrics from the metrics dictionary.
+
+    Args:
+        metrics: Dictionary containing metric names as keys and their values
+        n_classes: Number of classes
+
+    Returns:
+        Dictionary with class indices as keys and their metrics as values
+    """
     metrics_per_class = defaultdict(dict)
     for metric_name, metric_value in metrics.items():
         if "per_class" in metric_name:
@@ -99,6 +129,15 @@ def get_metrics_per_class(metrics: dict, n_classes: int):
 
 
 def get_metrics_mean(metrics: dict):
+    """
+    Extract mean metrics from the metrics dictionary.
+
+    Args:
+        metrics: Dictionary containing metric names as keys and their values
+
+    Returns:
+        Dictionary with metric names as keys and their mean values
+    """
     metrics_mean = {}
     for metric_name, metric_value in metrics.items():
         if "mean" in metric_name:
@@ -114,6 +153,20 @@ def plot_single_score_histogram(
     model_name: str = "GRU",
     dataset_name: str = "Telco",
 ):
+    """
+    Plot a histogram of anomaly scores for a single feature.
+
+    Args:
+        scores: Tensor of anomaly scores
+        labels: Tensor of ground truth labels (0 for normal, 1 for anomalous)
+        metrics: Optional dictionary of metrics to display on the plot
+        use_ranged_anomalies: Whether to use the maximum score within each anomaly range
+        model_name: Name of the model for the plot title
+        dataset_name: Name of the dataset for the plot title
+
+    Returns:
+        Matplotlib figure object containing the histogram
+    """
     fig, ax = plt.subplots(figsize=(10, 5))
 
     # Convert to numpy arrays
@@ -197,6 +250,20 @@ def plot_score_histograms_grid_telco(
     use_ranged_anomalies: bool = False,
     log_axis: bool = True,
 ):
+    """
+    Plot a grid of histograms for Telco dataset features.
+
+    Args:
+        scores: Tensor of anomaly scores with shape (n_samples, n_features)
+        labels: Tensor of ground truth labels with shape (n_samples, n_features)
+        thresholds: Tensor of thresholds for each feature
+        metrics: Optional dictionary of metrics to display on the plots
+        use_ranged_anomalies: Whether to use the maximum score within each anomaly range
+        log_axis: Whether to use logarithmic scale for the x-axis
+
+    Returns:
+        Matplotlib figure object containing the grid of histograms
+    """
     scores
     metrics_per_class = (
         get_metrics_per_class(metrics=metrics, n_classes=scores.shape[1])
@@ -299,3 +366,85 @@ def plot_score_histograms_grid_telco(
     plt.tight_layout()
     # plt.show()
     return fig
+
+
+def save_histograms(
+    scores: torch.Tensor,
+    y: torch.Tensor,
+    thresholds: torch.Tensor,
+    dataset: Datasets,
+    dataset_split: str,
+    model_name: str,
+    save_metrics_dir: Path,
+):
+    """
+    Save histograms of anomaly scores to files.
+
+    Args:
+        scores: Tensor of anomaly scores
+        y: Tensor of ground truth labels
+        thresholds: Tensor of thresholds for each feature
+        dataset: Dataset enum value
+        dataset_split: String indicating the dataset split (train/val/test)
+        model_name: Name of the model
+        save_metrics_dir: Directory path to save the plots
+    """
+    save_plots_dir = os.path.join(save_metrics_dir, "plots")
+    os.makedirs(save_plots_dir, exist_ok=True)
+    if dataset == Datasets.TELCO:
+        fig_1 = plot_score_histograms_grid_telco(
+            scores=scores,
+            labels=y,
+            thresholds=thresholds,
+            use_ranged_anomalies=False,
+        )
+        fig_2 = plot_score_histograms_grid_telco(
+            scores=scores,
+            labels=y,
+            thresholds=thresholds,
+            use_ranged_anomalies=True,
+        )
+        fig_1.savefig(
+            os.path.join(
+                save_plots_dir,
+                f"{dataset_split}_{model_name.lower()}_{dataset.value.lower()}"
+                + "_score_histograms.png",
+            )
+        )
+        fig_2.savefig(
+            os.path.join(
+                save_plots_dir,
+                f"{dataset_split}_{model_name.lower()}_{dataset.value.lower()}"
+                + "_score_histograms_with_ranges.png",
+            )
+        )
+
+    fig_1 = plot_single_score_histogram(
+        scores=scores.flatten(),
+        labels=y.flatten(),
+        use_ranged_anomalies=False,
+        model_name=model_name,
+        dataset_name=dataset.value,
+    )
+    fig_2 = plot_single_score_histogram(
+        scores=scores.flatten(),
+        labels=y.flatten(),
+        use_ranged_anomalies=True,
+        model_name=model_name,
+        dataset_name=dataset.value,
+    )
+
+    fig_1.savefig(
+        os.path.join(
+            save_plots_dir,
+            f"{dataset_split}_{model_name.lower()}_{dataset.value.lower()}"
+            + "_score_histogram_single.png",
+        )
+    )
+    fig_2.savefig(
+        os.path.join(
+            save_plots_dir,
+            f"{dataset_split}_{model_name.lower()}_{dataset.value.lower()}"
+            + "_score_histogram_single_with_ranges.png",
+        )
+    )

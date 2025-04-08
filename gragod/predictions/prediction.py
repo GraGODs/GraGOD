@@ -2,8 +2,9 @@ from typing import Literal
 
 import torch
 
-from gragod.metrics.calculator import MetricsCalculator
 from gragod.metrics.models import SystemMetricsResult
+from gragod.metrics.per_class_calculator import PerClassCalculator
+from gragod.metrics.system_calculator import SystemCalculator
 from gragod.predictions.spot import SPOT
 from gragod.types import Datasets
 
@@ -15,15 +16,80 @@ def get_threshold(
     n_thresholds: int,
     range_based: bool = True,
     range_metrics_alpha: float = 0.5,
+    system_output_mode: Literal["max", "mean", "sum"] | None = None,
 ) -> torch.Tensor:
+    """
+    Get the optimal threshold for anomaly detection based on the input data.
+
+    This function determines whether to use per-class or system-level thresholding
+    based on the shape of the labels tensor.
+
+    Args:
+        dataset: The dataset being analyzed
+        scores: Tensor of shape (n_samples, n_features) containing anomaly scores
+        labels: Tensor containing ground truth labels
+        n_thresholds: Number of threshold values to test
+        range_based: Whether to use range-based metrics for evaluation
+        range_metrics_alpha: Alpha parameter for range-based recall calculation
+        system_output_mode: Mode for aggregating scores in system-level metrics
+            (required when using system-level thresholding)
+
+    Returns:
+        The optimal threshold(s) for anomaly detection
+
+    Raises:
+        ValueError: If system_output_mode is not provided for system-level metrics
+    """
     if labels.ndim == 0 or labels.shape[1] in [0, 1]:
+        if system_output_mode is None:
+            raise ValueError(
+                "system_output_mode must be provided for system-level metrics"
+            )
         return get_threshold_system(
-            dataset, scores, labels, n_thresholds, range_based, range_metrics_alpha
+            dataset=dataset,
+            scores=scores,
+            labels=labels,
+            n_thresholds=n_thresholds,
+            range_based=range_based,
+            range_metrics_alpha=range_metrics_alpha,
+            system_output_mode=system_output_mode,
         )
     else:
         return get_threshold_per_class(
-            dataset, scores, labels, n_thresholds, range_based, range_metrics_alpha
+            dataset=dataset,
+            scores=scores,
+            labels=labels,
+            n_thresholds=n_thresholds,
+            range_based=range_based,
+            range_metrics_alpha=range_metrics_alpha,
         )
+
+
+def get_system_scores(
+    scores: torch.Tensor,
+    mode: Literal["max", "mean", "sum"] = "mean",
+) -> torch.Tensor:
+    """
+    Aggregate feature-level scores into system-level scores.
+
+    Args:
+        scores: Tensor of shape (n_samples, n_features) containing anomaly scores
+        mode: Aggregation method to use:
+            - "max": Maximum score across features
+            - "mean": Average score across features
+            - "sum": Sum of scores across features
+
+    Returns:
+        Tensor of shape (n_samples, 1) containing system-level scores
+    """
+    if mode == "max":
+        system_scores = torch.max(scores, dim=1).values
+    elif mode == "mean":
+        system_scores = torch.mean(scores, dim=1)
+    elif mode == "sum":
+        system_scores = torch.sum(scores, dim=1)
+
+    return system_scores.unsqueeze(1)
 
 
 def get_threshold_per_class(
@@ -35,30 +101,39 @@ def get_threshold_per_class(
     range_metrics_alpha: float = 0.5,
 ) -> torch.Tensor:
     """
-    Gets the threshold for the scores for each time series.
-    The best threshold is the one that maximizes the F1 score or
-    as a default the maximum score in the training set.
+    Determine optimal thresholds for each feature/class independently.
+
+    This function finds the threshold that maximizes the F1 score for each feature.
+
     Args:
-        scores: Tensor of shape (n_samples - window_size, n_features).
-        labels: Tensor of shape (n_samples - window_size, n_features).
-        n_thresholds: Number of thresholds to test.
+        dataset: The dataset being analyzed
+        scores: Tensor of shape (n_samples, n_features) containing anomaly scores
+        labels: Tensor of shape (n_samples, n_features) containing ground truth labels
+        n_thresholds: Number of threshold values to test
+        range_based: Whether to use range-based metrics for evaluation
+        range_metrics_alpha: Alpha parameter for range-based recall calculation
+
     Returns:
-        The best thresholds for each dimension (n_features,).
+        Tensor of shape (n_features,) containing optimal thresholds for each feature
     """
     # Initial best thresholds with highest scores
     max_scores = best_thresholds = torch.max(scores, dim=0)[0]
     preds = scores > best_thresholds.unsqueeze(0)
-    metrics = MetricsCalculator(
-        dataset=dataset, labels=labels, predictions=preds, scores=scores
+
+    calculator = PerClassCalculator(
+        dataset=dataset,
+        labels=labels,
+        predictions=preds,
+        scores=scores,
     )
     if range_based:
-        precision = metrics.calculate_precision()
-        recall = metrics.calculate_range_based_recall(range_metrics_alpha)
-        f1 = metrics.calculate_f1(precision, recall)
+        precision = calculator.calculate_precision()
+        recall = calculator.calculate_range_based_recall(range_metrics_alpha)
+        f1 = calculator.calculate_f1(precision, recall)
     else:
-        precision = metrics.calculate_precision()
-        recall = metrics.calculate_recall()
-        f1 = metrics.calculate_f1(precision, recall)
+        precision = calculator.calculate_precision()
+        recall = calculator.calculate_recall()
+        f1 = calculator.calculate_f1(precision, recall)
 
     # Check if we got a SystemMetricsResult
     if isinstance(f1, SystemMetricsResult):
@@ -76,17 +151,17 @@ def get_threshold_per_class(
     for threshold in thresholds:
         preds = (scores > threshold.unsqueeze(0)).float()
 
-        metrics = MetricsCalculator(
+        calculator = PerClassCalculator(
             dataset=dataset, labels=labels, predictions=preds, scores=scores
         )
         if range_based:
-            precision = metrics.calculate_precision()
-            recall = metrics.calculate_range_based_recall(range_metrics_alpha)
-            f1 = metrics.calculate_f1(precision, recall)
+            precision = calculator.calculate_precision()
+            recall = calculator.calculate_range_based_recall(range_metrics_alpha)
+            f1 = calculator.calculate_f1(precision, recall)
         else:
-            precision = metrics.calculate_precision()
-            recall = metrics.calculate_recall()
-            f1 = metrics.calculate_f1(precision, recall)
+            precision = calculator.calculate_precision()
+            recall = calculator.calculate_recall()
+            f1 = calculator.calculate_f1(precision, recall)
 
         if isinstance(f1, SystemMetricsResult):
             raise ValueError(
@@ -106,26 +181,39 @@ def get_threshold_system(
     scores: torch.Tensor,
     labels: torch.Tensor,
     n_thresholds: int,
+    system_output_mode: Literal["max", "mean", "sum"],
     range_based: bool = True,
     range_metrics_alpha: float = 0.5,
 ) -> torch.Tensor:
     """
-    Get the threshold for the scores.
-    The best threshold is the one that maximizes the F1 score or
-    as a default the maximum score in the training set.
+    Determine the optimal system-level threshold for anomaly detection.
+
+    This function finds a single threshold that maximizes the system-level F1 score.
+
     Args:
-        scores: Tensor of shape (n_samples - window_size, n_features).
-        labels: Tensor of shape (n_samples - window_size, 1).
-        n_thresholds: Number of thresholds to test.
+        dataset: The dataset being analyzed
+        scores: Tensor of shape (n_samples, n_features) with anomaly scores
+        labels: Tensor of shape (n_samples, 1) with system-level ground truth labels
+        n_thresholds: Number of threshold values to test
+        range_based: Whether to use range-based metrics for evaluation
+        range_metrics_alpha: Alpha parameter for range-based recall calculation
+        system_output_mode: Mode for aggregating scores in system-level metrics
+
     Returns:
-        The best threshold for the system.
+        A single threshold value for system-level anomaly detection
     """
     # here we only have system class so there will be only one threshold
     # Initial best thresholds with highest scores
-    max_score = best_threshold = torch.max(scores)
-    preds = scores > best_threshold
-    metrics = MetricsCalculator(
-        dataset=dataset, labels=labels, predictions=preds, scores=scores
+    system_scores = get_system_scores(scores, system_output_mode)
+    max_score = best_threshold = torch.max(system_scores)
+
+    system_predictions = (system_scores > max_score).int()
+
+    metrics = SystemCalculator(
+        dataset=dataset,
+        system_labels=labels,
+        system_predictions=system_predictions,
+        system_scores=system_scores,
     )
     if range_based:
         precision = metrics.calculate_precision()
@@ -141,19 +229,22 @@ def get_threshold_system(
     thresholds = torch.linspace(0, max_score, n_thresholds)
 
     for threshold in thresholds:
-        preds = (scores > threshold).float()
+        system_predictions = (system_scores > threshold).int()
 
-        metrics = MetricsCalculator(
-            dataset=dataset, labels=labels, predictions=preds, scores=scores
+        calculator = SystemCalculator(
+            dataset=dataset,
+            system_labels=labels,
+            system_predictions=system_predictions,
+            system_scores=system_scores,
         )
         if range_based:
-            precision = metrics.calculate_precision()
-            recall = metrics.calculate_range_based_recall(range_metrics_alpha)
-            f1 = metrics.calculate_f1(precision, recall)
+            precision = calculator.calculate_precision()
+            recall = calculator.calculate_range_based_recall(range_metrics_alpha)
+            f1 = calculator.calculate_f1(precision, recall)
         else:
-            precision = metrics.calculate_precision()
-            recall = metrics.calculate_recall()
-            f1 = metrics.calculate_f1(precision, recall)
+            precision = calculator.calculate_precision()
+            recall = calculator.calculate_recall()
+            f1 = calculator.calculate_f1(precision, recall)
 
         # Update best thresholds where F1
         if f1.metric_system > system_f1:
@@ -171,15 +262,17 @@ def generate_scores(
     window_size_smooth: int = 5,
 ) -> torch.Tensor:
     """
-    Generate scores for the predictions.
+    Generate anomaly scores by comparing predictions with true values.
 
     Args:
         predictions: Tensor of shape (n_samples, n_features) containing predictions
         true_values: Tensor of shape (n_samples, n_features) containing true values
         score_type: Type of score to use, either "mse" or "abs". Default is "mse".
+        post_process: Whether to apply post-processing to the scores
+        window_size_smooth: Window size for smoothing if post-processing is applied
 
     Returns:
-        Tensor of shape (n_samples, n_features) containing scores
+        Tensor of shape (n_samples, n_features) containing anomaly scores
     """
     if score_type == "abs":
         scores = torch.abs(predictions - true_values)
@@ -197,15 +290,16 @@ def post_process_scores(scores: torch.Tensor, window_size: int = 5) -> torch.Ten
     Post process the scores by applying smoothing and standardization.
 
     This function performs two steps:
-    1. Smooths the scores using a moving average
-    2. Standardizes the scores using robust statistics (median and IQR) to normalize
+    1. Standardizes the scores using robust statistics (median and IQR) to normalize
        the scale across features
+    2. Smooths the scores using a moving average
 
     Args:
         scores: Tensor of shape (n_samples, n_features) containing error values
+        window_size: Size of the moving average window for smoothing
 
     Returns:
-        Post processed scores using a moving average and normalization
+        Post processed scores using standardization and a moving average
     """
     scores = standarize_error_scores(scores)
     scores = smooth_scores(scores, window_size=window_size)
@@ -215,7 +309,7 @@ def post_process_scores(scores: torch.Tensor, window_size: int = 5) -> torch.Ten
 def standarize_error_scores(scores: torch.Tensor) -> torch.Tensor:
     """
     Normalize error scores using robust statistics (median and IQR)
-      to prevent any single sensor from dominating.
+    to prevent any single sensor from dominating.
 
     Args:
         scores: Tensor of shape (n_samples, n_features) containing error values
@@ -258,7 +352,19 @@ def get_spot_predictions(
     train_score: torch.Tensor, test_score: torch.Tensor
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """
-    Get threshold for anomaly detection.
+    Get anomaly predictions using the SPOT algorithm.
+
+    SPOT (Statistical Process cOnTrol) is used to automatically determine
+    thresholds for anomaly detection based on extreme value theory.
+
+    Args:
+        train_score: Tensor of shape (n_train_samples, n_features) with training scores
+        test_score: Tensor of shape (n_test_samples, n_features) with test scores
+
+    Returns:
+        A tuple containing:
+        - predictions: Binary tensor indicating anomalies (1) or normal points (0)
+        - thresholds: The thresholds determined by SPOT for each feature
     """
     thresholds = []
     for i in range(train_score.shape[1]):

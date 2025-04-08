@@ -33,6 +33,7 @@ predictor_params:
   window_size_smooth: 5 
   dataset_for_threshold: "train"
   range_based: true
+  range_metrics_alpha: 0.5
 
   score_type: "abs"
   ckpt_folder: "output/gcn/version_1"

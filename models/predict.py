@@ -12,12 +12,13 @@ from datasets.dataset import get_data_loader
 from datasets.graph import get_edge_index
 from gragod import CleanMethods, Datasets, Models, ParamFileTypes
 from gragod.metrics.calculator import get_metrics_and_save
-from gragod.metrics.visualization import (
-    plot_score_histograms_grid_telco,
-    plot_single_score_histogram,
-)
+from gragod.metrics.visualization import save_histograms
 from gragod.models import get_model_and_module
-from gragod.predictions.prediction import get_threshold, post_process_scores
+from gragod.predictions.prediction import (
+    get_system_scores,
+    get_threshold,
+    post_process_scores,
+)
 from gragod.training import load_params, load_training_data, set_seeds
 from gragod.utils import load_checkpoint_path, set_device
 from models.schemas import DatasetPredictOutput, PredictOutput
@@ -36,7 +37,23 @@ def run_model(
 ) -> tuple[torch.Tensor, Any]:
     """
     Generate predictions and calculate anomaly scores.
-    Returns the anomaly predictions and evaluation metrics.
+
+    Args:
+        model: PyTorch Lightning module to run predictions with
+        loader: DataLoader containing the input data
+        device: Device to run the model on (e.g., 'cpu', 'cuda', 'mps')
+        X_true: Ground truth data tensor
+        post_process: Whether to apply post-processing to the anomaly scores
+        window_size_smooth: Window size for smoothing the anomaly scores
+        **kwargs: Additional keyword arguments
+
+    Returns:
+        A tuple containing:
+            - Anomaly scores tensor
+            - Model output (forecast and/or reconstruction)
+
+    Raises:
+        ValueError: If model predictions return None
     """
     trainer = pl.Trainer(accelerator=device)
     output = trainer.predict(model, loader)
@@ -56,27 +73,6 @@ def run_model(
     return scores, output
 
 
-def calculate_metrics(
-    scores: torch.Tensor,
-    threshold: torch.Tensor,
-    y: torch.Tensor,
-    dataset: Datasets,
-    dataset_split: str,
-    save_dir: Path,
-):
-    y_pred = (scores > threshold).float()
-
-    metrics = get_metrics_and_save(
-        dataset=dataset,
-        predictions=y_pred,
-        labels=y,
-        scores=scores,
-        save_dir=save_dir,
-        dataset_split=dataset_split,
-    )
-    return metrics, y_pred
-
-
 def process_dataset(
     model: pl.LightningModule,
     X_true: torch.Tensor,
@@ -93,6 +89,43 @@ def process_dataset(
     n_workers: int = 0,
     predict_params: dict = {},
 ):
+    """
+    Process a dataset split to generate predictions, scores, and metrics.
+
+    Args:
+        model: PyTorch Lightning module to run predictions with
+        X_true: Ground truth data tensor
+        y: Ground truth labels tensor
+        thresholds: Anomaly detection thresholds, or None to calculate them
+        device: Device to run the model on
+        dataset: Dataset enum value
+        model_name: Name of the model being used
+        edge_index: Edge index tensor for graph-based models
+        save_metrics_dir: Directory to save metrics and visualizations
+        dataset_split: Split name ('train', 'val', or 'test')
+        window_size: Window size for the model
+        batch_size: Batch size for data loading
+        n_workers: Number of workers for data loading
+        predict_params: Dictionary of prediction parameters
+
+    Returns:
+        Dictionary containing:
+            - output: Model output (forecast and/or reconstruction)
+            - predictions: Anomaly predictions
+            - labels: Ground truth labels
+            - scores: Anomaly scores
+            - data: Input data
+            - thresholds: Anomaly detection thresholds
+            - metrics: Evaluation metrics
+
+    Raises:
+        AssertionError: If there's a shape mismatch between outputs
+    """
+    start_index = predict_params["start_index"]
+    # First `start_index` samples are not predicted
+    X_true = X_true[start_index - window_size :]
+    y = y[start_index - window_size :]
+
     # Create test dataloader
     loader = get_data_loader(
         X=X_true,
@@ -105,9 +138,11 @@ def process_dataset(
         shuffle=False,
     )
 
-    # First `window_size` samples are not used for prediction
-    X_true = X_true[window_size:]
+    # Drop everything until the predicted samples
+    X_true = X_true[window_size:-1, :]
     y = y[window_size:]
+    # Discard last datapoint since it can't be used on recon
+    y = y[:-1].int()
 
     # Run model
     scores, output = run_model(
@@ -119,8 +154,28 @@ def process_dataset(
         **predict_params,
     )
 
-    # Discard last datapoint since it can't be used on recon
-    y = y[:-1]
+    forecast, reconstruction = output if isinstance(output, tuple) else (output, None)
+
+    if (
+        y.shape[0] != forecast.shape[0]
+        or y.shape[0] != scores.shape[0]
+        or y.shape[0] != X_true.shape[0]
+    ):
+        print(
+            f"Shape mismatch: y.shape={y.shape},\
+            forecast.shape={forecast.shape},\
+            scores.shape={scores.shape},\
+            X_true.shape={X_true.shape}"
+        )
+        raise AssertionError("Shape mismatch between y, forecast, and scores")
+
+    # Check reconstruction shape if it exists
+    if reconstruction is not None and y.shape[0] != reconstruction.shape[0]:
+        print(
+            f"Shape mismatch: y.shape={y.shape},\
+            reconstruction.shape={reconstruction.shape}"
+        )
+        raise AssertionError("Shape mismatch between y and reconstruction")
 
     if thresholds is None:
         thresholds = get_threshold(
@@ -129,21 +184,40 @@ def process_dataset(
             labels=y,
             n_thresholds=predict_params["n_thresholds"],
             range_based=predict_params["range_based"],
+            system_output_mode=predict_params.get("system_output_mode", None),
         )
+
+    if y.ndim == 1 or y.shape[1] == 1:
+        # We only calculate system metrics if there's only system anomalies
+        system_scores = get_system_scores(
+            scores=scores,
+            mode=predict_params["system_output_mode"],
+        )
+        system_predictions = (system_scores > thresholds).int()
+        system_labels = y
+        per_class_y_pred = None
+
+    else:
+        system_scores, system_predictions, system_labels = None, None, None
+        per_class_y_pred = (scores > thresholds).float()
+        system_predictions = None
 
     # Calculate metrics
     if torch.any(y == 1):
-        metrics, y_pred = calculate_metrics(
-            scores=scores,
-            threshold=thresholds,
-            y=y,
+        metrics = get_metrics_and_save(
             dataset=dataset,
-            dataset_split=dataset_split,
+            predictions=per_class_y_pred,
+            labels=y,
+            scores=scores,
             save_dir=save_metrics_dir,
+            dataset_split=dataset_split,
+            range_metrics_alpha=predict_params["range_metrics_alpha"],
+            system_predictions=system_predictions,
+            system_labels=system_labels,
+            system_scores=system_scores,
         )
     else:
         metrics = None
-        y_pred = None
 
     if save_metrics_dir:
         save_predictions_dir = os.path.join(save_metrics_dir, "predictions")
@@ -153,74 +227,29 @@ def process_dataset(
             f"{dataset_split}_{model_name.lower()}_{dataset.value.lower()}",
         )
         torch.save(output, save_path + "_output.pt")
-        torch.save(y_pred, save_path + "_predictions.pt")
+        torch.save(
+            per_class_y_pred if per_class_y_pred is not None else system_predictions,
+            save_path + "_predictions.pt",
+        )
         torch.save(y, save_path + "_labels.pt")
         torch.save(scores, save_path + "_scores.pt")
         torch.save(X_true, save_path + "_data.pt")
         torch.save(thresholds, save_path + "_thresholds.pt")
 
-    # Plots
-    save_plots_dir = os.path.join(save_metrics_dir, "plots")
-    os.makedirs(save_plots_dir, exist_ok=True)
-    if dataset == Datasets.TELCO:
-        fig_1 = plot_score_histograms_grid_telco(
-            scores=scores,
-            labels=y,
+        save_histograms(
+            scores=system_scores if system_scores is not None else scores,
+            y=y,
             thresholds=thresholds,
+            dataset=dataset,
+            dataset_split=dataset_split,
+            model_name=model_name,
+            save_metrics_dir=save_metrics_dir,
         )
-        fig_2 = plot_score_histograms_grid_telco(
-            scores=scores,
-            labels=y,
-            thresholds=thresholds,
-            use_ranged_anomalies=True,
-        )
-        fig_1.savefig(
-            os.path.join(
-                save_plots_dir,
-                f"{dataset_split}_{model_name.lower()}_{dataset.value.lower()}"
-                + "_score_histograms.png",
-            )
-        )
-        fig_2.savefig(
-            os.path.join(
-                save_plots_dir,
-                f"{dataset_split}_{model_name.lower()}_{dataset.value.lower()}"
-                + "_score_histograms_with_ranges.png",
-            )
-        )
-
-    fig_1 = plot_single_score_histogram(
-        scores=scores.flatten(),
-        labels=y.flatten(),
-        use_ranged_anomalies=False,
-        model_name=model_name,
-        dataset_name=dataset.value,
-    )
-    fig_2 = plot_single_score_histogram(
-        scores=scores.flatten(),
-        labels=y.flatten(),
-        use_ranged_anomalies=True,
-        model_name=model_name,
-        dataset_name=dataset.value,
-    )
-
-    fig_1.savefig(
-        os.path.join(
-            save_plots_dir,
-            f"{dataset_split}_{model_name.lower()}_{dataset.value.lower()}"
-            + "_score_histogram_single.png",
-        )
-    )
-    fig_2.savefig(
-        os.path.join(
-            save_plots_dir,
-            f"{dataset_split}_{model_name.lower()}_{dataset.value.lower()}"
-            + "_score_histogram_single_with_ranges.png",
-        )
-    )
     output_dict: DatasetPredictOutput = {
         "output": output,
-        "predictions": y_pred,
+        "predictions": (
+            per_class_y_pred if per_class_y_pred is not None else system_predictions
+        ),
         "labels": y,
         "scores": scores,
         "data": X_true,
@@ -249,7 +278,26 @@ def predict(
 ) -> PredictOutput:
     """
     Main function to load data, model and generate predictions.
-    Returns a dictionary containing evaluation metrics.
+
+    Args:
+        model: Model enum value to use for prediction
+        dataset: Dataset enum value to predict on
+        model_params: Dictionary of model parameters
+        batch_size: Batch size for data loading
+        ckpt_path: Path to checkpoint file, or None to use default path
+        device: Device to run the model on
+        n_workers: Number of workers for data loading
+        test_size: Fraction of data to use for testing
+        val_size: Fraction of data to use for validation
+        params: Dictionary of additional parameters
+        down_len: Downsampling length, or None for no downsampling
+        max_std: Maximum standard deviation for outlier removal
+        labels_widening: Whether to widen anomaly labels
+        cutoff_value: Cutoff value for data preprocessing
+        **kwargs: Additional keyword arguments
+
+    Returns:
+        Dictionary containing prediction outputs for train, validation, and test sets
     """
     torch.set_float32_matmul_precision("high")
     device = set_device()
@@ -371,16 +419,33 @@ def main(
     dataset: Datasets,
     ckpt_path: str | None = None,
     params_file: str = "models/mtad_gat/params.yaml",
+    start_index: int | None = None,
 ) -> PredictOutput:
     """
     Main function to load data, model and generate predictions.
 
     Args:
         model: Name of model to predict
+        dataset: Dataset to predict on
+        ckpt_path: Path to checkpoint file, or None to use default path
         params_file: Path to parameter file
+        start_index: Starting index for predictions, or None to use default
+
+    Returns:
+        Dictionary containing prediction outputs for train, validation, and test sets
+
+    Raises:
+        AssertionError: If start_index is less than the model's window size
     """
     params = load_params(params_file, file_type=ParamFileTypes.YAML)
     set_seeds(RANDOM_SEED)
+
+    if start_index is not None:
+        assert (
+            start_index >= params["model_params"]["window_size"]
+        ), "The start index should be greater than or equal to the model's window size"
+
+        params["predictor_params"]["start_index"] = start_index
 
     return predict(
         model=model,
@@ -416,6 +481,14 @@ if __name__ == "__main__":
         default=None,
         help="Path to checkpoint file",
     )
+    parser.add_argument(
+        "--start_index",
+        "-si",
+        type=int,
+        default=None,
+        help="If a variety of models is being tested, the maximum window size of the"
+        "first model is used to drop the initial points from the other models",
+    )
     args = parser.parse_args()
 
     if args.params_file is None:
@@ -434,4 +507,5 @@ if __name__ == "__main__":
         dataset=args.dataset,
         params_file=args.params_file,
         ckpt_path=args.ckpt_path,
+        start_index=args.start_index,
     )
