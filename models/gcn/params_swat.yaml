@@ -39,4 +39,4 @@ predictor_params:
   min_precision: 0.0
 
   score_type: "abs"
-  ckpt_folder: "test_swat/gcn/version_0"
+  ckpt_folder: "test_swat/gcn/version_1"

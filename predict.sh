@@ -9,8 +9,8 @@ fi
 DATASET=$1
 
 # Validate dataset choice
-if [[ "$DATASET" != "telco" && "$DATASET" != "swat" ]]; then
-    echo "Invalid dataset. Choose 'telco' or 'swat'"
+if [[ "$DATASET" != "telco" && "$DATASET" != "swat" && "$DATASET" != "ute" ]]; then
+    echo "Invalid dataset. Choose 'telco', 'swat' or 'ute'"
     exit 1
 fi
 
@@ -25,7 +25,13 @@ for model in "${models[@]}"; do
         --dataset "$DATASET" \
         --model "$model" \
         --params_file "models/${model}/params_${DATASET}.yaml" \
-        $([ "$DATASET" = "telco" ] && echo "-iw 205" || echo "-iw 256") > "logs_predict/${model}_${DATASET}.log" 2>&1 &
+        $(if [ "$DATASET" = "telco" ]; then 
+            echo "-iw 205"
+          elif [ "$DATASET" = "swat" ]; then 
+            echo "-iw 256"
+          else 
+            echo "-iw 512"
+          fi) > "logs_predict/${model}_${DATASET}.log" 2>&1 &
     pids[$model]=$!
 done
 

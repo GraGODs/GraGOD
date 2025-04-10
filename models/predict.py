@@ -66,6 +66,7 @@ def calculate_metrics(
     range_metrics_alpha: float = 0.5,
     system_scores: torch.Tensor | None = None,
     system_labels: torch.Tensor | None = None,
+    system_predictions: torch.Tensor | None = None,
 ):
     y_pred = (scores > threshold).float()
 
@@ -79,6 +80,7 @@ def calculate_metrics(
         range_metrics_alpha=range_metrics_alpha,
         system_scores=system_scores,
         system_labels=system_labels,
+        system_predictions=system_predictions,
     )
     return metrics, y_pred
 
@@ -100,6 +102,10 @@ def process_dataset(
     n_workers: int = 0,
     predict_params: dict = {},
 ):
+    if not torch.any(y == 1):
+        print(f"Dataset {dataset.value} has no anomalies. Skipping...")
+        return None
+
     # Create test dataloader
     loader = get_data_loader(
         X=X_true,
@@ -155,9 +161,8 @@ def process_dataset(
         system_scores = None
         system_labels = None
 
-    # Discard last datapoint since it can't be used on recon
-
     if thresholds is None:
+        print(f"Calculating thresholds with {dataset_split} set.")
         thresholds = get_threshold(
             dataset=dataset,
             scores=scores,
@@ -169,6 +174,9 @@ def process_dataset(
             system_scores=system_scores,
             system_labels=system_labels,
         )
+
+    if dataset == Datasets.SWAT:
+        system_predictions = (system_scores > thresholds).int()
 
     # Calculate metrics
     if torch.any(y == 1):
@@ -182,6 +190,7 @@ def process_dataset(
             range_metrics_alpha=predict_params["range_metrics_alpha"],
             system_scores=system_scores,
             system_labels=system_labels,
+            system_predictions=system_predictions,
         )
     else:
         metrics = None
@@ -252,7 +261,7 @@ def process_dataset(
             )
         )
 
-    if dataset == Datasets.TELCO:
+    if dataset == Datasets.TELCO or dataset == Datasets.UTE:
         scores_single = scores.flatten()
         y_single = y.flatten()
     elif dataset == Datasets.SWAT:
@@ -420,9 +429,10 @@ def predict(
             predict_params=params["predictor_params"],
             initial_window_size=initial_window_size,
         )
-        if thresholds is None:
-            thresholds = output_dict["thresholds"]
-        return_dict[dataset_split] = output_dict
+        if output_dict is not None:
+            if thresholds is None:
+                thresholds = output_dict["thresholds"]
+            return_dict[dataset_split] = output_dict
 
     return_dict = cast(PredictOutput, return_dict)
     return return_dict

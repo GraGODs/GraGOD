@@ -1,0 +1,45 @@
+env_params:
+  random_seed: 42
+
+train_params:
+  test_size: 0.1
+  val_size: 0.1
+  model_name: "gcn"
+  clean: "drop"
+  log_dir: "test_ute_random_graph"
+  interpolate_method: null
+  shuffle: true
+  batch_size: 128
+  n_workers: 0
+  init_lr: 0.001
+  n_epochs: 200
+  log_every_n_steps: 1
+  ckpt_path_resume: null
+  weight_decay: 0.00001
+  eps: 0.00000001
+  betas: [0.9, 0.999]
+  down_len: 10
+
+model_params:
+  window_size: 55
+  n_layers: 1
+  hidden_dim: 832
+  K: 3
+  edge_index_path: "datasets_files/ute/edge_index_random.pt"
+  
+predictor_params:
+  post_process_scores: true
+  n_thresholds: 1000
+  window_size_smooth: 5
+  dataset_for_threshold: "train"
+  range_based: false
+  range_metrics_alpha: 0.5
+  min_precision: 0.0
+  
+  score_type: "abs"
+  ckpt_folder: "test_ute_random_graph/gcn/version_0"
+
+optimization_params:
+  study_name: "gcn_optimization_ute"
+  n_trials: 100
+  metric: "vus_pr_mean"

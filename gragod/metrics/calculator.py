@@ -577,6 +577,7 @@ def get_metrics_and_save(
     range_metrics_alpha: float,
     system_scores: torch.Tensor | None = None,
     system_labels: torch.Tensor | None = None,
+    system_predictions: torch.Tensor | None = None,
 ):
     metrics = get_metrics(
         dataset=dataset,
@@ -586,6 +587,7 @@ def get_metrics_and_save(
         range_metrics_alpha=range_metrics_alpha,
         system_scores=system_scores,
         system_labels=system_labels,
+        system_predictions=system_predictions,
     )
     print_all_metrics(metrics, f"------- {dataset_split.capitalize()} -------")
     json.dump(

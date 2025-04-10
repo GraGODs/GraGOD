@@ -203,7 +203,7 @@ def plot_score_histograms_grid_telco(
         else None
     )
     num_classes = scores.shape[1]
-    num_rows = 4
+    num_rows = num_classes // 3
     num_cols = 3
     fig, axes = plt.subplots(num_rows, num_cols, figsize=(20, 15))
     axes = axes.flatten()

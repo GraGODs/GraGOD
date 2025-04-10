@@ -9,8 +9,8 @@ fi
 DATASET=$1
 
 # Validate dataset choice
-if [[ "$DATASET" != "telco" && "$DATASET" != "swat" ]]; then
-    echo "Invalid dataset. Choose 'telco' or 'swat'"
+if [[ "$DATASET" != "telco" && "$DATASET" != "swat" && "$DATASET" != "ute" ]]; then
+    echo "Invalid dataset. Choose 'telco', 'swat' or 'ute'"
     exit 1
 fi
 

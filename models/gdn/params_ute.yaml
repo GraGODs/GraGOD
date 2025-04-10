@@ -1,0 +1,52 @@
+model_params:
+  window_size: 55
+  embed_dim: 96
+  out_layer_num: 1
+  out_layer_inter_dim: 896
+  topk: 10
+  heads: 2
+  dropout: 0.1
+  negative_slope: 0.2
+  learn_graph: true
+  edge_index_path: "datasets_files/ute/edge_index_random.pt"
+
+train_params:
+  shuffle: true
+  model_name: "gdn"
+  batch_size: 32
+  n_epochs: 200
+  val_size: 0.1
+  init_lr: 0.001
+  clean: "drop"
+  log_dir: "test_ute_random_graph"
+  n_workers: 0
+  test_size: 0.1
+  log_every_n_steps: 1
+  interpolate_method: null
+  weight_decay: 0
+  eps: 0.00000001
+  betas: [0.9, 0.99]
+  monitor: "Loss/val"
+  monitor_mode: "min"
+  early_stop_patience: 10
+  early_stop_delta: 0.0001
+  save_top_k: 1
+  down_len: 10
+
+predictor_params:
+  post_process_scores: false
+  n_thresholds: 1000
+  window_size_smooth: 5
+  dataset_for_threshold: "train"
+  range_based: false
+  range_metrics_alpha: 0.5
+  min_precision: 0.0
+  
+  score_type: "mse"
+  ckpt_folder: "test_ute_random_graph/gdn/version_0"
+
+
+optimization_params:
+  study_name: "gdn_optimization_ute"
+  n_trials: 100
+  metric: "vus_pr_mean"
