@@ -78,29 +78,6 @@ def load_training_data(
     Returns:
         The training, validation and test data as torch tensors.
     """
-    # TODO:
-    # - Fix datasets loading path
-    # - Load all services in Miahela
-
-    # if dataset == "mihaela":
-    #     from datasets.mihaela import load_mihaela_service_training_data
-
-    #     X, Y = load_mihaela_service_training_data(
-    #         service_name="Clash_of_Clans",
-    #         normalize=normalize,
-    #         clean=clean,
-    #         interpolate_method=interpolate_method,
-    #     )
-
-    #     return _split_train_val_test(
-    #         X=X,
-    #         Y=Y,
-    #         test_size=test_size,
-    #         val_size=val_size,
-    #         shuffle=shuffle,
-    #         random_state=random_state,
-    #     )
-
     if dataset == Datasets.SWAT:
         return load_swat_training_data(
             normalize=normalize,
