@@ -1,14 +1,13 @@
-import os
 from collections import defaultdict
-from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import tabulate
 import torch
+from matplotlib.axes import Axes
 
-from gragod.types import Datasets
+from gragod.predictions.prediction import get_system_scores
 from gragod.utils import count_anomaly_ranges
 
 
@@ -145,15 +144,67 @@ def get_metrics_mean(metrics: dict):
     return metrics_mean
 
 
+def plot_score_histograms(
+    scores: torch.Tensor,
+    labels: torch.Tensor,
+    thresholds: dict[str, torch.Tensor] | None = None,
+    plot_legend: bool = True,
+    use_ranged_anomalies: bool = False,
+    title: str | None = None,
+    save_path: str | None = None,
+    grid_title: str | None = None,
+    titles: list[str] | None = None,
+    num_cols: int = 3,
+):
+    """
+    Plot a histogram of anomaly scores for a single feature.
+
+    It plots a single histogram or a grid depending on the shape of the labels tensor
+
+    Args:
+        scores: Tensor of anomaly scores
+        labels: Tensor of ground truth labels (0 for normal, 1 for anomalous)
+        thresholds: Dictionary with threshold name as key and threshold value as tensor
+        plot_legend: Whether to plot the legend
+        use_ranged_anomalies: Whether to use the maximum score within each anomaly range
+        title: Title of the plot
+        save_path: Path to save the figure
+        grid_title: Title of the grid
+        titles: List of titles for each subplot
+        num_cols: Number of columns in the grid
+    """
+    if labels.ndim == 1 or labels.shape[1] == 1:
+        return plot_single_score_histogram(
+            scores=get_system_scores(scores, "mean"),
+            labels=labels.squeeze(),
+            thresholds=thresholds,
+            plot_legend=plot_legend,
+            use_ranged_anomalies=use_ranged_anomalies,
+            title=title,
+            save_path=save_path,
+        )
+    else:
+        return plot_grid_score_histograms(
+            scores=scores,
+            labels=labels,
+            thresholds=thresholds,
+            plot_legend=plot_legend,
+            use_ranged_anomalies=use_ranged_anomalies,
+            grid_title=grid_title,
+            titles=titles,
+            num_cols=num_cols,
+            save_path=save_path,
+        )
+
+
 def plot_single_score_histogram(
     scores: torch.Tensor,
     labels: torch.Tensor,
-    metrics: dict | None = None,
-    use_ranged_anomalies=False,
-    model_name: str = "GRU",
-    dataset_name: str = "Telco",
-    threshold: float | None = None,
-    legend: bool = False,
+    thresholds: dict[str, torch.Tensor] | None = None,
+    plot_legend: bool = True,
+    use_ranged_anomalies: bool = False,
+    title: str | None = None,
+    save_path: str | None = None,
 ):
     """
     Plot a histogram of anomaly scores for a single feature.
@@ -161,48 +212,175 @@ def plot_single_score_histogram(
     Args:
         scores: Tensor of anomaly scores
         labels: Tensor of ground truth labels (0 for normal, 1 for anomalous)
-        metrics: Optional dictionary of metrics to display on the plot
+        thresholds: Dictionary with threshold name as key and threshold value as tensor
+        plot_legend: Whether to plot the legend
         use_ranged_anomalies: Whether to use the maximum score within each anomaly range
-        model_name: Name of the model for the plot title
-        dataset_name: Name of the dataset for the plot title
+        title: Title of the plot
+        save_path: Path to save the figure
 
     Returns:
         Matplotlib figure object containing the histogram
     """
-    fig, ax = plt.subplots(figsize=(10, 5))
+    scores = scores.squeeze()
+    if scores.ndim not in [0, 1]:
+        raise ValueError(f"Scores must be 1D, got shape: {scores.shape}")
 
-    # Convert to numpy arrays
-    scores_np = scores.clone().numpy()
-    labels_np = labels.clone().numpy()
+    fig, ax = plt.subplots(figsize=(10, 8))
+    _plot_histogram_on_axis(
+        ax=ax,
+        scores=scores.clone().numpy(),
+        labels=labels.clone().numpy(),
+        use_ranged_anomalies=use_ranged_anomalies,
+        plot_legend=plot_legend,
+        thresholds=thresholds,
+        feature_idx=None,
+    )
 
-    # Handle negative scores
-    min_score = np.min(scores_np)
-    if min_score < 0:
-        offset = np.abs(min_score) + 0.0001
-        scores_np += offset
+    if title:
+        ax.set_title(f"{title}")
 
-    # Get updated score range after adjustment
-    min_score = np.min(scores_np)
-    max_score = np.max(scores_np)
+    ax.set_xlabel("Score", fontsize=20)
+    ax.set_ylabel("Number of Samples (log scale)", fontsize=20)
+    ax.tick_params(axis="both", labelsize=20)
 
-    # Split scores
-    anomalous_scores = scores_np[labels_np == 1]
-    normal_scores = scores_np[labels_np == 0]
+    if save_path:
+        plt.savefig(save_path, dpi=1200, bbox_inches="tight")
+    return fig
 
-    if use_ranged_anomalies:
+
+def plot_grid_score_histograms(
+    scores: torch.Tensor,
+    labels: torch.Tensor,
+    thresholds: dict[str, torch.Tensor] | None = None,
+    plot_legend: bool = True,
+    use_ranged_anomalies: bool = False,
+    grid_title: str | None = None,
+    titles: list[str] | None = None,
+    num_cols: int = 3,
+    save_path: str | None = None,
+):
+    """
+    Plot a grid of histograms for Telco dataset features.
+
+    Args:
+        scores: Tensor of anomaly scores with shape (n_samples, n_features)
+        labels: Tensor of ground truth labels with shape (n_samples, n_features)
+        thresholds: Tensor of thresholds for each feature
+        plot_legend: Whether to plot the legend
+        use_ranged_anomalies: Whether to use the maximum score within each anomaly range
+        grid_title: Title for the entire grid
+        titles: List of titles for each subplot
+        num_cols: Number of columns in the grid
+        save_path: Path to save the figure
+
+    Returns:
+        Matplotlib figure object containing the grid of histograms
+    """
+    if thresholds:
+        for threshold_name, threshold_values in thresholds.items():
+            if threshold_values.shape[0] != scores.shape[1]:
+                raise ValueError(
+                    "Threshold length must have the same as the feature number"
+                    f"\nGot {threshold_values.shape[0]} and {scores.shape[1]}"
+                )
+
+    if titles:
+        if len(titles) != scores.shape[1]:
+            raise ValueError(
+                f"""Titles must have the same number of features as the scores\n\
+                Got {len(titles)} and {scores.shape[1]}"""
+            )
+
+    num_classes = scores.shape[1]
+    num_rows = (num_classes + num_cols - 1) // num_cols
+    subplot_size = (8, 6)
+    fig, axes = plt.subplots(
+        num_rows,
+        num_cols,
+        figsize=(subplot_size[0] * num_cols, subplot_size[1] * num_rows),
+    )
+    axes = axes.flatten()
+
+    for i in range(num_classes):
+        ax = axes[i]
+        scores_class = scores[:, i].clone().numpy()
+        labels_class = labels[:, i].clone().numpy()
+
+        _plot_histogram_on_axis(
+            ax=ax,
+            scores=scores_class,
+            labels=labels_class,
+            use_ranged_anomalies=use_ranged_anomalies,
+            plot_legend=plot_legend,
+            thresholds=thresholds,
+            feature_idx=i,
+        )
+
+        ax.tick_params(axis="both", labelsize=20)
+
+        # Only add x-axis label to bottom row
+        if i >= num_classes - num_cols:
+            ax.set_xlabel("Score", fontsize=20)
+
+        # Only add y-axis label to leftmost column
+        if i % num_cols == 0:
+            ax.set_ylabel("Number of Samples (log scale)", fontsize=20)
+
+        if titles:
+            ax.set_title(titles[i], fontsize=20)
+
+    # Hide unused axes
+    for j in range(num_classes, len(axes)):
+        axes[j].set_visible(False)
+
+    if grid_title:
+        fig.suptitle(grid_title, fontsize=20)
+    plt.tight_layout()
+    if save_path:
+        plt.savefig(save_path, dpi=1200, bbox_inches="tight")
+    return fig
+
+
+def _plot_histogram_on_axis(
+    ax: Axes,
+    scores: np.ndarray,
+    labels: np.ndarray,
+    use_ranged_anomalies: bool = False,
+    plot_legend: bool = True,
+    thresholds: dict[str, torch.Tensor] | None = None,
+    feature_idx: int | None = None,
+):
+    """
+    Helper function to plot histogram on a given axis.
+
+    Args:
+        ax: Matplotlib axis to plot on
+        scores: Numpy array of scores
+        labels: Numpy array of labels
+        use_ranged_anomalies: Whether to use the maximum score within each anomaly range
+        plot_legend: Whether to plot the legend
+        thresholds: Dictionary with threshold name as key and threshold value as tensor
+        feature_idx: Index of the feature being plotted (for multi-feature thresholds)
+    """
+    anomalous_scores = scores[labels == 1]
+    normal_scores = scores[labels == 0]
+
+    if use_ranged_anomalies and len(anomalous_scores) > 0:
         max_anomalous_scores = []
-        anomaly_ranges = count_anomaly_ranges(pd.DataFrame(labels_np))
+        anomaly_ranges = count_anomaly_ranges(pd.DataFrame(labels))
         for anomaly_range in anomaly_ranges:
             for start, end in zip(
                 anomaly_range["start_times"], anomaly_range["end_times"]
             ):
                 max_anomalous_scores.extend(
-                    [np.max(scores_np[start:end])] * len(scores_np[start:end])
+                    [np.max(scores[start:end])] * len(scores[start:end])
                 )
         anomalous_scores = max_anomalous_scores
 
-    # Create bins based on adjusted scores
-    bin_edges = np.linspace(min_score, max_score, num=30)
+    min_score = np.min(scores)
+    max_score = np.max(scores)
+
+    bin_edges = np.linspace(min_score, max_score, num=30).tolist()
 
     ax.hist(
         normal_scores,
@@ -210,8 +388,8 @@ def plot_single_score_histogram(
         alpha=0.9,
         label="Normal",
         color="springgreen",
-        log=True,
         edgecolor="black",
+        log=True,
     )
     ax.hist(
         anomalous_scores,
@@ -223,236 +401,32 @@ def plot_single_score_histogram(
         edgecolor="black",
     )
 
-    if threshold:
-        ax.axvline(threshold, color="blue", linestyle="--", label="Threshold")
-    # ax.set_xscale("log")
-    if legend:
-        ax.legend(title="Label", fontsize=15, title_fontsize=15, loc="upper left")
+    # Define a list of colors for different thresholds
+    colors = [
+        "blue",
+        "red",
+        "green",
+        "purple",
+        "orange",
+        "brown",
+        "magenta",
+        "cyan",
+    ]
 
-    ax.set_title(f"{model_name} - {dataset_name} - Histogram of Anomaly Scores")
-    ax.set_xlabel("Anomaly Score (log scale)", fontsize=16)
-    ax.set_ylabel("Number of Samples (log scale)", fontsize=16)
-    ax.legend(title="Label", fontsize=15, title_fontsize=15, loc="upper left")
-
-    # Add metrics if provided
-    if metrics:
-        metrics_mean = get_metrics_mean(metrics)
-        metrics_text = "\n".join([f"{k}: {v:.2f}" for k, v in metrics_mean.items()])
-        ax.text(
-            0.02,
-            0.77,
-            metrics_text,
-            transform=ax.transAxes,
-            fontsize=8,
-            bbox=dict(facecolor="white", alpha=0.5),
-        )
-
-    return fig
-
-
-def plot_score_histograms_grid_telco(
-    scores: torch.Tensor,
-    labels: torch.Tensor,
-    thresholds: torch.Tensor,
-    metrics: dict | None = None,
-    use_ranged_anomalies: bool = False,
-    log_axis: bool = True,
-):
-    """
-    Plot a grid of histograms for Telco dataset features.
-
-    Args:
-        scores: Tensor of anomaly scores with shape (n_samples, n_features)
-        labels: Tensor of ground truth labels with shape (n_samples, n_features)
-        thresholds: Tensor of thresholds for each feature
-        metrics: Optional dictionary of metrics to display on the plots
-        use_ranged_anomalies: Whether to use the maximum score within each anomaly range
-        log_axis: Whether to use logarithmic scale for the x-axis
-
-    Returns:
-        Matplotlib figure object containing the grid of histograms
-    """
-    scores
-    metrics_per_class = (
-        get_metrics_per_class(metrics=metrics, n_classes=scores.shape[1])
-        if metrics is not None
-        else None
-    )
-    num_classes = scores.shape[1]
-    num_rows = 4
-    num_cols = 3
-    fig, axes = plt.subplots(num_rows, num_cols, figsize=(20, 15))
-    axes = axes.flatten()
-
-    for i in range(num_classes):
-        ax = axes[i]
-        scores_class = scores[:, i].clone().numpy()
-        labels_class = labels[:, i].clone().numpy()
-        threshold_class = thresholds[i].clone()
-
-        min_score = np.min(scores_class)
-        if min_score:
-            scores_class = scores_class + np.abs(min_score) + 0.0001
-            threshold_class = threshold_class + np.abs(min_score) + 0.0001
-
-        anomalous_scores = scores_class[labels_class == 1]
-        normal_scores = scores_class[labels_class == 0]
-        if anomalous_scores.size == 0:
-            continue
-
-        if use_ranged_anomalies:
-            max_anomalous_scores = []
-            anomaly_ranges = count_anomaly_ranges(pd.DataFrame(labels_class))
-            for anomaly_range in anomaly_ranges:
-                for start, end in zip(
-                    anomaly_range["start_times"], anomaly_range["end_times"]
-                ):
-                    max_anomalous_scores.extend(
-                        [np.max(scores_class[start:end])] * len(scores_class[start:end])
-                    )
-            anomalous_scores = max_anomalous_scores
-            min_val = min(np.min(normal_scores), np.min(max_anomalous_scores))
-            max_val = max(np.max(normal_scores), np.max(max_anomalous_scores))
-
-        else:
-            min_val = min(np.min(normal_scores), np.min(anomalous_scores))
-            max_val = max(np.max(normal_scores), np.max(anomalous_scores))
-
-        # Handle negative values by using linear spacing when needed
-        if log_axis:
-            bin_edges = np.logspace(np.log10(min_val), np.log10(max_val), num=30)
-        else:
-            bin_edges = np.linspace(min_val, max_val, num=30)
-
-        ax.hist(
-            normal_scores,
-            bins=bin_edges,
-            alpha=0.9,
-            label="Normal",
-            color="springgreen",
-            log=True,
-            edgecolor="black",
-        )
-        ax.hist(
-            anomalous_scores,
-            bins=bin_edges,
-            alpha=0.7,
-            label="Anomalous",
-            color="salmon",
-            log=True,
-            edgecolor="black",
-        )
-
-        # ax.set_xlabel("Anomaly Score (log scale)", fontsize=10)
-        # ax.set_ylabel("Number of Samples (log scale)", fontsize=10)
-        ax.set_title(f"TS{i+1}", fontsize=20)
-        ax.axvline(threshold_class, color="blue", linestyle="--", label="Threshold")
-
-        # Display metrics on the plot
-        if metrics_per_class:
-            metrics_text = "\n".join(
-                [f"{k}: {v:.2f}" for k, v in metrics_per_class[i].items()]
-            )
-            ax.text(
-                0.02,
-                0.77,
-                metrics_text,
-                transform=ax.transAxes,
-                fontsize=8,
-                verticalalignment="top",
-                horizontalalignment="left",
-                bbox=dict(facecolor="white", alpha=0.5),
+    if thresholds:
+        for i, (threshold_name, threshold_value) in enumerate(thresholds.items()):
+            color = colors[i % len(colors)]
+            if feature_idx is not None:
+                threshold = threshold_value[feature_idx].item()
+            else:
+                threshold = threshold_value.item()
+            ax.axvline(
+                threshold,
+                color=color,
+                linestyle="--",
+                label=threshold_name,
+                linewidth=3,
             )
 
-        ax.legend(title="Label", fontsize=15, title_fontsize=15, loc="upper left")
-        ax.set_xscale("log" if log_axis else "linear")
-
-    # Hide unused axes
-    for j in range(num_classes, len(axes)):
-        axes[j].set_visible(False)
-
-    plt.tight_layout()
-    # plt.show()
-    return fig
-
-
-def save_histograms(
-    scores: torch.Tensor,
-    y: torch.Tensor,
-    thresholds: torch.Tensor,
-    dataset: Datasets,
-    dataset_split: str,
-    model_name: str,
-    save_metrics_dir: Path,
-):
-    """
-    Save histograms of anomaly scores to files.
-
-    Args:
-        scores: Tensor of anomaly scores
-        y: Tensor of ground truth labels
-        thresholds: Tensor of thresholds for each feature
-        dataset: Dataset enum value
-        dataset_split: String indicating the dataset split (train/val/test)
-        model_name: Name of the model
-        save_metrics_dir: Directory path to save the plots
-    """
-    save_plots_dir = os.path.join(save_metrics_dir, "plots")
-    os.makedirs(save_plots_dir, exist_ok=True)
-    if dataset == Datasets.TELCO:
-        fig_1 = plot_score_histograms_grid_telco(
-            scores=scores,
-            labels=y,
-            thresholds=thresholds,
-            use_ranged_anomalies=False,
-        )
-        fig_2 = plot_score_histograms_grid_telco(
-            scores=scores,
-            labels=y,
-            thresholds=thresholds,
-            use_ranged_anomalies=True,
-        )
-        fig_1.savefig(
-            os.path.join(
-                save_plots_dir,
-                f"{dataset_split}_{model_name.lower()}_{dataset.value.lower()}"
-                + "_score_histograms.png",
-            )
-        )
-        fig_2.savefig(
-            os.path.join(
-                save_plots_dir,
-                f"{dataset_split}_{model_name.lower()}_{dataset.value.lower()}"
-                + "_score_histograms_with_ranges.png",
-            )
-        )
-
-    fig_1 = plot_single_score_histogram(
-        scores=scores.flatten(),
-        labels=y.flatten(),
-        use_ranged_anomalies=False,
-        model_name=model_name,
-        dataset_name=dataset.value,
-    )
-    fig_2 = plot_single_score_histogram(
-        scores=scores.flatten(),
-        labels=y.flatten(),
-        use_ranged_anomalies=True,
-        model_name=model_name,
-        dataset_name=dataset.value,
-    )
-
-    fig_1.savefig(
-        os.path.join(
-            save_plots_dir,
-            f"{dataset_split}_{model_name.lower()}_{dataset.value.lower()}"
-            + "_score_histogram_single.png",
-        )
-    )
-    fig_2.savefig(
-        os.path.join(
-            save_plots_dir,
-            f"{dataset_split}_{model_name.lower()}_{dataset.value.lower()}"
-            + "_score_histogram_single_with_ranges.png",
-        )
-    )
+    if plot_legend:
+        ax.legend(fontsize=20, loc="upper right")
