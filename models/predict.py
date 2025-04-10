@@ -174,7 +174,10 @@ def process_dataset(
         )
         raise AssertionError("Shape mismatch between y and reconstruction")
 
-    if thresholds is None:
+    calculate_threshold = (
+        thresholds is None or predict_params["threshold_method"] == "mse_dynamic"
+    )
+    if calculate_threshold:
         thresholds = get_thresholds(
             dataset=dataset,
             scores=scores,
