@@ -2,6 +2,7 @@
 from gragod.start_research import *
 from datasets.swat import load_swat_df
 from datasets.telco import load_telco_df
+from gragod.metrics.visualization import generate_metrics_table
 
 dataset_name = "swat"
 
@@ -31,10 +32,10 @@ from gragod.predictions.threshold_calculator import get_thresholds
 import tabulate
 
 
-N_THRESHOLDS = 10
-# models = ["gdn", "gcn", "mtad_gat", "gru"]
-models = ["gcn"]
+N_THRESHOLDS = 1000
+models = ["gdn", "gcn", "mtad_gat", "gru"]
 version = "version_0"
+plot_legend = True
 for model in models:
     path_to_model = (
         f"/home/fbello/GraGOD/output/benchmark/{dataset_name}/{model}/{version}"
@@ -47,7 +48,7 @@ for model in models:
     test_data = torch.load(predictions_path + f"/test_{model}_{dataset_name}_data.pt")
     test_labels = torch.load(
         predictions_path + f"/test_{model}_{dataset_name}_labels.pt"
-    )
+    ).int()
     test_scores = torch.load(
         predictions_path + f"/test_{model}_{dataset_name}_scores.pt"
     )
@@ -66,64 +67,122 @@ for model in models:
         predictions_path + f"/val_{model}_{dataset_name}_output.pt"
     )
 
-    val_system_scores = torch.mean(val_scores, dim=1)
-    test_system_scores = torch.mean(test_scores, dim=1)
-
-    dynamic_threshold_val = get_thresholds(
-        dataset=cast_dataset(dataset_name),
-        scores=val_scores,
-        labels=val_labels,
-        method="mse_dynamic",
-        n_thresholds=N_THRESHOLDS,
-        range_based=False,
-        range_metrics_alpha=0.5,
-        window_size=100,
-        system_output_mode="mean",
+    train_scores = torch.load(
+        predictions_path + f"/train_{model}_{dataset_name}_scores.pt"
     )
+    train_labels = torch.load(
+        predictions_path + f"/train_{model}_{dataset_name}_labels.pt"
+    ).int()
 
-    print(f"Shape of dynamic_threshold_val: {dynamic_threshold_val.shape}")
+    val_system_scores = get_system_scores(val_scores, "mean").squeeze()
+    test_system_scores = get_system_scores(test_scores, "mean").squeeze()
 
-    f1_optimized_threshold_val = get_thresholds(
-        dataset=cast_dataset(dataset_name),
-        scores=val_scores,
-        labels=val_labels,
-        method="f1_optimize",
-        n_thresholds=N_THRESHOLDS,
-        range_based=False,
-        range_metrics_alpha=0.5,
-        system_output_mode="mean",
-    )
+    # Define threshold methods and their parameters
+    threshold_methods = {
+        "Dynamic Threshold": {
+            "method": "mse_dynamic",
+            "scores": test_scores,
+            "labels": test_labels,
+            "window_size": 100 if dataset_name == "telco" else 30,
+            "k": 2 if dataset_name == "telco" else 1,
+        },
+        "F1 Optimized": {
+            "method": "f1_optimize",
+            "scores": val_scores,
+            "labels": val_labels,
+        },
+        "Otsu": {
+            "method": "otsu",
+            "scores": val_scores,
+            "labels": val_labels,
+        },
+        "GMM": {
+            "method": "gmm",
+            "scores": val_scores,
+            "labels": val_labels,
+        },
+    }
 
-    print(f"Shape of f1_optimized_threshold_val: {f1_optimized_threshold_val.shape}")
+    # Calculate all thresholds
+    all_thresholds = {}
+    for name, params in threshold_methods.items():
+        # Set default parameters
+        method_params = {
+            "dataset": cast_dataset(dataset_name),
+            "n_thresholds": N_THRESHOLDS,
+            "range_based": True,
+            "range_metrics_alpha": 0.5,
+            "system_output_mode": "mean",
+        }
+        # Add method-specific parameters
+        method_params.update(params)
 
-    otsu_threshold_val = get_thresholds(
-        dataset=cast_dataset(dataset_name),
-        scores=val_scores,
-        labels=val_labels,
-        method="otsu",
-        n_thresholds=N_THRESHOLDS,
-        range_based=False,
-        range_metrics_alpha=0.5,
-        system_output_mode="mean",
-    )
-    print(f"Values of otsu_threshold_val: {otsu_threshold_val}")
-    print(f"Shape of otsu_threshold_val: {otsu_threshold_val.shape}")
+        # Calculate threshold
+        all_thresholds[name] = get_thresholds(**method_params)
 
-    gmm_threshold_val = get_thresholds(
-        dataset=cast_dataset(dataset_name),
-        scores=val_scores,
-        labels=val_labels,
-        method="gmm",
-        n_thresholds=N_THRESHOLDS,
-        range_based=False,
-        range_metrics_alpha=0.5,
-        system_output_mode="mean",
-    )
+    all_metrics = []
 
-    print(f"Values of gmm_threshold_val: {gmm_threshold_val}")
-    print(f"Shape of gmm_threshold_val: {gmm_threshold_val.shape}")
+    for name, threshold in all_thresholds.items():
+        if not dataset_name == "telco":
+            test_predictions = (test_system_scores > threshold.squeeze()).int()
+        metrics = (
+            get_metrics(
+                dataset=cast_dataset(dataset_name),
+                range_metrics_alpha=0.5,
+                predictions=(test_scores > threshold).int(),
+                labels=test_labels,
+                scores=test_scores,
+            )
+            if dataset_name == "telco"
+            else get_metrics(
+                dataset=cast_dataset(dataset_name),
+                range_metrics_alpha=0.5,
+                system_predictions=test_predictions,
+                system_labels=test_labels.squeeze(),
+                system_scores=test_system_scores,
+            )
+        )
+        # Remove all VUS metrics
+        for key in list(metrics.keys()):
+            if key.startswith("vus") or key.startswith("custom"):
+                metrics.pop(key)
+        metrics_table = generate_metrics_table(metrics)
+        print(f"Method: {name}, model: {model}")
+        print(metrics_table)
 
-    # plot_single_score_histogram(
-    #     scores=get_system_scores(val_scores, "mean"),
-    #     labels=val_labels,
-    # )
+    all_thresholds.pop("Dynamic Threshold")
+    if dataset_name == "swat":
+        fig_test = plot_single_score_histogram(
+            scores=test_system_scores,
+            labels=test_labels.squeeze(),
+            thresholds=all_thresholds,
+            model_name=model,
+            dataset_name=dataset_name,
+            plot_legend=plot_legend,
+        )
+        fig_val = plot_single_score_histogram(
+            scores=val_system_scores,
+            labels=val_labels.squeeze(),
+            thresholds=all_thresholds,
+            model_name=model,
+            dataset_name=dataset_name,
+            plot_legend=plot_legend,
+        )
+        fig_test.savefig(
+            f"/home/fbello/GraGOD/output/benchmark/figures/test_histogram_{model}_{dataset_name}_test_threshold.pdf",
+            dpi=1200,
+            bbox_inches="tight",
+        )
+        fig_val.savefig(
+            f"/home/fbello/GraGOD/output/benchmark/figures/val_histogram_{model}_{dataset_name}.pdf",
+            dpi=1200,
+            bbox_inches="tight",
+        )
+        plot_legend = False
+    else:
+        plot_score_histograms_grid_telco(
+            scores=torch.cat([val_scores, train_scores]),
+            labels=torch.cat([val_labels, train_labels]),
+            thresholds=all_thresholds,
+        )
+# %%
