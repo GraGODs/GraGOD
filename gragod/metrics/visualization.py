@@ -1,6 +1,5 @@
 from collections import defaultdict
 from pathlib import Path
-from typing import Literal
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -156,7 +155,6 @@ def plot_score_histograms(
     grid_title: str | None = None,
     titles: list[str] | None = None,
     num_cols: int = 3,
-    system_output_mode: Literal["max", "mean", "sum"] = "mean",
 ):
     """
     Plot a histogram of anomaly scores for a single feature.
@@ -174,7 +172,6 @@ def plot_score_histograms(
         grid_title: Title of the grid
         titles: List of titles for each subplot
         num_cols: Number of columns in the grid
-        system_output_mode: Mode for aggregating scores in system-level metrics
     """
     if labels.ndim == 1 or labels.shape[1] == 1:
         return plot_single_score_histogram(
