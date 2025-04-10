@@ -1,4 +1,5 @@
 from collections import defaultdict
+from pathlib import Path
 from typing import Literal
 
 import matplotlib.pyplot as plt
@@ -8,7 +9,6 @@ import tabulate
 import torch
 from matplotlib.axes import Axes
 
-from gragod.predictions.prediction import get_system_scores
 from gragod.utils import count_anomaly_ranges
 
 
@@ -152,7 +152,7 @@ def plot_score_histograms(
     plot_legend: bool = True,
     use_ranged_anomalies: bool = False,
     title: str | None = None,
-    save_path: str | None = None,
+    save_path: Path | None = None,
     grid_title: str | None = None,
     titles: list[str] | None = None,
     num_cols: int = 3,
@@ -178,7 +178,7 @@ def plot_score_histograms(
     """
     if labels.ndim == 1 or labels.shape[1] == 1:
         return plot_single_score_histogram(
-            scores=get_system_scores(scores, system_output_mode),
+            scores=scores,
             labels=labels.squeeze(),
             thresholds=thresholds,
             plot_legend=plot_legend,
@@ -207,7 +207,7 @@ def plot_single_score_histogram(
     plot_legend: bool = True,
     use_ranged_anomalies: bool = False,
     title: str | None = None,
-    save_path: str | None = None,
+    save_path: Path | None = None,
 ):
     """
     Plot a histogram of anomaly scores for a single feature.
@@ -260,7 +260,7 @@ def plot_grid_score_histograms(
     grid_title: str | None = None,
     titles: list[str] | None = None,
     num_cols: int = 3,
-    save_path: str | None = None,
+    save_path: Path | None = None,
 ):
     """
     Plot a grid of histograms for Telco dataset features.
