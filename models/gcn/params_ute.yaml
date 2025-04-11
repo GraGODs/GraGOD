@@ -1,18 +1,15 @@
-env_params:
-  random_seed: 42
-
 train_params:
   test_size: 0.1
   val_size: 0.1
   model_name: "gcn"
   clean: "drop"
-  log_dir: "/dataslow/fbello/output/ute"
+  log_dir: "test_ute_random_graph"
   interpolate_method: null
   shuffle: true
   batch_size: 128
   n_workers: 0
   init_lr: 0.001
-  n_epochs: 2
+  n_epochs: 200
   log_every_n_steps: 1
   ckpt_path_resume: null
   weight_decay: 0.00001
@@ -21,14 +18,14 @@ train_params:
   down_len: 10
 
 model_params:
-  window_size: 10
-  n_layers: 3
-  hidden_dim: 64
+  window_size: 55
+  n_layers: 1
+  hidden_dim: 832
   K: 3
-  # edge_index_path: "datasets_files/swat/edge_index.pt"
+  edge_index_path: "datasets_files/ute/edge_index_random.pt"
   
 predictor_params:
-  ckpt_folder: "output/gcn/version_1"
+  ckpt_folder: "test_ute_random_graph/gcn/version_0"
   n_thresholds: 0
   window_size_smooth: 5
   post_process_scores: true

@@ -1,36 +1,42 @@
 model_params:
-  window_size: 16
-  hidden_size: 64
-  n_layers: 1
-  bidirectional: true
-  rnn_dropout: 0.3
-  fc_dropout: 0.3
+  window_size: 50
+  kernel_size: 1
+  use_gatv2: false
+  feat_gat_embed_dim: null
+  time_gat_embed_dim: null
+  gru_n_layers: 3
+  gru_hid_dim: 32
+  forecast_n_layers: 3
+  forecast_hid_dim: 256
+  recon_n_layers: 3
+  recon_hid_dim: 256
+  dropout: 0.3
+  alpha: 0.02
+  edge_index_path: "datasets_files/ute/edge_index_random.pt"
   
 train_params:
-  model_name: "gru"
-  n_epochs: 50
-  batch_size: 32
+  model_name: "mtad_gat"
+  n_epochs: 200
+  batch_size: 4
   init_lr: 0.001
   target_dims: null
   n_workers: 0
-  log_dir: "/dataslow/fbello/output/ute/"
+  log_dir: "test_ute_random_graph"
   log_every_n_steps: 1
   test_size: 0.1
   val_size: 0.1
   shuffle: true
   clean: "drop"
   interpolate_method: null
+  horizon: 1
   weight_decay: 0.00001
   eps: 0.00000001
   betas: [0.9, 0.999]
-  horizon: 1
   down_len: 10
-  early_stop_patience: 10
-  early_stop_delta: 0.000001
 
 predictor_params:
   n_thresholds: 0
-  ckpt_folder: "output/gru/version_0/"
+  ckpt_folder: "test_ute_random_graph/gru/version_0/"
   window_size_smooth: 5
   post_process_scores: false
   score_type: "mse"

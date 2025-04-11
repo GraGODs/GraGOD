@@ -1,12 +1,24 @@
+model_params:
+  window_size: 55
+  embed_dim: 96
+  out_layer_num: 1
+  out_layer_inter_dim: 896
+  topk: 10
+  heads: 2
+  dropout: 0.1
+  negative_slope: 0.2
+  learn_graph: true
+  edge_index_path: "datasets_files/ute/edge_index_random.pt"
+
 train_params:
   shuffle: true
   model_name: "gdn"
   batch_size: 32
-  n_epochs: 50
+  n_epochs: 200
   val_size: 0.1
   init_lr: 0.001
   clean: "drop"
-  log_dir: "/dataslow/fbello/output/ute/"
+  log_dir: "test_ute_random_graph"
   n_workers: 0
   test_size: 0.1
   log_every_n_steps: 1
@@ -21,26 +33,8 @@ train_params:
   save_top_k: 1
   down_len: 10
 
-model_params:
-  window_size: 205
-  embed_dim: 128
-  out_layer_num: 1
-  out_layer_inter_dim: 512
-  topk: 20
-  heads: 1
-  dropout: 0.1
-  negative_slope: 0.2
-  # edge_index_path: "datasets_files/swat/edge_index.pt"
-
-env_params:
-  save_path_pattern: ""
-  random_seed: 42
-  report: "best"
-  load_model_path: ""
-  save_path: "msl"
-
 predictor_params:
-  ckpt_folder: "output/gdn/version_0"
+  ckpt_folder: "test_ute_random_graph/gdn/version_0"
   n_thresholds: 0
   window_size_smooth: 5
   post_process_scores: false
