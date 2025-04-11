@@ -14,11 +14,8 @@ from gragod import CleanMethods, Datasets, Models, ParamFileTypes
 from gragod.metrics.calculator import get_metrics_and_save
 from gragod.metrics.visualization import save_histograms
 from gragod.models import get_model_and_module
-from gragod.predictions.prediction import (
-    get_system_scores,
-    get_threshold,
-    post_process_scores,
-)
+from gragod.predictions.prediction import get_system_scores, post_process_scores
+from gragod.predictions.threshold_calculator import get_thresholds
 from gragod.training import load_params, load_training_data, set_seeds
 from gragod.utils import load_checkpoint_path, set_device
 from models.schemas import DatasetPredictOutput, PredictOutput
@@ -177,11 +174,15 @@ def process_dataset(
         )
         raise AssertionError("Shape mismatch between y and reconstruction")
 
-    if thresholds is None:
-        thresholds = get_threshold(
+    calculate_threshold = (
+        thresholds is None or predict_params["threshold_method"] == "mse_dynamic"
+    )
+    if calculate_threshold:
+        thresholds = get_thresholds(
             dataset=dataset,
             scores=scores,
             labels=y,
+            method=predict_params["threshold_method"],
             n_thresholds=predict_params["n_thresholds"],
             range_based=predict_params["range_based"],
             system_output_mode=predict_params.get("system_output_mode", None),

@@ -38,7 +38,7 @@ predictor_params:
   dataset_for_threshold: "train"
   range_based: true
   range_metrics_alpha: 0.5
-
+  threshold_method: "f1_optimize"
   score_type: "abs"
   ckpt_folder: "output/gdn/version_0"
 

@@ -1,27 +1,27 @@
 model_params:
-  window_size: 16
-  kernel_size: 7
-  use_gatv2: true
+  window_size: 50
+  kernel_size: 1
+  use_gatv2: false
   feat_gat_embed_dim: null
   time_gat_embed_dim: null
-  gru_n_layers: 1
-  gru_hid_dim: 300
+  gru_n_layers: 3
+  gru_hid_dim: 32
   forecast_n_layers: 3
-  forecast_hid_dim: 300
-  recon_n_layers: 1
-  recon_hid_dim: 300
+  forecast_hid_dim: 256
+  recon_n_layers: 3
+  recon_hid_dim: 256
   dropout: 0.3
-  alpha: 0.2
-  # edge_index_path: "datasets_files/swat/edge_index.pt"
+  alpha: 0.02
+  edge_index_path: "datasets_files/ute/edge_index_random.pt"
   
 train_params:
   model_name: "mtad_gat"
-  n_epochs: 50
+  n_epochs: 200
   batch_size: 4
   init_lr: 0.001
   target_dims: null
   n_workers: 0
-  log_dir: "/dataslow/fbello/output/ute"
+  log_dir: "test_ute_random_graph"
   log_every_n_steps: 1
   test_size: 0.1
   val_size: 0.1
@@ -32,20 +32,20 @@ train_params:
   weight_decay: 0.00001
   eps: 0.00000001
   betas: [0.9, 0.999]
-  down_len: 10
 
 predictor_params:
   target_dims: null
   post_process_scores: true
   score_type: "mse"
-  ckpt_folder: "output/mtad_gat/version_2"
+  ckpt_folder: "test_ute_random_graph/mtad_gat/version_0"
   n_thresholds: 0
   epsilon: 0.8
   window_size_smooth: 5
   dataset_for_threshold: "val"
   range_based: false
   range_metrics_alpha: 0.5
-  
+  threshold_method: "f1_optimize"
+
 optimization_params:
   study_name: "mtad_gat_optimization_ute"
   n_trials: 100
