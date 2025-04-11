@@ -114,6 +114,8 @@ def plot_single_score_histogram(
     use_ranged_anomalies=False,
     model_name: str = "GRU",
     dataset_name: str = "Telco",
+    threshold: float | None = None,
+    legend: bool = False,
 ):
     fig, ax = plt.subplots(figsize=(10, 5))
 
@@ -148,7 +150,7 @@ def plot_single_score_histogram(
         anomalous_scores = max_anomalous_scores
 
     # Create bins based on adjusted scores
-    bin_edges = np.logspace(np.log10(min_score), np.log10(max_score), num=30)
+    bin_edges = np.linspace(min_score, max_score, num=30)
 
     ax.hist(
         normal_scores,
@@ -168,9 +170,11 @@ def plot_single_score_histogram(
         log=True,
         edgecolor="black",
     )
-    ax.set_xscale("log")
-    ax.set_title(f"{model_name}", fontsize=20)
-    ax.legend(title="Label", fontsize=15, title_fontsize=15, loc="upper left")
+    if threshold:
+        ax.axvline(threshold, color="blue", linestyle="--", label="Threshold")
+
+    if legend:
+        ax.legend(title="Label", fontsize=15, title_fontsize=15, loc="upper left")
     ax.tick_params(axis="both", which="major", labelsize=20)
 
     # Add metrics if provided
