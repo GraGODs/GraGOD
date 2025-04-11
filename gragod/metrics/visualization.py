@@ -152,6 +152,8 @@ def plot_single_score_histogram(
     use_ranged_anomalies=False,
     model_name: str = "GRU",
     dataset_name: str = "Telco",
+    threshold: float | None = None,
+    legend: bool = False,
 ):
     """
     Plot a histogram of anomaly scores for a single feature.
@@ -200,7 +202,7 @@ def plot_single_score_histogram(
         anomalous_scores = max_anomalous_scores
 
     # Create bins based on adjusted scores
-    bin_edges = np.logspace(np.log10(min_score), np.log10(max_score), num=30)
+    bin_edges = np.linspace(min_score, max_score, num=30)
 
     ax.hist(
         normal_scores,
@@ -220,7 +222,13 @@ def plot_single_score_histogram(
         log=True,
         edgecolor="black",
     )
-    ax.set_xscale("log")
+
+    if threshold:
+        ax.axvline(threshold, color="blue", linestyle="--", label="Threshold")
+    # ax.set_xscale("log")
+    if legend:
+        ax.legend(title="Label", fontsize=15, title_fontsize=15, loc="upper left")
+
     ax.set_title(f"{model_name} - {dataset_name} - Histogram of Anomaly Scores")
     ax.set_xlabel("Anomaly Score (log scale)", fontsize=16)
     ax.set_ylabel("Number of Samples (log scale)", fontsize=16)
