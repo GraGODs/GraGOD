@@ -70,7 +70,7 @@ class SystemThresholdCalculator(ThresholdCalculator):
             system_scores=self.system_scores,
         )
         if self.range_based:
-            precision = metrics.calculate_precision()
+            precision = metrics.calculate_range_based_precision()
             recall = metrics.calculate_range_based_recall(self.range_metrics_alpha)
             f1 = metrics.calculate_f1(precision, recall)
         else:
@@ -92,7 +92,7 @@ class SystemThresholdCalculator(ThresholdCalculator):
                 system_scores=self.system_scores,
             )
             if self.range_based:
-                precision = calculator.calculate_precision()
+                precision = calculator.calculate_range_based_precision()
                 recall = calculator.calculate_range_based_recall(
                     self.range_metrics_alpha
                 )
