@@ -15,7 +15,7 @@ GraGOD is a modern approach to time-series anomaly detection using GNN technique
 It is a PyTorch-based framework that provides a flexible and modular architecture for building and training GNN models for anomaly detection.
 The objective of this project is to facilitate the development and testing of new models and datasets for anomaly detection, providing a standard way to organize the code and the data.
 
-All this project is developed by [Federico Bello](https://github.com/federicobello) and [Gonzalo Chiarlone](https://github.com/gonzalochiarlone). 
+All this project is developed by [Federico Bello](https://github.com/fede-bello) and [Gonzalo Chiarlone](https://github.com/gonzachiar). 
 It's part of our thesis to get our Engineering Degree at [La Facultad de Ingenieria](https://www.fing.edu.uy/) de la [Universidad de la República](https://www.uru.edu.ar/).
 
 
