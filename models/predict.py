@@ -12,7 +12,7 @@ from datasets.dataset import get_data_loader
 from datasets.graph import get_edge_index
 from gragod import CleanMethods, Datasets, Models, ParamFileTypes
 from gragod.metrics.calculator import get_metrics_and_save
-from gragod.metrics.visualization import save_histograms
+from gragod.metrics.visualization import plot_score_histograms
 from gragod.models import get_model_and_module
 from gragod.predictions.prediction import get_system_scores, post_process_scores
 from gragod.predictions.threshold_calculator import get_thresholds
@@ -237,14 +237,11 @@ def process_dataset(
         torch.save(X_true, save_path + "_data.pt")
         torch.save(thresholds, save_path + "_thresholds.pt")
 
-        save_histograms(
+        plot_score_histograms(
             scores=system_scores if system_scores is not None else scores,
-            y=y,
-            thresholds=thresholds,
-            dataset=dataset,
-            dataset_split=dataset_split,
-            model_name=model_name,
-            save_metrics_dir=save_metrics_dir,
+            labels=y,
+            thresholds={"Threshold": thresholds},
+            save_path=save_metrics_dir,
         )
     output_dict: DatasetPredictOutput = {
         "output": output,
