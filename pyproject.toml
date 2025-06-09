@@ -36,7 +36,6 @@ openpyxl = "^3.1.5"
 scikit-image = "^0.25.2"
 
 [tool.poetry.group.dev.dependencies]
-temporian = "^0.9.0"
 pre-commit = "^3.5.0"
 black = "^22.8.0"
 flake8 = "^3.9.2"

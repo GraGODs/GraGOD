@@ -6,7 +6,6 @@ PathType = str | os.PathLike
 
 class Datasets(Enum):
     TELCO = "telco"
-    MIHAELA = "mihaela"
     SWAT = "swat"
     UTE = "ute"
 

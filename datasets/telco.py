@@ -34,38 +34,6 @@ def load_telco_df(
     return df_train, df_train_labels, df_val, df_val_labels, df_test, df_test_labels
 
 
-def load_telco_tp(base_path: str | os.PathLike = TELCOConfig.paths.base_path):
-    """
-    Load the TELCO datasets as Temporian EventSets from the given path.
-    Args:
-        base_path: The path where the datasets are stored.
-    Returns:
-        Tuple of EventSets for train, validation, and test datasets.
-    """
-    import temporian as tp
-
-    es_train = tp.from_csv(
-        os.path.join(base_path, "TELCO_data_train.csv"), timestamps="time"
-    )
-    es_label_train = tp.from_csv(
-        os.path.join(base_path, "TELCO_labels_train.csv"), timestamps="time"
-    )
-    es_val = tp.from_csv(
-        os.path.join(base_path, "TELCO_data_val.csv"), timestamps="time"
-    )
-    es_label_val = tp.from_csv(
-        os.path.join(base_path, "TELCO_labels_val.csv"), timestamps="time"
-    )
-    es_test = tp.from_csv(
-        os.path.join(base_path, "TELCO_data_test.csv"), timestamps="time"
-    )
-    es_label_test = tp.from_csv(
-        os.path.join(base_path, "TELCO_labels_test.csv"), timestamps="time"
-    )
-
-    return es_train, es_label_train, es_val, es_label_val, es_test, es_label_test
-
-
 def load_telco_training_data(
     base_path: str | os.PathLike = TELCOConfig.paths.base_path,
     normalize: bool = False,
