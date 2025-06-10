@@ -18,6 +18,7 @@ The objective of this project is to facilitate the development and testing of ne
 All this project is developed by [Federico Bello](https://github.com/fede-bello) and [Gonzalo Chiarlone](https://github.com/gonzachiar). 
 It's part of our thesis to get our Engineering Degree at [La Facultad de Ingenieria](https://www.fing.edu.uy/) de la [Universidad de la República](https://www.uru.edu.ar/).
 
+The full report of the thesis can be found [here](https://drive.google.com/file/d/1KDqJ-Aj0I6j4H31yq5r8k8wANs7Fj4D2/view)
 
 ## 📦 Installation
 
