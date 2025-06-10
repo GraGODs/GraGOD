@@ -21,6 +21,19 @@ It's part of our thesis to get our Engineering Degree at [La Facultad de Ingenie
 ## 📝 Report
 The full report of the thesis can be found [here](https://drive.google.com/file/d/1KDqJ-Aj0I6j4H31yq5r8k8wANs7Fj4D2/view)
 
+### Key insights
+
+### Test Results
+<img width="748" alt="Screenshot 2025-06-10 at 12 18 09 PM" src="https://github.com/user-attachments/assets/54b5da95-9452-478f-92a3-c589c74b63b5" />
+
+### Anomaly scores distributions and thresholds methods (SWaT)
+<img width="628" alt="Screenshot 2025-06-10 at 12 21 08 PM" src="https://github.com/user-attachments/assets/27c38a8b-cdba-4ade-950b-7c9b92626d04" />
+
+### Loss-Metrics correlations
+<img width="616" alt="Screenshot 2025-06-10 at 12 20 29 PM" src="https://github.com/user-attachments/assets/074554c6-33db-4994-b359-4732faf365ea" />
+
+
+
 ## 📦 Installation
 
 The project requirements are managed with [poetry](https://python-poetry.org/). Make sure to install version 1.8 (or before 2.). After installing poetry, install the project dependencies with:
