@@ -117,8 +117,8 @@ The project currently supports the following models:
 
 The project currently supports the following datasets:
 
-- `swat`: Standard Water Treatment dataset, found [here](https://itrust.sutd.edu.sg/itrust-labs_datasets/dataset_info/)
-- `telco`: Telecommunications dataset, found [here](https://iie.fing.edu.uy/investigacion/grupos/anomalias/)
+- `swat`: Standard Water Treatment dataset, found [here](https://itrust.sutd.edu.sg/itrust-labs_datasets/dataset_info/).
+- `telco`: Telecommunications dataset, found [here](https://iie.fing.edu.uy/investigacion/grupos/anomalias/).
 
 ## Metrics
 
