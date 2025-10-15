@@ -2,10 +2,6 @@
 name = "gragod"
 version = "0.1.0"
 description = ""
-authors = [
-    "gonzachiar <gonzalochiarlone@gmail.com>",
-    "fede-bello <fe.debello@gmail.com>",
-]
 readme = "README.md"
 packages = [{ include = "gragod" }]
 

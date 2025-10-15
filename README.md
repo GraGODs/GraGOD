@@ -4,8 +4,9 @@
 
 <img width="300" alt="GraGOD Logo" src="https://github.com/user-attachments/assets/80aafe71-3db6-4aac-9829-fd95f773caf1" />
 
-### 🔍 **Anomaly Detection with Graph Neural Networks (GNNs)**  
-*A modern approach to time-series anomaly detection using GNN techniques.*
+### 🔍 **Anomaly Detection with Graph Neural Networks (GNNs)**
+
+_A modern approach to time-series anomaly detection using GNN techniques._
 
 ---
 
@@ -15,24 +16,21 @@ GraGOD is a modern approach to time-series anomaly detection using GNN technique
 It is a PyTorch-based framework that provides a flexible and modular architecture for building and training GNN models for anomaly detection.
 The objective of this project is to facilitate the development and testing of new models and datasets for anomaly detection, providing a standard way to organize the code and the data.
 
-All this project is developed by [Federico Bello](https://github.com/fede-bello) and [Gonzalo Chiarlone](https://github.com/gonzachiar). 
-It's part of our thesis to get our Engineering Degree at [La Facultad de Ingenieria](https://www.fing.edu.uy/) de la [Universidad de la República](https://www.uru.edu.ar/).
-
 ## 📝 Report
-The full report of the thesis can be found [here](https://drive.google.com/file/d/1KDqJ-Aj0I6j4H31yq5r8k8wANs7Fj4D2/view)
 
 ### Key insights
 
 ### Test Results
+
 <img width="748" alt="Screenshot 2025-06-10 at 12 18 09 PM" src="https://github.com/user-attachments/assets/54b5da95-9452-478f-92a3-c589c74b63b5" />
 
 ### Anomaly scores distributions and thresholds methods (SWaT)
+
 <img width="628" alt="Screenshot 2025-06-10 at 12 21 08 PM" src="https://github.com/user-attachments/assets/27c38a8b-cdba-4ade-950b-7c9b92626d04" />
 
 ### Loss-Metrics correlations
+
 <img width="616" alt="Screenshot 2025-06-10 at 12 20 29 PM" src="https://github.com/user-attachments/assets/074554c6-33db-4994-b359-4732faf365ea" />
-
-
 
 ## 📦 Installation
 
@@ -54,7 +52,6 @@ There are some extra dependencies to install that are not managed via poetry (ye
 pip install -r requirements.txt
 ```
 
-
 ## 📦 Usage
 
 ### Running the Scripts
@@ -72,7 +69,6 @@ The `params_file` is an optional argument. If not provided, the script will load
 The output of the training script is a folder under `<log_dir>/<model_name>/version_<version>`, where `<version>` is an automatically generated version number.
 All the other parameters are loaded from the `params_file`.
 
-
 #### 📦 Predicting
 
 The predicting script is `models/predict.py`. It can be run with the following command:
@@ -84,7 +80,6 @@ python models/predict.py --model <model_name> --dataset <dataset_name> --params_
 The `params_file` is an optional argument. If not provided, the script will load the file `models/<model_name>/params.yaml`.
 
 The model is loaded from the path `<ckpt_folder>/best.ckpt`, which is specified in the `params_file`.
-
 
 #### 📦 Tuning
 
@@ -109,7 +104,7 @@ gragod --help
 The project currently supports the following models:
 
 - `gcn`: A graph convolutional network based on TAGConv
-- `gdn`: Graph Deviation Network, implementation based on [this repository]([https://arxiv.org/pdf/2106.06947](https://github.com/d-ailin/GDN)) and [this paper](https://arxiv.org/pdf/2106.06947)
+- `gdn`: Graph Deviation Network, implementation based on [this repository](<[https://arxiv.org/pdf/2106.06947](https://github.com/d-ailin/GDN)>) and [this paper](https://arxiv.org/pdf/2106.06947)
 - `mtad_gat`: Multi-Task Anomaly Detection with GAT, implementation based on [this repository](https://github.com/ML4ITS/mtad-gat-pytorch) and [this paper](https://arxiv.org/pdf/2009.02040)
 - `gru`: A GRU-based model
 
@@ -144,12 +139,8 @@ The range based metrics are the ones defined in the [PRTS paper](https://proceed
 The project is organized as follows:
 
 - `models/`: Contains the implementation of the models and script files to train, predict and tune them.
-Each model has its own folder with the implementation of the model and its own `params.yaml` file.
+  Each model has its own folder with the implementation of the model and its own `params.yaml` file.
 - `datasets/`: Contains the implementation of the datasets and its processing functions.
 - `gragod/`: Contains the CLI and the utility functions.
 - `datasets_files/`: Contains the files for the datasets.
 - `research/`: Contains random and outdated scripts of interesting experiments and visualizations. You probably won't be able to run them.
-
-## Contact
-
-For any questions or feedback, please contact us at `fedebello13@gmail.com` or `gonzalochiarlone@gmail.com`.

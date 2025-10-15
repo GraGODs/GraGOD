@@ -2,9 +2,10 @@
 import os
 
 import numpy as np
+
 # %%
 os.getcwd()
-#%%
+# %%
 day_str = "20190501"
 city_str = "Nancy"
 app_str = "YouTube"
@@ -44,7 +45,6 @@ city_traffic = np.zeros((len(times_str), n_rows, n_cols))
 
 # fill the array with the traffic values
 for _, row in df_traffic_dn.iterrows():
-    # FEDE: so, apparently the position in the map is encoded in the tile_id, this is the way to reconstruct it
     tile_id = row["tile_id"]
     row_index = int(tile_id // n_cols)
     col_index = int(tile_id % n_cols)
@@ -139,24 +139,30 @@ final_df
 
 # %%
 # %%
-import networkx as nx
 import random
+
+import networkx as nx
 
 # Initialize the graph
 G = nx.Graph()
 for index, row in final_df[:10].iterrows():
     for tile_id, traffic_value in row.items():
-        if tile_id == 'time':
+        if tile_id == "time":
             continue
         tile_id = int(tile_id)
         row_index = tile_id // n_cols
         col_index = tile_id % n_cols
         node = (row_index, col_index)
-        
+
         # Add node with traffic value as attribute
         G.add_node(node, traffic=traffic_value)
 
-        for adj in [(row_index - 1, col_index), (row_index + 1, col_index), (row_index, col_index - 1), (row_index, col_index + 1)]:
+        for adj in [
+            (row_index - 1, col_index),
+            (row_index + 1, col_index),
+            (row_index, col_index - 1),
+            (row_index, col_index + 1),
+        ]:
             if adj in G.nodes:
                 G.add_edge(node, adj)
 
@@ -181,7 +187,14 @@ for node in sampled_nodes:
             subG.add_edge(node, neighbor)
 print(subG)
 # Visualize the subgraph
-pos = {node: (node[1], -node[0]) for node in subG.nodes}  # Position nodes based on their grid coordinates
-nx.draw(subG, pos, node_color=[subG.nodes[n]['traffic'] for n in subG.nodes], cmap=plt.cm.viridis)
+pos = {
+    node: (node[1], -node[0]) for node in subG.nodes
+}  # Position nodes based on their grid coordinates
+nx.draw(
+    subG,
+    pos,
+    node_color=[subG.nodes[n]["traffic"] for n in subG.nodes],
+    cmap=plt.cm.viridis,
+)
 plt.show()
 # %%
