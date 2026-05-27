@@ -1,7 +1,9 @@
 # Byte-compiled / optimized / DLL files
+*.DS_Store
 __pycache__/
 *.py[cod]
 *$py.class
+*.pt
 
 # C extensions
 *.so
@@ -142,3 +144,18 @@ data
 
 # Checkpoints
 *.ckpt
+
+# Datasets files
+datasets_files/
+
+# Saved models
+saved_models/
+saved_*/
+results/
+output/
+lightning_logs/
+benchmarks/
+
+*.jpeg
+*.jpg
+*.png

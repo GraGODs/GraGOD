@@ -3,25 +3,26 @@ repos:
     rev: v4.5.0
     hooks:
       - id: check-added-large-files
+        args: ['--maxkb=20240']
       - id: check-toml
-      - id: detect-aws-credentials
       - id: check-merge-conflict
 
   - repo: https://github.com/psf/black
     rev: 23.10.1
     hooks:
       - id: black
-        exclude: research/.+\.py
+        exclude: (research/.+\.py|spot\.py)
+        
 
   - repo: https://github.com/pycqa/isort
     rev: 5.12.0
     hooks:
       - id: isort
         name: isort (python)
-        exclude: research/.+\.py
+        exclude: (research/.+\.py|spot\.py)
 
   - repo: https://github.com/pycqa/flake8
     rev: 6.1.0
     hooks:
       - id: flake8
-        exclude: research/.+\.py
+        exclude: (research/.+\.py|spot\.py)

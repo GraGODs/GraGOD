@@ -3,7 +3,7 @@ import os
 
 from dotenv import load_dotenv
 
-ROOT_DIR = "semantic-search"  # CHANGE THIS TO THE ROOT DIRECTORY OF YOUR PROJECT
+ROOT_DIR = "GraGOD"
 
 try:
     get_ipython().run_line_magic("load_ext", "autoreload")  # noqa
